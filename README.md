@@ -53,3 +53,4 @@ Week 1 onboarding guide:
 
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week1.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week2.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week3.md`

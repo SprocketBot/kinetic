@@ -1,0 +1,174 @@
+package http
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
+	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
+)
+
+func TestHierarchyAPICreateAndConstraints(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := db.Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := db.Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := db.NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := db.NewHierarchyStore(conn)
+	server := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	suffix := time.Now().UnixNano()
+	leagueName := fmt.Sprintf("League %d", suffix)
+	leagueSlug := fmt.Sprintf("league-%d", suffix)
+
+	leagueResp := createEntity(t, server, "/v1/leagues", map[string]any{
+		"name": leagueName,
+		"slug": leagueSlug,
+	}, http.StatusCreated)
+
+	// Duplicate slug should produce conflict.
+	createEntity(t, server, "/v1/leagues", map[string]any{
+		"name": fmt.Sprintf("Other %d", suffix),
+		"slug": leagueSlug,
+	}, http.StatusConflict)
+
+	leagueID := int64(leagueResp["id"].(float64))
+
+	// Missing parent league should produce dependency conflict.
+	createEntity(t, server, "/v1/franchises", map[string]any{
+		"leagueId": int64(99999999),
+		"name":     "Invalid Franchise",
+		"slug":     fmt.Sprintf("invalid-franchise-%d", suffix),
+	}, http.StatusConflict)
+
+	franchiseResp := createEntity(t, server, "/v1/franchises", map[string]any{
+		"leagueId": leagueID,
+		"name":     fmt.Sprintf("Franchise %d", suffix),
+		"slug":     fmt.Sprintf("franchise-%d", suffix),
+	}, http.StatusCreated)
+	franchiseID := int64(franchiseResp["id"].(float64))
+
+	createEntity(t, server, "/v1/clubs", map[string]any{
+		"franchiseId": franchiseID,
+		"name":        fmt.Sprintf("Club %d", suffix),
+		"slug":        fmt.Sprintf("club-%d", suffix),
+	}, http.StatusCreated)
+
+	assertListNotEmpty(t, server, "/v1/leagues")
+	assertListNotEmpty(t, server, "/v1/franchises")
+	assertListNotEmpty(t, server, "/v1/clubs")
+}
+
+func TestHierarchyAPIValidationFailure(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := db.Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := db.Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := db.NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := db.NewHierarchyStore(conn)
+	server := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	createEntity(t, server, "/v1/leagues", map[string]any{
+		"name": "Invalid League",
+		"slug": "NOT-VALID",
+	}, http.StatusBadRequest)
+}
+
+func createEntity(t *testing.T, server *Server, path string, payload map[string]any, expectedStatus int) map[string]any {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != expectedStatus {
+		t.Fatalf("expected status %d for %s, got %d body=%s", expectedStatus, path, rr.Code, rr.Body.String())
+	}
+
+	if expectedStatus >= 400 {
+		return nil
+	}
+
+	var data map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&data); err != nil {
+		t.Fatalf("failed to decode response for %s: %v", path, err)
+	}
+	return data
+}
+
+func assertListNotEmpty(t *testing.T, server *Server, path string) {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d for %s, got %d", http.StatusOK, path, rr.Code)
+	}
+
+	var items []map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&items); err != nil {
+		t.Fatalf("failed to decode list response for %s: %v", path, err)
+	}
+	if len(items) == 0 {
+		t.Fatalf("expected non-empty list for %s", path)
+	}
+}
+
+var _ hierarchy.Store = (*db.HierarchyStore)(nil)

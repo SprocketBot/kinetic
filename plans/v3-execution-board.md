@@ -10,7 +10,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 2 completed: `W2-01` through `W2-10` on 2026-02-08
 - Week 3 in progress: `W3-01`, `W3-02`, and `W3-03` completed on 2026-02-08
 - Week 3 in progress: `W3-04`, `W3-05`, `W3-06`, and `W3-07` completed on 2026-02-08
-- Next up: `W3-08` API-level integration coverage and `W3-09` onboarding notes
+- Week 3 in progress: `W3-08` and `W3-09` completed on 2026-02-08
+- Next up: `W3-10` reserved buffer
 
 ## Capacity Guardrails
 
@@ -231,8 +232,8 @@ Out of scope:
 | W3-05 | Implement API handlers/routes | 1.25h | Done | create/list endpoints return JSON contracts |
 | W3-06 | Add request validation and error mapping | 0.75h | Done | invalid payloads return stable 4xx errors |
 | W3-07 | Write unit tests for model/validation logic | 0.75h | Done | edge cases covered for required fields/uniqueness assumptions |
-| W3-08 | Write integration tests for DB/API behavior | 1.0h | In Progress | FK + duplicate constraints validated end-to-end |
-| W3-09 | Write Week 3 onboarding notes | 0.5h | Todo | new contributor can run hierarchy checks quickly |
+| W3-08 | Write integration tests for DB/API behavior | 1.0h | Done | FK + duplicate constraints validated end-to-end |
+| W3-09 | Write Week 3 onboarding notes | 0.5h | Done | new contributor can run hierarchy checks quickly |
 | W3-10 | Risk/overflow buffer | 0.75h | Todo | consumed only for blockers |
 
 ### Week 3 Risks and Mitigations
