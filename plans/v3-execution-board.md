@@ -11,7 +11,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 3 in progress: `W3-01`, `W3-02`, and `W3-03` completed on 2026-02-08
 - Week 3 in progress: `W3-04`, `W3-05`, `W3-06`, and `W3-07` completed on 2026-02-08
 - Week 3 in progress: `W3-08` and `W3-09` completed on 2026-02-08
-- Next up: `W3-10` reserved buffer
+- Week 3 completed: `W3-10` consumed for end-to-end hierarchy smoke hardening
+- Next up: Week 4 planning and ticketing
 
 ## Capacity Guardrails
 
@@ -234,7 +235,7 @@ Out of scope:
 | W3-07 | Write unit tests for model/validation logic | 0.75h | Done | edge cases covered for required fields/uniqueness assumptions |
 | W3-08 | Write integration tests for DB/API behavior | 1.0h | Done | FK + duplicate constraints validated end-to-end |
 | W3-09 | Write Week 3 onboarding notes | 0.5h | Done | new contributor can run hierarchy checks quickly |
-| W3-10 | Risk/overflow buffer | 0.75h | Todo | consumed only for blockers |
+| W3-10 | Risk/overflow buffer | 0.75h | Done | consumed for week3 smoke script and runtime hardening |
 
 ### Week 3 Risks and Mitigations
 

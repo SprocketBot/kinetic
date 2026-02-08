@@ -75,3 +75,9 @@ go test ./...
 # hierarchy-focused packages
 go test ./internal/domain/hierarchy ./internal/platform/db ./internal/platform/http
 ```
+
+## Optional full smoke
+
+```bash
+./tools/week3-smoke.sh
+```

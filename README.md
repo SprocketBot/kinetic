@@ -47,6 +47,9 @@ go run ./cmd/migrate
 
 # run week 1 smoke checks
 ./tools/week1-smoke.sh
+
+# run week 3 hierarchy smoke checks
+./tools/week3-smoke.sh
 ```
 
 Week 1 onboarding guide:
