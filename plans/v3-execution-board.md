@@ -8,8 +8,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Completed: `W1-01` through `W1-10` on 2026-02-07
 - Week 1 objective achieved and validated (local, DB, and minikube paths)
 - Week 2 completed: `W2-01` through `W2-10` on 2026-02-08
-- Week 3 planning prepared (implementation not started)
-- Next up: Week 3 execution (`W3-01` onward)
+- Week 3 started: `W3-01` completed on 2026-02-08
+- Next up: `W3-02` migration implementation
 
 ## Capacity Guardrails
 
@@ -223,7 +223,7 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W3-01 | Define hierarchy slice contract | 0.75h | Todo | League/Franchise/Club fields and invariants documented |
+| W3-01 | Define hierarchy slice contract | 0.75h | Done | League/Franchise/Club fields and invariants documented |
 | W3-02 | Add migrations for League/Franchise/Club | 1.25h | Todo | schema migrates cleanly and is idempotent |
 | W3-03 | Add domain models/store interfaces | 1.0h | Todo | compile-safe model and store boundaries in place |
 | W3-04 | Implement DB store methods | 1.25h | Todo | create/list operations work for all 3 entities |
