@@ -1,0 +1,27 @@
+CREATE TABLE IF NOT EXISTS leagues (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS franchises (
+    id BIGSERIAL PRIMARY KEY,
+    league_id BIGINT NOT NULL REFERENCES leagues(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_franchise_league_name UNIQUE (league_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS clubs (
+    id BIGSERIAL PRIMARY KEY,
+    franchise_id BIGINT NOT NULL REFERENCES franchises(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_club_franchise_name UNIQUE (franchise_id, name)
+);
