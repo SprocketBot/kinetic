@@ -1,0 +1,67 @@
+package hierarchy
+
+import "testing"
+
+func TestValidateCreateLeagueInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateLeagueInput(CreateLeagueInput{
+		Name: "Minor League Esports",
+		Slug: "minor-league-esports",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateLeagueInput(CreateLeagueInput{
+		Name: "MLE",
+		Slug: "Not-Kebab",
+	})
+	if err == nil {
+		t.Fatal("expected invalid slug to fail validation")
+	}
+}
+
+func TestValidateCreateFranchiseInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateFranchiseInput(CreateFranchiseInput{
+		LeagueID: 1,
+		Name:     "Guardians",
+		Slug:     "guardians",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateFranchiseInput(CreateFranchiseInput{
+		LeagueID: 0,
+		Name:     "Guardians",
+		Slug:     "guardians",
+	})
+	if err == nil {
+		t.Fatal("expected missing leagueId to fail validation")
+	}
+}
+
+func TestValidateCreateClubInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateClubInput(CreateClubInput{
+		FranchiseID: 1,
+		Name:        "Guardians RL",
+		Slug:        "guardians-rl",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateClubInput(CreateClubInput{
+		FranchiseID: 1,
+		Name:        "",
+		Slug:        "guardians-rl",
+	})
+	if err == nil {
+		t.Fatal("expected empty name to fail validation")
+	}
+}

@@ -3,11 +3,13 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
 )
@@ -20,6 +22,7 @@ type Server struct {
 type Dependencies struct {
 	TokenValidator auth.TokenValidator
 	Evaluator      authz.Evaluator
+	HierarchyStore hierarchy.Store
 }
 
 type healthResponse struct {
@@ -69,6 +72,99 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		auth.RequirePermission(evaluator, "admin.ping", "read", adminPingHandler),
 	))
 
+	mux.HandleFunc("/v1/leagues", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			leagues, err := deps.HierarchyStore.ListLeagues(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list leagues", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, leagues)
+		case http.MethodPost:
+			var input hierarchy.CreateLeagueInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			league, err := deps.HierarchyStore.CreateLeague(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, league)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/franchises", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			franchises, err := deps.HierarchyStore.ListFranchises(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list franchises", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, franchises)
+		case http.MethodPost:
+			var input hierarchy.CreateFranchiseInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			franchise, err := deps.HierarchyStore.CreateFranchise(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, franchise)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/clubs", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			clubs, err := deps.HierarchyStore.ListClubs(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list clubs", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, clubs)
+		case http.MethodPost:
+			var input hierarchy.CreateClubInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			club, err := deps.HierarchyStore.CreateClub(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, club)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,
@@ -96,4 +192,21 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func decodeJSON(r *http.Request, dst any) error {
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(dst)
+}
+
+func handleHierarchyError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, hierarchy.ErrInvalidInput):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, hierarchy.ErrConflict), errors.Is(err, hierarchy.ErrDependency):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
 }

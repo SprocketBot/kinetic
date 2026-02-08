@@ -9,7 +9,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 1 objective achieved and validated (local, DB, and minikube paths)
 - Week 2 completed: `W2-01` through `W2-10` on 2026-02-08
 - Week 3 in progress: `W3-01`, `W3-02`, and `W3-03` completed on 2026-02-08
-- Next up: `W3-04` DB store implementation
+- Week 3 in progress: `W3-04`, `W3-05`, `W3-06`, and `W3-07` completed on 2026-02-08
+- Next up: `W3-08` API-level integration coverage and `W3-09` onboarding notes
 
 ## Capacity Guardrails
 
@@ -226,11 +227,11 @@ Out of scope:
 | W3-01 | Define hierarchy slice contract | 0.75h | Done | League/Franchise/Club fields and invariants documented |
 | W3-02 | Add migrations for League/Franchise/Club | 1.25h | Done | schema migrates cleanly and is idempotent |
 | W3-03 | Add domain models/store interfaces | 1.0h | Done | compile-safe model and store boundaries in place |
-| W3-04 | Implement DB store methods | 1.25h | Todo | create/list operations work for all 3 entities |
-| W3-05 | Implement API handlers/routes | 1.25h | Todo | create/list endpoints return JSON contracts |
-| W3-06 | Add request validation and error mapping | 0.75h | Todo | invalid payloads return stable 4xx errors |
-| W3-07 | Write unit tests for model/validation logic | 0.75h | Todo | edge cases covered for required fields/uniqueness assumptions |
-| W3-08 | Write integration tests for DB/API behavior | 1.0h | Todo | FK + duplicate constraints validated end-to-end |
+| W3-04 | Implement DB store methods | 1.25h | Done | create/list operations work for all 3 entities |
+| W3-05 | Implement API handlers/routes | 1.25h | Done | create/list endpoints return JSON contracts |
+| W3-06 | Add request validation and error mapping | 0.75h | Done | invalid payloads return stable 4xx errors |
+| W3-07 | Write unit tests for model/validation logic | 0.75h | Done | edge cases covered for required fields/uniqueness assumptions |
+| W3-08 | Write integration tests for DB/API behavior | 1.0h | In Progress | FK + duplicate constraints validated end-to-end |
 | W3-09 | Write Week 3 onboarding notes | 0.5h | Todo | new contributor can run hierarchy checks quickly |
 | W3-10 | Risk/overflow buffer | 0.75h | Todo | consumed only for blockers |
 

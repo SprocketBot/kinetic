@@ -53,6 +53,7 @@ func main() {
 
 	tokenValidator := auth.NewLocalTokenValidator("local")
 	var evaluator authz.Evaluator
+	var hierarchyStore *db.HierarchyStore
 	if conn != nil {
 		dbEvaluator, err := authz.NewDatabaseBackedEvaluator(ctx, conn, authz.DefaultPermissions())
 		if err != nil {
@@ -61,6 +62,7 @@ func main() {
 		}
 		logger.Info("loaded authz policies from database")
 		evaluator = dbEvaluator
+		hierarchyStore = db.NewHierarchyStore(conn)
 	} else {
 		staticEvaluator := authz.NewStaticEvaluator(authz.DefaultPermissions())
 		evaluator = staticEvaluator
@@ -70,6 +72,7 @@ func main() {
 	srv := httpserver.New(cfg, logger, httpserver.Dependencies{
 		TokenValidator: tokenValidator,
 		Evaluator:      evaluator,
+		HierarchyStore: hierarchyStore,
 	})
 
 	errCh := make(chan error, 1)
