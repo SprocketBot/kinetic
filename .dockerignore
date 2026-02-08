@@ -1,0 +1,17 @@
+.git
+.github
+bin
+dist
+build
+*.out
+*.test
+coverage.out
+
+# docs/plans are not required for runtime image
+plans
+docs
+
+# local artifacts
+.DS_Store
+.vscode
+.idea

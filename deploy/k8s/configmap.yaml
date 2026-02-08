@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sprocket-v3-config
+  namespace: sprocket-v3
+data:
+  PORT: "8080"
+  LOG_LEVEL: "info"
+  RUN_MIGRATIONS_ON_START: "false"
+  REQUIRE_DATABASE: "false"
+  MIGRATIONS_DIR: "/app/migrations"
+

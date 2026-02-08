@@ -1,0 +1,21 @@
+# Go
+bin/
+*.test
+*.out
+coverage.out
+
+# Environment
+.env
+.env.*
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Kubernetes / local tooling
+.kube/
+
+# Generated artifacts
+dist/
+build/
