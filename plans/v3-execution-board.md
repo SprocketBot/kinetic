@@ -12,7 +12,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 3 in progress: `W3-04`, `W3-05`, `W3-06`, and `W3-07` completed on 2026-02-08
 - Week 3 in progress: `W3-08` and `W3-09` completed on 2026-02-08
 - Week 3 completed: `W3-10` consumed for end-to-end hierarchy smoke hardening
-- Next up: Week 4 planning and ticketing
+- Week 4 planning prepared (implementation not started)
+- Next up: Week 4 execution (`W4-01` onward)
 
 ## Capacity Guardrails
 
@@ -252,3 +253,74 @@ Out of scope:
 - Week 1 smoke script passes: `./tools/week1-smoke.sh`
 - Postgres test port available (`55432` default)
 - No open blockers on migrations or API runtime bootstrap
+
+---
+
+## Week 4 Execution Board (2026-03-02 to 2026-03-08)
+
+Week objective: extend the hierarchy slice by adding `Team` and `Player` models with relational integrity, plus create/list API endpoints and behavior-focused tests.
+
+Definition of done for Week 4:
+
+- `Team` and `Player` schema/models exist and are migrated
+- Create/list endpoints implemented for Team and Player
+- FK and uniqueness constraints enforced and tested
+- Integration tests validate hierarchy linkage from League -> Franchise -> Club -> Team -> Player
+- Week 4 onboarding notes explain end-to-end usage and checks
+
+### Scope Boundaries
+
+In scope:
+
+- data model + migrations for Team and Player entities
+- create + list API endpoints for Team and Player
+- validation/error mapping for these endpoints
+- integration tests for dependency/constraint behavior
+
+Out of scope:
+
+- roster assignment workflows and transfer logic
+- update/delete endpoints
+- pagination/filtering expansions
+- role-scoped authz for hierarchy mutations (defer)
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize Team/Player contract and migration design | `docs/adr/004-team-player-slice.md`, migration notes |
+| Tue | 2h | Implement Team/Player migrations + domain model updates | `migrations/000004_*.sql`, `internal/domain/hierarchy/*` updates |
+| Wed | 2h | Implement DB store methods and API routes for Team/Player | store + `/v1/teams`, `/v1/players` |
+| Thu | 2h | Integration tests for Team/Player constraints and hierarchy links | FK/duplicate/validation API tests |
+| Fri | 2h | Onboarding docs + smoke updates + cleanup/buffer | `docs/onboarding/week4.md`, `tools/week4-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W4-01 | Define Team/Player slice contract | 0.75h | Todo | fields + invariants documented in ADR |
+| W4-02 | Add migrations for Team/Player | 1.25h | Todo | schema migrates cleanly and is idempotent |
+| W4-03 | Extend hierarchy domain models/store interface | 0.75h | Todo | compile-safe model changes in place |
+| W4-04 | Implement DB store methods for Team/Player | 1.25h | Todo | create/list for Team/Player works |
+| W4-05 | Implement API handlers/routes for Team/Player | 1.0h | Todo | create/list endpoints return stable JSON |
+| W4-06 | Add validation + error mapping for Team/Player payloads | 0.75h | Todo | invalid payloads return stable 4xx responses |
+| W4-07 | Write unit tests for Team/Player validation | 0.5h | Todo | slug/required field checks covered |
+| W4-08 | Write integration tests for DB/API Team/Player behavior | 1.25h | Todo | FK + duplicate constraints validated end-to-end |
+| W4-09 | Write Week 4 onboarding notes | 0.5h | Todo | contributor can run Team/Player checks quickly |
+| W4-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 4 Risks and Mitigations
+
+- Risk: Team/Player schema assumptions conflict with future roster model.
+  - Mitigation: keep fields minimal and additive; avoid embedding roster workflows now.
+- Risk: integration tests become too coupled to specific IDs.
+  - Mitigation: use generated unique suffixes and avoid static fixture IDs.
+- Risk: API contract drift between docs and runtime.
+  - Mitigation: update onboarding examples and smoke script in same PR as endpoints.
+
+### Week 4 Start Checklist
+
+- Week 3 smoke script passes: `./tools/week3-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Working tree clean before first Week 4 implementation commit
