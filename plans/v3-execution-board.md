@@ -16,7 +16,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 4 started: `W4-01` completed on 2026-02-08
 - Week 4 in progress: `W4-02` through `W4-09` completed on 2026-02-08
 - Week 4 completed: `W4-10` consumed for week4 smoke reliability hardening (port fallback)
-- Next up: Week 5 planning and ticketing
+- Week 5 planning prepared (implementation not started)
+- Next up: Week 5 execution (`W5-01` onward)
 
 ## Capacity Guardrails
 
@@ -327,3 +328,74 @@ Out of scope:
 - Full test suite passes: `go test ./...`
 - Postgres test port available (`55432` default)
 - Working tree clean before first Week 4 implementation commit
+
+---
+
+## Week 5 Execution Board (2026-03-09 to 2026-03-15)
+
+Week objective: introduce roster assignment primitives and workflow endpoints so players can be explicitly attached to teams with auditable membership state.
+
+Definition of done for Week 5:
+
+- Roster membership schema exists and is migrated
+- Create/list endpoints for roster membership are implemented
+- Membership constraints enforced (no duplicate active membership for same player/team)
+- Integration tests cover assignment, duplicate prevention, and missing-dependency cases
+- Week 5 onboarding notes and smoke automation are available
+
+### Scope Boundaries
+
+In scope:
+
+- roster membership data model (player <-> team relationship)
+- assignment/list API endpoints
+- constraint/error handling and tests
+- onboarding docs and smoke script
+
+Out of scope:
+
+- transfer approval workflows
+- historical contract/season modeling
+- bulk roster operations
+- advanced RBAC scopes for roster operations
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize roster contract and migration design | `docs/adr/005-roster-membership-slice.md`, migration notes |
+| Tue | 2h | Implement migration + domain/store interfaces for roster membership | `migrations/000005_*.sql`, domain/store updates |
+| Wed | 2h | Implement DB methods and API routes for roster assignment/listing | `/v1/roster-memberships` endpoints |
+| Thu | 2h | Integration tests for assignment constraints and dependency errors | API and DB integration tests |
+| Fri | 2h | Onboarding + smoke automation + cleanup/buffer | `docs/onboarding/week5.md`, `tools/week5-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W5-01 | Define roster membership contract | 0.75h | Todo | fields + invariants documented in ADR |
+| W5-02 | Add migration for roster membership schema | 1.25h | Todo | migration is idempotent and applies cleanly |
+| W5-03 | Extend domain/store interface for roster membership | 0.75h | Todo | compile-safe contracts in place |
+| W5-04 | Implement DB methods for assignment/listing | 1.25h | Todo | create/list works with constraint mapping |
+| W5-05 | Implement API routes for roster memberships | 1.0h | Todo | create/list endpoints return stable JSON |
+| W5-06 | Add validation and error mapping for roster payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
+| W5-07 | Write unit tests for roster validation rules | 0.5h | Todo | required field and format checks covered |
+| W5-08 | Write integration tests for roster constraints | 1.25h | Todo | duplicate active membership and FK errors validated |
+| W5-09 | Write Week 5 onboarding notes | 0.5h | Todo | contributor can run roster checks quickly |
+| W5-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 5 Risks and Mitigations
+
+- Risk: ambiguity between player-team ownership and roster history.
+  - Mitigation: keep Week 5 to current-state membership only; add history later.
+- Risk: duplicate membership edge cases.
+  - Mitigation: enforce unique active membership constraints at DB level.
+- Risk: API semantics drift from future transfer workflows.
+  - Mitigation: use neutral naming (`roster-membership`) and additive design.
+
+### Week 5 Start Checklist
+
+- Week 4 smoke script passes: `./tools/week4-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Working tree clean before first Week 5 implementation commit
