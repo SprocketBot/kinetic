@@ -69,3 +69,13 @@ func ValidateCreatePlayerInput(input CreatePlayerInput) error {
 	}
 	return nil
 }
+
+func ValidateCreateRosterMembershipInput(input CreateRosterMembershipInput) error {
+	if input.PlayerID <= 0 {
+		return fmt.Errorf("%w: playerId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}

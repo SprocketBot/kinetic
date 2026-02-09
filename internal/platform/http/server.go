@@ -227,6 +227,37 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/roster-memberships", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			memberships, err := deps.HierarchyStore.ListRosterMemberships(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list roster memberships", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, memberships)
+		case http.MethodPost:
+			var input hierarchy.CreateRosterMembershipInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			membership, err := deps.HierarchyStore.CreateRosterMembership(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, membership)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,

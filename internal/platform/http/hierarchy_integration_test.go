@@ -115,11 +115,34 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"slug":        fmt.Sprintf("player-%d", suffix),
 	}, http.StatusCreated)
 
+	playerTwoResp := createEntity(t, server, "/v1/players", map[string]any{
+		"teamId":      teamID,
+		"displayName": fmt.Sprintf("Player Two %d", suffix),
+		"slug":        fmt.Sprintf("player-two-%d", suffix),
+	}, http.StatusCreated)
+	playerTwoID := int64(playerTwoResp["id"].(float64))
+
+	createEntity(t, server, "/v1/roster-memberships", map[string]any{
+		"playerId": playerTwoID,
+		"teamId":   teamID,
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/roster-memberships", map[string]any{
+		"playerId": playerTwoID,
+		"teamId":   teamID,
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/roster-memberships", map[string]any{
+		"playerId": int64(99999999),
+		"teamId":   teamID,
+	}, http.StatusConflict)
+
 	assertListNotEmpty(t, server, "/v1/leagues")
 	assertListNotEmpty(t, server, "/v1/franchises")
 	assertListNotEmpty(t, server, "/v1/clubs")
 	assertListNotEmpty(t, server, "/v1/teams")
 	assertListNotEmpty(t, server, "/v1/players")
+	assertListNotEmpty(t, server, "/v1/roster-memberships")
 }
 
 func TestHierarchyAPIValidationFailure(t *testing.T) {
@@ -154,6 +177,11 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/leagues", map[string]any{
 		"name": "Invalid League",
 		"slug": "NOT-VALID",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/roster-memberships", map[string]any{
+		"playerId": int64(0),
+		"teamId":   int64(1),
 	}, http.StatusBadRequest)
 }
 

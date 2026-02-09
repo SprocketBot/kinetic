@@ -1,6 +1,6 @@
 # Sprocket v3 Execution Board
 
-Last updated: 2026-02-07
+Last updated: 2026-02-09
 Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 
 ## Current Progress
@@ -17,7 +17,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 4 in progress: `W4-02` through `W4-09` completed on 2026-02-08
 - Week 4 completed: `W4-10` consumed for week4 smoke reliability hardening (port fallback)
 - Week 5 planning prepared (implementation not started)
-- Next up: Week 5 execution (`W5-01` onward)
+- Week 5 started: `W5-01` through `W5-03` completed on 2026-02-09
+- Week 5 in progress: `W5-04` through `W5-09` completed on 2026-02-09
+- Week 5 completed: `W5-10` not consumed (no blockers)
+- Next up: Week 6 planning and ticketing
 
 ## Capacity Guardrails
 
@@ -373,16 +376,16 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W5-01 | Define roster membership contract | 0.75h | Todo | fields + invariants documented in ADR |
-| W5-02 | Add migration for roster membership schema | 1.25h | Todo | migration is idempotent and applies cleanly |
-| W5-03 | Extend domain/store interface for roster membership | 0.75h | Todo | compile-safe contracts in place |
-| W5-04 | Implement DB methods for assignment/listing | 1.25h | Todo | create/list works with constraint mapping |
-| W5-05 | Implement API routes for roster memberships | 1.0h | Todo | create/list endpoints return stable JSON |
-| W5-06 | Add validation and error mapping for roster payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
-| W5-07 | Write unit tests for roster validation rules | 0.5h | Todo | required field and format checks covered |
-| W5-08 | Write integration tests for roster constraints | 1.25h | Todo | duplicate active membership and FK errors validated |
-| W5-09 | Write Week 5 onboarding notes | 0.5h | Todo | contributor can run roster checks quickly |
-| W5-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W5-01 | Define roster membership contract | 0.75h | Done | fields + invariants documented in ADR |
+| W5-02 | Add migration for roster membership schema | 1.25h | Done | migration is idempotent and applies cleanly |
+| W5-03 | Extend domain/store interface for roster membership | 0.75h | Done | compile-safe contracts in place |
+| W5-04 | Implement DB methods for assignment/listing | 1.25h | Done | create/list works with constraint mapping |
+| W5-05 | Implement API routes for roster memberships | 1.0h | Done | create/list endpoints return stable JSON |
+| W5-06 | Add validation and error mapping for roster payloads | 0.75h | Done | invalid payloads map to stable 4xx |
+| W5-07 | Write unit tests for roster validation rules | 0.5h | Done | required field and format checks covered |
+| W5-08 | Write integration tests for roster constraints | 1.25h | Done | duplicate active membership and FK errors validated |
+| W5-09 | Write Week 5 onboarding notes | 0.5h | Done | contributor can run roster checks quickly |
+| W5-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 5 Risks and Mitigations
 

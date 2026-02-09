@@ -13,4 +13,6 @@ type Store interface {
 	ListTeams(ctx context.Context) ([]Team, error)
 	CreatePlayer(ctx context.Context, input CreatePlayerInput) (Player, error)
 	ListPlayers(ctx context.Context) ([]Player, error)
+	CreateRosterMembership(ctx context.Context, input CreateRosterMembershipInput) (RosterMembership, error)
+	ListRosterMemberships(ctx context.Context) ([]RosterMembership, error)
 }

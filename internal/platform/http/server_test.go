@@ -31,16 +31,19 @@ type fakeHierarchyStore struct {
 	clubToReturn       hierarchy.Club
 	teamToReturn       hierarchy.Team
 	playerToReturn     hierarchy.Player
+	membershipToReturn hierarchy.RosterMembership
 	leaguesToList      []hierarchy.League
 	franchisesToList   []hierarchy.Franchise
 	clubsToList        []hierarchy.Club
 	teamsToList        []hierarchy.Team
 	playersToList      []hierarchy.Player
+	membershipsToList  []hierarchy.RosterMembership
 	createLeagueErr    error
 	createFranchiseErr error
 	createClubErr      error
 	createTeamErr      error
 	createPlayerErr    error
+	createMemberErr    error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -72,6 +75,12 @@ func (f *fakeHierarchyStore) CreatePlayer(_ context.Context, _ hierarchy.CreateP
 }
 func (f *fakeHierarchyStore) ListPlayers(_ context.Context) ([]hierarchy.Player, error) {
 	return f.playersToList, nil
+}
+func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
+	return f.membershipToReturn, f.createMemberErr
+}
+func (f *fakeHierarchyStore) ListRosterMemberships(_ context.Context) ([]hierarchy.RosterMembership, error) {
+	return f.membershipsToList, nil
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -244,6 +253,30 @@ func TestCreatePlayerSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/players", strings.NewReader(`{"teamId":1,"displayName":"Player One","slug":"player-one"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestCreateRosterMembershipSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		membershipToReturn: hierarchy.RosterMembership{
+			ID:        1,
+			PlayerID:  10,
+			TeamID:    20,
+			IsActive:  true,
+			CreatedAt: now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/roster-memberships", strings.NewReader(`{"playerId":10,"teamId":20}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

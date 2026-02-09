@@ -263,6 +263,54 @@ ORDER BY id ASC;`
 	return players, nil
 }
 
+func (s *HierarchyStore) CreateRosterMembership(ctx context.Context, input hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
+	if err := hierarchy.ValidateCreateRosterMembershipInput(input); err != nil {
+		return hierarchy.RosterMembership{}, err
+	}
+
+	const stmt = `
+INSERT INTO roster_memberships(player_id, team_id)
+VALUES ($1, $2)
+RETURNING id, player_id, team_id, is_active, created_at;`
+	var membership hierarchy.RosterMembership
+	err := s.db.QueryRowContext(ctx, stmt, input.PlayerID, input.TeamID).Scan(
+		&membership.ID,
+		&membership.PlayerID,
+		&membership.TeamID,
+		&membership.IsActive,
+		&membership.CreatedAt,
+	)
+	if err != nil {
+		return hierarchy.RosterMembership{}, mapSQLError(err)
+	}
+	return membership, nil
+}
+
+func (s *HierarchyStore) ListRosterMemberships(ctx context.Context) ([]hierarchy.RosterMembership, error) {
+	const stmt = `
+SELECT id, player_id, team_id, is_active, created_at
+FROM roster_memberships
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	memberships := make([]hierarchy.RosterMembership, 0)
+	for rows.Next() {
+		var membership hierarchy.RosterMembership
+		if err := rows.Scan(&membership.ID, &membership.PlayerID, &membership.TeamID, &membership.IsActive, &membership.CreatedAt); err != nil {
+			return nil, err
+		}
+		memberships = append(memberships, membership)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return memberships, nil
+}
+
 func mapSQLError(err error) error {
 	var pgError *pgconn.PgError
 	if errors.As(err, &pgError) {

@@ -109,3 +109,31 @@ func TestValidateCreatePlayerInput(t *testing.T) {
 		t.Fatal("expected missing teamId to fail validation")
 	}
 }
+
+func TestValidateCreateRosterMembershipInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateRosterMembershipInput(CreateRosterMembershipInput{
+		PlayerID: 1,
+		TeamID:   2,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateRosterMembershipInput(CreateRosterMembershipInput{
+		PlayerID: 0,
+		TeamID:   2,
+	})
+	if err == nil {
+		t.Fatal("expected missing playerId to fail validation")
+	}
+
+	err = ValidateCreateRosterMembershipInput(CreateRosterMembershipInput{
+		PlayerID: 1,
+		TeamID:   0,
+	})
+	if err == nil {
+		t.Fatal("expected missing teamId to fail validation")
+	}
+}

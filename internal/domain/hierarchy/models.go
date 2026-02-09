@@ -46,6 +46,14 @@ type Player struct {
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
+type RosterMembership struct {
+	ID        int64     `json:"id"`
+	PlayerID  int64     `json:"playerId"`
+	TeamID    int64     `json:"teamId"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 type CreateLeagueInput struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
@@ -73,4 +81,9 @@ type CreatePlayerInput struct {
 	TeamID      int64  `json:"teamId"`
 	DisplayName string `json:"displayName"`
 	Slug        string `json:"slug"`
+}
+
+type CreateRosterMembershipInput struct {
+	PlayerID int64 `json:"playerId"`
+	TeamID   int64 `json:"teamId"`
 }
