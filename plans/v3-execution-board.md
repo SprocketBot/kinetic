@@ -13,7 +13,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 3 in progress: `W3-08` and `W3-09` completed on 2026-02-08
 - Week 3 completed: `W3-10` consumed for end-to-end hierarchy smoke hardening
 - Week 4 planning prepared (implementation not started)
-- Next up: Week 4 execution (`W4-01` onward)
+- Week 4 started: `W4-01` completed on 2026-02-08
+- Next up: `W4-02` Team/Player migration implementation
 
 ## Capacity Guardrails
 
@@ -298,7 +299,7 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W4-01 | Define Team/Player slice contract | 0.75h | Todo | fields + invariants documented in ADR |
+| W4-01 | Define Team/Player slice contract | 0.75h | Done | fields + invariants documented in ADR |
 | W4-02 | Add migrations for Team/Player | 1.25h | Todo | schema migrates cleanly and is idempotent |
 | W4-03 | Extend hierarchy domain models/store interface | 0.75h | Todo | compile-safe model changes in place |
 | W4-04 | Implement DB store methods for Team/Player | 1.25h | Todo | create/list for Team/Player works |
