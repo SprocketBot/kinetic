@@ -165,6 +165,104 @@ ORDER BY id ASC;`
 	return clubs, nil
 }
 
+func (s *HierarchyStore) CreateTeam(ctx context.Context, input hierarchy.CreateTeamInput) (hierarchy.Team, error) {
+	if err := hierarchy.ValidateCreateTeamInput(input); err != nil {
+		return hierarchy.Team{}, err
+	}
+
+	const stmt = `
+INSERT INTO teams(club_id, name, slug)
+VALUES ($1, $2, $3)
+RETURNING id, club_id, name, slug, is_active, created_at;`
+	var team hierarchy.Team
+	err := s.db.QueryRowContext(ctx, stmt, input.ClubID, input.Name, input.Slug).Scan(
+		&team.ID,
+		&team.ClubID,
+		&team.Name,
+		&team.Slug,
+		&team.IsActive,
+		&team.CreatedAt,
+	)
+	if err != nil {
+		return hierarchy.Team{}, mapSQLError(err)
+	}
+	return team, nil
+}
+
+func (s *HierarchyStore) ListTeams(ctx context.Context) ([]hierarchy.Team, error) {
+	const stmt = `
+SELECT id, club_id, name, slug, is_active, created_at
+FROM teams
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	teams := make([]hierarchy.Team, 0)
+	for rows.Next() {
+		var team hierarchy.Team
+		if err := rows.Scan(&team.ID, &team.ClubID, &team.Name, &team.Slug, &team.IsActive, &team.CreatedAt); err != nil {
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return teams, nil
+}
+
+func (s *HierarchyStore) CreatePlayer(ctx context.Context, input hierarchy.CreatePlayerInput) (hierarchy.Player, error) {
+	if err := hierarchy.ValidateCreatePlayerInput(input); err != nil {
+		return hierarchy.Player{}, err
+	}
+
+	const stmt = `
+INSERT INTO players(team_id, display_name, slug)
+VALUES ($1, $2, $3)
+RETURNING id, team_id, display_name, slug, is_active, created_at;`
+	var player hierarchy.Player
+	err := s.db.QueryRowContext(ctx, stmt, input.TeamID, input.DisplayName, input.Slug).Scan(
+		&player.ID,
+		&player.TeamID,
+		&player.DisplayName,
+		&player.Slug,
+		&player.IsActive,
+		&player.CreatedAt,
+	)
+	if err != nil {
+		return hierarchy.Player{}, mapSQLError(err)
+	}
+	return player, nil
+}
+
+func (s *HierarchyStore) ListPlayers(ctx context.Context) ([]hierarchy.Player, error) {
+	const stmt = `
+SELECT id, team_id, display_name, slug, is_active, created_at
+FROM players
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	players := make([]hierarchy.Player, 0)
+	for rows.Next() {
+		var player hierarchy.Player
+		if err := rows.Scan(&player.ID, &player.TeamID, &player.DisplayName, &player.Slug, &player.IsActive, &player.CreatedAt); err != nil {
+			return nil, err
+		}
+		players = append(players, player)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return players, nil
+}
+
 func mapSQLError(err error) error {
 	var pgError *pgconn.PgError
 	if errors.As(err, &pgError) {

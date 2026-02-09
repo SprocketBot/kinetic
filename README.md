@@ -50,6 +50,9 @@ go run ./cmd/migrate
 
 # run week 3 hierarchy smoke checks
 ./tools/week3-smoke.sh
+
+# run week 4 team/player smoke checks
+./tools/week4-smoke.sh
 ```
 
 Week 1 onboarding guide:
@@ -57,3 +60,4 @@ Week 1 onboarding guide:
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week1.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week2.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week3.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week4.md`

@@ -28,6 +28,24 @@ type Club struct {
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
+type Team struct {
+	ID        int64     `json:"id"`
+	ClubID    int64     `json:"clubId"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type Player struct {
+	ID          int64     `json:"id"`
+	TeamID      int64     `json:"teamId"`
+	DisplayName string    `json:"displayName"`
+	Slug        string    `json:"slug"`
+	IsActive    bool      `json:"isActive"`
+	CreatedAt   time.Time `json:"createdAt"`
+}
+
 type CreateLeagueInput struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
@@ -42,5 +60,17 @@ type CreateFranchiseInput struct {
 type CreateClubInput struct {
 	FranchiseID int64  `json:"franchiseId"`
 	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+}
+
+type CreateTeamInput struct {
+	ClubID int64  `json:"clubId"`
+	Name   string `json:"name"`
+	Slug   string `json:"slug"`
+}
+
+type CreatePlayerInput struct {
+	TeamID      int64  `json:"teamId"`
+	DisplayName string `json:"displayName"`
 	Slug        string `json:"slug"`
 }

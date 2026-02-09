@@ -9,4 +9,8 @@ type Store interface {
 	ListFranchises(ctx context.Context) ([]Franchise, error)
 	CreateClub(ctx context.Context, input CreateClubInput) (Club, error)
 	ListClubs(ctx context.Context) ([]Club, error)
+	CreateTeam(ctx context.Context, input CreateTeamInput) (Team, error)
+	ListTeams(ctx context.Context) ([]Team, error)
+	CreatePlayer(ctx context.Context, input CreatePlayerInput) (Player, error)
+	ListPlayers(ctx context.Context) ([]Player, error)
 }

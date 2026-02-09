@@ -43,3 +43,29 @@ func ValidateCreateClubInput(input CreateClubInput) error {
 	}
 	return nil
 }
+
+func ValidateCreateTeamInput(input CreateTeamInput) error {
+	if input.ClubID <= 0 {
+		return fmt.Errorf("%w: clubId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		return fmt.Errorf("%w: team name is required", ErrInvalidInput)
+	}
+	if !slugPattern.MatchString(input.Slug) {
+		return fmt.Errorf("%w: team slug must be lowercase kebab-case", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreatePlayerInput(input CreatePlayerInput) error {
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.DisplayName) == "" {
+		return fmt.Errorf("%w: player displayName is required", ErrInvalidInput)
+	}
+	if !slugPattern.MatchString(input.Slug) {
+		return fmt.Errorf("%w: player slug must be lowercase kebab-case", ErrInvalidInput)
+	}
+	return nil
+}

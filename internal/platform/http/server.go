@@ -165,6 +165,68 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/teams", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			teams, err := deps.HierarchyStore.ListTeams(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list teams", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, teams)
+		case http.MethodPost:
+			var input hierarchy.CreateTeamInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			team, err := deps.HierarchyStore.CreateTeam(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, team)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/players", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			players, err := deps.HierarchyStore.ListPlayers(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list players", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, players)
+		case http.MethodPost:
+			var input hierarchy.CreatePlayerInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			player, err := deps.HierarchyStore.CreatePlayer(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, player)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,

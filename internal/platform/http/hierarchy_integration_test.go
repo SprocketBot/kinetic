@@ -78,14 +78,48 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	franchiseID := int64(franchiseResp["id"].(float64))
 
 	createEntity(t, server, "/v1/clubs", map[string]any{
+		"franchiseId": int64(99999999),
+		"name":        "Invalid Club",
+		"slug":        fmt.Sprintf("invalid-club-%d", suffix),
+	}, http.StatusConflict)
+
+	clubResp := createEntity(t, server, "/v1/clubs", map[string]any{
 		"franchiseId": franchiseID,
 		"name":        fmt.Sprintf("Club %d", suffix),
 		"slug":        fmt.Sprintf("club-%d", suffix),
+	}, http.StatusCreated)
+	clubID := int64(clubResp["id"].(float64))
+
+	createEntity(t, server, "/v1/teams", map[string]any{
+		"clubId": int64(99999999),
+		"name":   "Invalid Team",
+		"slug":   fmt.Sprintf("invalid-team-%d", suffix),
+	}, http.StatusConflict)
+
+	teamResp := createEntity(t, server, "/v1/teams", map[string]any{
+		"clubId": clubID,
+		"name":   fmt.Sprintf("Team %d", suffix),
+		"slug":   fmt.Sprintf("team-%d", suffix),
+	}, http.StatusCreated)
+	teamID := int64(teamResp["id"].(float64))
+
+	createEntity(t, server, "/v1/players", map[string]any{
+		"teamId":      int64(99999999),
+		"displayName": "Invalid Player",
+		"slug":        fmt.Sprintf("invalid-player-%d", suffix),
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/players", map[string]any{
+		"teamId":      teamID,
+		"displayName": fmt.Sprintf("Player %d", suffix),
+		"slug":        fmt.Sprintf("player-%d", suffix),
 	}, http.StatusCreated)
 
 	assertListNotEmpty(t, server, "/v1/leagues")
 	assertListNotEmpty(t, server, "/v1/franchises")
 	assertListNotEmpty(t, server, "/v1/clubs")
+	assertListNotEmpty(t, server, "/v1/teams")
+	assertListNotEmpty(t, server, "/v1/players")
 }
 
 func TestHierarchyAPIValidationFailure(t *testing.T) {

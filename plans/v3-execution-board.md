@@ -14,7 +14,9 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 3 completed: `W3-10` consumed for end-to-end hierarchy smoke hardening
 - Week 4 planning prepared (implementation not started)
 - Week 4 started: `W4-01` completed on 2026-02-08
-- Next up: `W4-02` Team/Player migration implementation
+- Week 4 in progress: `W4-02` through `W4-09` completed on 2026-02-08
+- Week 4 completed: `W4-10` consumed for week4 smoke reliability hardening (port fallback)
+- Next up: Week 5 planning and ticketing
 
 ## Capacity Guardrails
 
@@ -300,15 +302,15 @@ Out of scope:
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
 | W4-01 | Define Team/Player slice contract | 0.75h | Done | fields + invariants documented in ADR |
-| W4-02 | Add migrations for Team/Player | 1.25h | Todo | schema migrates cleanly and is idempotent |
-| W4-03 | Extend hierarchy domain models/store interface | 0.75h | Todo | compile-safe model changes in place |
-| W4-04 | Implement DB store methods for Team/Player | 1.25h | Todo | create/list for Team/Player works |
-| W4-05 | Implement API handlers/routes for Team/Player | 1.0h | Todo | create/list endpoints return stable JSON |
-| W4-06 | Add validation + error mapping for Team/Player payloads | 0.75h | Todo | invalid payloads return stable 4xx responses |
-| W4-07 | Write unit tests for Team/Player validation | 0.5h | Todo | slug/required field checks covered |
-| W4-08 | Write integration tests for DB/API Team/Player behavior | 1.25h | Todo | FK + duplicate constraints validated end-to-end |
-| W4-09 | Write Week 4 onboarding notes | 0.5h | Todo | contributor can run Team/Player checks quickly |
-| W4-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W4-02 | Add migrations for Team/Player | 1.25h | Done | schema migrates cleanly and is idempotent |
+| W4-03 | Extend hierarchy domain models/store interface | 0.75h | Done | compile-safe model changes in place |
+| W4-04 | Implement DB store methods for Team/Player | 1.25h | Done | create/list for Team/Player works |
+| W4-05 | Implement API handlers/routes for Team/Player | 1.0h | Done | create/list endpoints return stable JSON |
+| W4-06 | Add validation + error mapping for Team/Player payloads | 0.75h | Done | invalid payloads return stable 4xx responses |
+| W4-07 | Write unit tests for Team/Player validation | 0.5h | Done | slug/required field checks covered |
+| W4-08 | Write integration tests for DB/API Team/Player behavior | 1.25h | Done | FK + duplicate constraints validated end-to-end |
+| W4-09 | Write Week 4 onboarding notes | 0.5h | Done | contributor can run Team/Player checks quickly |
+| W4-10 | Risk/overflow buffer | 1.0h | Done | consumed for week4 smoke hardening and port fallback handling |
 
 ### Week 4 Risks and Mitigations
 

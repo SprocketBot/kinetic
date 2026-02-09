@@ -55,7 +55,7 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 		t.Fatalf("failed to create franchise: %v", err)
 	}
 
-	_, err = store.CreateClub(ctx, hierarchy.CreateClubInput{
+	club, err := store.CreateClub(ctx, hierarchy.CreateClubInput{
 		FranchiseID: franchise.ID,
 		Name:        fmt.Sprintf("Club %d", suffix),
 		Slug:        fmt.Sprintf("club-%d", suffix),
@@ -86,6 +86,40 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 	}
 	if len(clubs) == 0 {
 		t.Fatal("expected clubs to contain at least one row")
+	}
+
+	team, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: club.ID,
+		Name:   fmt.Sprintf("Team %d", suffix),
+		Slug:   fmt.Sprintf("team-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+
+	_, err = store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		TeamID:      team.ID,
+		DisplayName: fmt.Sprintf("Player %d", suffix),
+		Slug:        fmt.Sprintf("player-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create player: %v", err)
+	}
+
+	teams, err := store.ListTeams(ctx)
+	if err != nil {
+		t.Fatalf("failed to list teams: %v", err)
+	}
+	if len(teams) == 0 {
+		t.Fatal("expected teams to contain at least one row")
+	}
+
+	players, err := store.ListPlayers(ctx)
+	if err != nil {
+		t.Fatalf("failed to list players: %v", err)
+	}
+	if len(players) == 0 {
+		t.Fatal("expected players to contain at least one row")
 	}
 }
 
@@ -124,5 +158,17 @@ func TestHierarchyStoreDependencyViolation(t *testing.T) {
 	}
 	if !errors.Is(err, hierarchy.ErrDependency) {
 		t.Fatalf("expected dependency error, got: %v", err)
+	}
+
+	_, err = store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		TeamID:      99999999,
+		DisplayName: "Invalid Player",
+		Slug:        "invalid-player-dep-test",
+	})
+	if err == nil {
+		t.Fatal("expected dependency violation for missing team")
+	}
+	if !errors.Is(err, hierarchy.ErrDependency) {
+		t.Fatalf("expected dependency error for player, got: %v", err)
 	}
 }

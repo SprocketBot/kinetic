@@ -65,3 +65,47 @@ func TestValidateCreateClubInput(t *testing.T) {
 		t.Fatal("expected empty name to fail validation")
 	}
 }
+
+func TestValidateCreateTeamInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateTeamInput(CreateTeamInput{
+		ClubID: 1,
+		Name:   "Team Alpha",
+		Slug:   "team-alpha",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateTeamInput(CreateTeamInput{
+		ClubID: 1,
+		Name:   "Team Alpha",
+		Slug:   "Team-Alpha",
+	})
+	if err == nil {
+		t.Fatal("expected invalid team slug to fail validation")
+	}
+}
+
+func TestValidateCreatePlayerInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreatePlayerInput(CreatePlayerInput{
+		TeamID:      1,
+		DisplayName: "Player One",
+		Slug:        "player-one",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreatePlayerInput(CreatePlayerInput{
+		TeamID:      0,
+		DisplayName: "Player One",
+		Slug:        "player-one",
+	})
+	if err == nil {
+		t.Fatal("expected missing teamId to fail validation")
+	}
+}

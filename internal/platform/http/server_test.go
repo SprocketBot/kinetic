@@ -29,12 +29,18 @@ type fakeHierarchyStore struct {
 	leagueToReturn     hierarchy.League
 	franchiseToReturn  hierarchy.Franchise
 	clubToReturn       hierarchy.Club
+	teamToReturn       hierarchy.Team
+	playerToReturn     hierarchy.Player
 	leaguesToList      []hierarchy.League
 	franchisesToList   []hierarchy.Franchise
 	clubsToList        []hierarchy.Club
+	teamsToList        []hierarchy.Team
+	playersToList      []hierarchy.Player
 	createLeagueErr    error
 	createFranchiseErr error
 	createClubErr      error
+	createTeamErr      error
+	createPlayerErr    error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -54,6 +60,18 @@ func (f *fakeHierarchyStore) CreateClub(_ context.Context, _ hierarchy.CreateClu
 }
 func (f *fakeHierarchyStore) ListClubs(_ context.Context) ([]hierarchy.Club, error) {
 	return f.clubsToList, nil
+}
+func (f *fakeHierarchyStore) CreateTeam(_ context.Context, _ hierarchy.CreateTeamInput) (hierarchy.Team, error) {
+	return f.teamToReturn, f.createTeamErr
+}
+func (f *fakeHierarchyStore) ListTeams(_ context.Context) ([]hierarchy.Team, error) {
+	return f.teamsToList, nil
+}
+func (f *fakeHierarchyStore) CreatePlayer(_ context.Context, _ hierarchy.CreatePlayerInput) (hierarchy.Player, error) {
+	return f.playerToReturn, f.createPlayerErr
+}
+func (f *fakeHierarchyStore) ListPlayers(_ context.Context) ([]hierarchy.Player, error) {
+	return f.playersToList, nil
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -181,6 +199,56 @@ func TestCreateLeagueValidationError(t *testing.T) {
 
 	if rr.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestCreateTeamSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		teamToReturn: hierarchy.Team{
+			ID:        1,
+			ClubID:    1,
+			Name:      "Team Alpha",
+			Slug:      "team-alpha",
+			IsActive:  true,
+			CreatedAt: now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/teams", strings.NewReader(`{"clubId":1,"name":"Team Alpha","slug":"team-alpha"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestCreatePlayerSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		playerToReturn: hierarchy.Player{
+			ID:          1,
+			TeamID:      1,
+			DisplayName: "Player One",
+			Slug:        "player-one",
+			IsActive:    true,
+			CreatedAt:   now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/players", strings.NewReader(`{"teamId":1,"displayName":"Player One","slug":"player-one"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
 	}
 }
 
