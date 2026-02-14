@@ -47,7 +47,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 | 5-6 | League hierarchy core | 16h | League/Franchise/Club/Team/Player/roster/queue vertical slices |
 | 7 | Scheduled competition model kickoff | 8h | Season -> ScheduleGroup -> Fixture -> Match schema + APIs |
 | 8-10 | Queue + scrim flow MVP | 24h | Join/leave/process queue end-to-end |
-| 11-12 | Submission + ratification MVP | 16h | Submission lifecycle with state transitions |
+| 11-12 | Submission + ratification + replay ingestion MVP | 16h | Submission lifecycle, replay evidence pipeline, and state transitions |
 | 13-14 | Handoff + hardening | 16h | Contributor-ready docs/runbooks + CI quality gates |
 
 ---
@@ -559,14 +559,15 @@ Out of scope:
 
 ## Week 8 Execution Board (2026-03-30 to 2026-04-05)
 
-Week objective: start scrim orchestration by promoting queued teams into explicit scrim records with deterministic pairing and traceable lifecycle state.
+Week objective: establish unified matchmaking foundations (ADR-010/011) while shipping scrim orchestration baseline paths that remain compatible with future replay association (ADR-012/013).
 
 Definition of done for Week 8:
 
-- Scrim schema exists and is migrated
-- Scrim creation path exists from queue context (API-driven baseline)
-- Queue-to-scrim promotion deactivates consumed queue entries atomically
-- Integration tests cover pairing, queue consumption, and conflict/dependency failures
+- Scrim schema and baseline lifecycle (`created`, `in_progress`, `closed`, `voided`) exist and are migrated
+- Unified rating identity foundation exists (`player_ratings` baseline schema + read path)
+- Queue attempt expansion-stage tracking foundation exists (monotonic-stage baseline data model)
+- Queue-to-scrim promotion deactivates consumed queue entries atomically and records decision metadata
+- Integration tests cover foundational invariants and queue-to-scrim conflict/dependency failures
 - Week 8 onboarding notes and smoke automation are available
 
 ### Scope Boundaries
@@ -574,6 +575,10 @@ Definition of done for Week 8:
 In scope:
 
 - scrim entity and lifecycle baseline (`created`, `in_progress`, `closed`, `voided`)
+- unified matchmaking invariant foundations from ADR-011:
+  - single rating identity baseline
+  - monotonic expansion stage tracking baseline
+  - decision observability baseline
 - promotion workflow from active queue entries to scrim
 - deterministic pairing strategy for Week 8 baseline
 - tests and onboarding/smoke docs
@@ -581,32 +586,34 @@ In scope:
 Out of scope:
 
 - full asynchronous matchmaker worker orchestration
-- MMR/skill-based matchmaking
+- full cross-group rating-first candidate selection
+- production rating update pipeline
 - scheduled match integration
 - dispute/ratification flow for scrims
+- replay upload/parsing implementation (reserved for ADR-012/013 slices)
 
 ### Day Plan (5 x 2h sessions)
 
 | Day | Time Budget | Work Items | Deliverables |
 | --- | ---: | --- | --- |
-| Mon | 2h | Finalize scrim contract and promotion invariants | `docs/adr/010-scrim-orchestration-slice.md` |
-| Tue | 2h | Implement scrim migration + domain/store interfaces | `migrations/000009_*.sql`, domain/store updates |
-| Wed | 2h | Implement DB methods/API routes for scrim create/list/promotion | `/v1/scrims`, `/v1/scrim-promotions` |
-| Thu | 2h | Integration tests for queue consumption and conflict handling | DB/API integration test coverage |
+| Mon | 2h | Lock Week 8 invariant mapping against ADR-010/011 and replay boundaries (ADR-012/013) | `docs/matchmaking/unified-matchmaking-implementation-checklist.md` (Week 8 mapping notes) |
+| Tue | 2h | Implement schema foundations (scrims, player ratings baseline, queue attempt stage + decision metadata) | `migrations/000009_*.sql` |
+| Wed | 2h | Implement DB methods/API routes for scrim create/list/promotion + rating snapshot read path | `/v1/scrims`, `/v1/scrim-promotions`, `/v1/player-ratings` |
+| Thu | 2h | Integration tests for invariant foundations and queue consumption/conflicts | DB/API integration test coverage |
 | Fri | 2h | Onboarding docs + smoke script + cleanup/buffer | `docs/onboarding/week8.md`, `tools/week8-smoke.sh` |
 
 ### Ticket Board
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W8-01 | Define scrim orchestration contract | 0.75h | Todo | scrim fields + promotion invariants documented in ADR |
-| W8-02 | Add migration for scrim schema | 1.25h | Todo | schema migrates cleanly and is idempotent |
-| W8-03 | Extend domain/store interfaces for scrim workflows | 0.75h | Todo | compile-safe contracts in place |
-| W8-04 | Implement DB methods for scrim create/list/promotion | 1.25h | Todo | promotion creates scrim and consumes queue entries atomically |
-| W8-05 | Implement API handlers/routes for scrim workflows | 1.25h | Todo | stable JSON and status codes for create/list/promote |
-| W8-06 | Add validation and error mapping for scrim payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
-| W8-07 | Write unit tests for scrim validation/lifecycle guards | 0.75h | Todo | lifecycle/state and required fields covered |
-| W8-08 | Write integration tests for queue-to-scrim behavior | 1.0h | Todo | duplicate/insufficient queue entry and dependency cases validated |
+| W8-01 | Map Week 8 slice to ADR-010/011 invariants and ADR-012/013 boundaries | 0.75h | Todo | Week 8 tasks linked to invariant checklist with explicit replay boundary notes |
+| W8-02 | Add migration for scrim + rating identity + queue stage/decision metadata foundations | 1.25h | Todo | schema migrates cleanly and is idempotent |
+| W8-03 | Extend domain/store interfaces for scrim and rating snapshot workflows | 0.75h | Todo | compile-safe contracts in place |
+| W8-04 | Implement DB methods for scrim create/list/promotion + decision metadata writes | 1.25h | Todo | promotion is transactional and observability fields persist |
+| W8-05 | Implement API handlers/routes for scrim workflows and rating snapshot reads | 1.25h | Todo | stable JSON/status codes for create/list/promote/read |
+| W8-06 | Add validation and error mapping for scrim/rating payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
+| W8-07 | Write unit tests for foundational invariants | 0.75h | Todo | single identity + monotonic stage + lifecycle guard checks covered |
+| W8-08 | Write integration tests for queue-to-scrim + invariant persistence behavior | 1.0h | Todo | duplicate/insufficient queue entry and decision metadata cases validated |
 | W8-09 | Write Week 8 onboarding notes + smoke automation | 0.5h | Todo | contributor can run scrim checks quickly |
 | W8-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
 
@@ -614,10 +621,14 @@ Out of scope:
 
 - Risk: scrim promotion semantics overlap with scheduled match semantics.
   - Mitigation: keep Week 8 strictly in scrim domain and preserve ADR-008 terminology boundaries.
+- Risk: ADR-010/011 scope overflows weekly budget if fully attempted.
+  - Mitigation: limit Week 8 to invariant foundations only (identity, stage tracking, observability), defer advanced matching/rating updates.
 - Risk: pairing logic becomes hard to reason about for contributors.
   - Mitigation: ship deterministic baseline pairing first; defer advanced matchmaking.
 - Risk: queue entry consumption race conditions.
   - Mitigation: use transactional promotion path and explicit integration tests for contention/conflict cases.
+- Risk: replay-association concerns bleed into scrim orchestration implementation.
+  - Mitigation: keep ADR-012/013 as explicit out-of-scope for Week 8, but preserve context/evidence linkage hooks only.
 
 ### Week 8 Start Checklist
 

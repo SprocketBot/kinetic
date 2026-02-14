@@ -13,6 +13,15 @@ Scheduled hierarchy is:
 
 This is distinct from queue/scrim flow.
 
+## Related design docs
+
+- `docs/adr/008-scheduled-competition-model.md` (scheduled match vs scrim boundary)
+- `docs/adr/009-scheduled-competition-slice.md` (Week 7 schema/API contract)
+- `docs/adr/010-unified-matchmaking-rating-model.md` (future unified rating/matchmaking policy)
+- `docs/adr/011-unified-matchmaking-invariants-guardrails.md` (future invariant guardrails)
+
+Week 7 does not implement ADR-010/ADR-011; those ADRs define the upcoming matchmaking/rating track.
+
 ## Prerequisites
 
 - Week 6 smoke passes: `./tools/week6-smoke.sh`

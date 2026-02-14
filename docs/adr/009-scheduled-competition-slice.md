@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-02-15
 - Owner: jacbaile
-- Related: ADR-008 (scheduled match model vs scrim model)
+- Related: ADR-008 (scheduled match model vs scrim model), ADR-010 (unified matchmaking and rating model), ADR-011 (unified matchmaking invariants and guardrails)
 
 ## Context
 
@@ -89,6 +89,7 @@ Introduce scheduled competition primitives with this hierarchy:
 - update/delete endpoints
 - standings/MMR integration
 - full submission/dispute workflow
+- unified scrim matchmaking/rating implementation (covered by ADR-010/ADR-011)
 
 ## Consequences
 
@@ -108,3 +109,4 @@ Introduce scheduled competition primitives with this hierarchy:
 - Add state transition endpoints with explicit transition matrix checks.
 - Add submission/ratification workflow and dispute hooks.
 - Add schedule import/generation tooling.
+- Integrate scheduled match outcomes with unified rating update pipeline when scrim/match rating policy is finalized.
