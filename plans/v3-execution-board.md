@@ -25,7 +25,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 6 in progress: `W6-04` through `W6-09` completed on 2026-02-14
 - Week 6 completed: `W6-10` not consumed (no blockers)
 - Week 7 planning prepared (implementation not started)
-- Next up: Week 7 execution (`W7-01` onward)
+- Week 7 started: `W7-01` through `W7-03` completed on 2026-02-15
+- Week 7 in progress: `W7-04` through `W7-09` completed on 2026-02-15
+- Week 7 completed: `W7-10` not consumed (no blockers)
+- Next up: Week 8 planning and ticketing
 
 ## Capacity Guardrails
 
@@ -524,16 +527,16 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W7-01 | Define scheduled competition slice contract | 0.75h | Todo | hierarchy + lifecycle documented in ADR |
-| W7-02 | Add migrations for season/schedule_group/fixture/match | 1.5h | Todo | schema migrates cleanly and is idempotent |
-| W7-03 | Extend domain/store interfaces for scheduled entities | 0.75h | Todo | compile-safe contracts in place |
-| W7-04 | Implement DB methods for create/list scheduled entities | 1.25h | Todo | create/list operations work with dependency mapping |
-| W7-05 | Implement API handlers/routes for scheduled entities | 1.25h | Todo | stable JSON and status codes for create/list |
-| W7-06 | Add validation + lifecycle guardrails for matches | 0.75h | Todo | `ready` requires ratified agreed play time |
-| W7-07 | Write unit tests for scheduled validation rules | 0.75h | Todo | required fields + lifecycle checks covered |
-| W7-08 | Write integration tests for hierarchy/lifecycle constraints | 1.0h | Todo | FK + lifecycle violations validated end-to-end |
-| W7-09 | Write Week 7 onboarding notes + smoke automation | 0.5h | Todo | contributor can run scheduled checks quickly |
-| W7-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W7-01 | Define scheduled competition slice contract | 0.75h | Done | hierarchy + lifecycle documented in ADR |
+| W7-02 | Add migrations for season/schedule_group/fixture/match | 1.5h | Done | schema migrates cleanly and is idempotent |
+| W7-03 | Extend domain/store interfaces for scheduled entities | 0.75h | Done | compile-safe contracts in place |
+| W7-04 | Implement DB methods for create/list scheduled entities | 1.25h | Done | create/list operations work with dependency mapping |
+| W7-05 | Implement API handlers/routes for scheduled entities | 1.25h | Done | stable JSON and status codes for create/list |
+| W7-06 | Add validation + lifecycle guardrails for matches | 0.75h | Done | `ready` requires ratified agreed play time |
+| W7-07 | Write unit tests for scheduled validation rules | 0.75h | Done | required fields + lifecycle checks covered |
+| W7-08 | Write integration tests for hierarchy/lifecycle constraints | 1.0h | Done | FK + lifecycle violations validated end-to-end |
+| W7-09 | Write Week 7 onboarding notes + smoke automation | 0.5h | Done | contributor can run scheduled checks quickly |
+| W7-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 7 Risks and Mitigations
 

@@ -34,6 +34,10 @@ type fakeHierarchyStore struct {
 	membershipToReturn hierarchy.RosterMembership
 	queueToReturn      hierarchy.Queue
 	queueEntryToReturn hierarchy.QueueEntry
+	seasonToReturn     hierarchy.Season
+	groupToReturn      hierarchy.ScheduleGroup
+	fixtureToReturn    hierarchy.Fixture
+	matchToReturn      hierarchy.Match
 	leaguesToList      []hierarchy.League
 	franchisesToList   []hierarchy.Franchise
 	clubsToList        []hierarchy.Club
@@ -42,6 +46,10 @@ type fakeHierarchyStore struct {
 	membershipsToList  []hierarchy.RosterMembership
 	queuesToList       []hierarchy.Queue
 	queueEntriesToList []hierarchy.QueueEntry
+	seasonsToList      []hierarchy.Season
+	groupsToList       []hierarchy.ScheduleGroup
+	fixturesToList     []hierarchy.Fixture
+	matchesToList      []hierarchy.Match
 	createLeagueErr    error
 	createFranchiseErr error
 	createClubErr      error
@@ -51,6 +59,10 @@ type fakeHierarchyStore struct {
 	createQueueErr     error
 	enqueueTeamErr     error
 	leaveQueueErr      error
+	createSeasonErr    error
+	createGroupErr     error
+	createFixtureErr   error
+	createMatchErr     error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -103,6 +115,30 @@ func (f *fakeHierarchyStore) LeaveQueue(_ context.Context, _ hierarchy.LeaveQueu
 }
 func (f *fakeHierarchyStore) ListActiveQueueEntries(_ context.Context) ([]hierarchy.QueueEntry, error) {
 	return f.queueEntriesToList, nil
+}
+func (f *fakeHierarchyStore) CreateSeason(_ context.Context, _ hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
+	return f.seasonToReturn, f.createSeasonErr
+}
+func (f *fakeHierarchyStore) ListSeasons(_ context.Context) ([]hierarchy.Season, error) {
+	return f.seasonsToList, nil
+}
+func (f *fakeHierarchyStore) CreateScheduleGroup(_ context.Context, _ hierarchy.CreateScheduleGroupInput) (hierarchy.ScheduleGroup, error) {
+	return f.groupToReturn, f.createGroupErr
+}
+func (f *fakeHierarchyStore) ListScheduleGroups(_ context.Context) ([]hierarchy.ScheduleGroup, error) {
+	return f.groupsToList, nil
+}
+func (f *fakeHierarchyStore) CreateFixture(_ context.Context, _ hierarchy.CreateFixtureInput) (hierarchy.Fixture, error) {
+	return f.fixtureToReturn, f.createFixtureErr
+}
+func (f *fakeHierarchyStore) ListFixtures(_ context.Context) ([]hierarchy.Fixture, error) {
+	return f.fixturesToList, nil
+}
+func (f *fakeHierarchyStore) CreateMatch(_ context.Context, _ hierarchy.CreateMatchInput) (hierarchy.Match, error) {
+	return f.matchToReturn, f.createMatchErr
+}
+func (f *fakeHierarchyStore) ListMatches(_ context.Context) ([]hierarchy.Match, error) {
+	return f.matchesToList, nil
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -351,6 +387,63 @@ func TestJoinQueueSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestCreateSeasonSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		seasonToReturn: hierarchy.Season{
+			ID:        1,
+			Name:      "Season 1",
+			Slug:      "season-1",
+			IsActive:  true,
+			CreatedAt: now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/seasons", strings.NewReader(`{"name":"Season 1","slug":"season-1"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestCreateMatchReadySuccess(t *testing.T) {
+	scheduled := time.Now().UTC().Add(24 * time.Hour)
+	homeRatified := scheduled.Add(-2 * time.Hour)
+	awayRatified := scheduled.Add(-1 * time.Hour)
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		matchToReturn: hierarchy.Match{
+			ID:                 1,
+			FixtureID:          10,
+			HomeTeamID:         20,
+			AwayTeamID:         30,
+			State:              "ready",
+			ScheduledFor:       &scheduled,
+			HomeTimeRatifiedAt: &homeRatified,
+			AwayTimeRatifiedAt: &awayRatified,
+			CreatedAt:          now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/matches", strings.NewReader(
+		`{"fixtureId":10,"homeTeamId":20,"awayTeamId":30,"state":"ready","scheduledFor":"2030-01-01T10:00:00Z","homeTimeRatifiedAt":"2030-01-01T08:00:00Z","awayTimeRatifiedAt":"2030-01-01T09:00:00Z"}`,
+	))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
 	}
 }
 

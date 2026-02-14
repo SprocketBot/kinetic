@@ -332,6 +332,130 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/seasons", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			seasons, err := deps.HierarchyStore.ListSeasons(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list seasons", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, seasons)
+		case http.MethodPost:
+			var input hierarchy.CreateSeasonInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			season, err := deps.HierarchyStore.CreateSeason(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, season)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/schedule-groups", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			groups, err := deps.HierarchyStore.ListScheduleGroups(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list schedule groups", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, groups)
+		case http.MethodPost:
+			var input hierarchy.CreateScheduleGroupInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			group, err := deps.HierarchyStore.CreateScheduleGroup(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, group)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/fixtures", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			fixtures, err := deps.HierarchyStore.ListFixtures(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list fixtures", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, fixtures)
+		case http.MethodPost:
+			var input hierarchy.CreateFixtureInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			fixture, err := deps.HierarchyStore.CreateFixture(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, fixture)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/matches", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			matches, err := deps.HierarchyStore.ListMatches(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list matches", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, matches)
+		case http.MethodPost:
+			var input hierarchy.CreateMatchInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			match, err := deps.HierarchyStore.CreateMatch(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, match)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,

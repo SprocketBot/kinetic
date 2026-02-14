@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
@@ -105,4 +106,81 @@ func ValidateLeaveQueueInput(input LeaveQueueInput) error {
 		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
 	}
 	return nil
+}
+
+func ValidateCreateSeasonInput(input CreateSeasonInput) error {
+	if strings.TrimSpace(input.Name) == "" {
+		return fmt.Errorf("%w: season name is required", ErrInvalidInput)
+	}
+	if !slugPattern.MatchString(input.Slug) {
+		return fmt.Errorf("%w: season slug must be lowercase kebab-case", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreateScheduleGroupInput(input CreateScheduleGroupInput) error {
+	if input.SeasonID <= 0 {
+		return fmt.Errorf("%w: seasonId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Name) == "" {
+		return fmt.Errorf("%w: scheduleGroup name is required", ErrInvalidInput)
+	}
+	if input.Sequence <= 0 {
+		return fmt.Errorf("%w: scheduleGroup sequence must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreateFixtureInput(input CreateFixtureInput) error {
+	if input.ScheduleGroupID <= 0 {
+		return fmt.Errorf("%w: scheduleGroupId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeClubID <= 0 {
+		return fmt.Errorf("%w: homeClubId must be greater than zero", ErrInvalidInput)
+	}
+	if input.AwayClubID <= 0 {
+		return fmt.Errorf("%w: awayClubId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeClubID == input.AwayClubID {
+		return fmt.Errorf("%w: fixture homeClubId and awayClubId must differ", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreateMatchInput(input CreateMatchInput) error {
+	if input.FixtureID <= 0 {
+		return fmt.Errorf("%w: fixtureId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeTeamID <= 0 {
+		return fmt.Errorf("%w: homeTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.AwayTeamID <= 0 {
+		return fmt.Errorf("%w: awayTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeTeamID == input.AwayTeamID {
+		return fmt.Errorf("%w: match homeTeamId and awayTeamId must differ", ErrInvalidInput)
+	}
+
+	state := strings.TrimSpace(input.State)
+	if state == "" {
+		return fmt.Errorf("%w: match state is required", ErrInvalidInput)
+	}
+	switch state {
+	case "planned":
+		return nil
+	case "ready":
+		if input.ScheduledFor == nil || input.HomeTimeRatifiedAt == nil || input.AwayTimeRatifiedAt == nil {
+			return fmt.Errorf("%w: match ready requires scheduledFor and both ratification timestamps", ErrInvalidInput)
+		}
+		if !isTimelineValid(*input.ScheduledFor, *input.HomeTimeRatifiedAt, *input.AwayTimeRatifiedAt) {
+			return fmt.Errorf("%w: match ready ratification timestamps must be <= scheduledFor", ErrInvalidInput)
+		}
+		return nil
+	default:
+		return fmt.Errorf("%w: match state must be planned or ready", ErrInvalidInput)
+	}
+}
+
+func isTimelineValid(scheduledFor, homeRatifiedAt, awayRatifiedAt time.Time) bool {
+	return !homeRatifiedAt.After(scheduledFor) && !awayRatifiedAt.After(scheduledFor)
 }

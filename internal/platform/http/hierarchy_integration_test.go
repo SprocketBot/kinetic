@@ -90,6 +90,13 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	}, http.StatusCreated)
 	clubID := int64(clubResp["id"].(float64))
 
+	clubTwoResp := createEntity(t, server, "/v1/clubs", map[string]any{
+		"franchiseId": franchiseID,
+		"name":        fmt.Sprintf("Club Two %d", suffix),
+		"slug":        fmt.Sprintf("club-two-%d", suffix),
+	}, http.StatusCreated)
+	clubTwoID := int64(clubTwoResp["id"].(float64))
+
 	createEntity(t, server, "/v1/teams", map[string]any{
 		"clubId": int64(99999999),
 		"name":   "Invalid Team",
@@ -177,6 +184,57 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":  teamID,
 	}, http.StatusConflict)
 
+	seasonResp := createEntity(t, server, "/v1/seasons", map[string]any{
+		"name": fmt.Sprintf("Season %d", suffix),
+		"slug": fmt.Sprintf("season-%d", suffix),
+	}, http.StatusCreated)
+	seasonID := int64(seasonResp["id"].(float64))
+
+	groupResp := createEntity(t, server, "/v1/schedule-groups", map[string]any{
+		"seasonId": seasonID,
+		"name":     fmt.Sprintf("Week %d", suffix),
+		"sequence": int32(1),
+	}, http.StatusCreated)
+	groupID := int64(groupResp["id"].(float64))
+
+	createEntity(t, server, "/v1/fixtures", map[string]any{
+		"scheduleGroupId": groupID,
+		"homeClubId":      clubID,
+		"awayClubId":      int64(99999999),
+	}, http.StatusConflict)
+
+	fixtureResp := createEntity(t, server, "/v1/fixtures", map[string]any{
+		"scheduleGroupId": groupID,
+		"homeClubId":      clubID,
+		"awayClubId":      clubTwoID,
+	}, http.StatusCreated)
+	fixtureID := int64(fixtureResp["id"].(float64))
+
+	createEntity(t, server, "/v1/matches", map[string]any{
+		"fixtureId":    fixtureID,
+		"homeTeamId":   teamID,
+		"awayTeamId":   teamTwoID,
+		"state":        "ready",
+		"scheduledFor": nil,
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/matches", map[string]any{
+		"fixtureId":  fixtureID,
+		"homeTeamId": teamID,
+		"awayTeamId": teamTwoID,
+		"state":      "planned",
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/matches", map[string]any{
+		"fixtureId":          fixtureID,
+		"homeTeamId":         teamID,
+		"awayTeamId":         teamTwoID,
+		"state":              "ready",
+		"scheduledFor":       "2030-01-01T10:00:00Z",
+		"homeTimeRatifiedAt": "2030-01-01T08:00:00Z",
+		"awayTimeRatifiedAt": "2030-01-01T09:00:00Z",
+	}, http.StatusCreated)
+
 	assertListNotEmpty(t, server, "/v1/leagues")
 	assertListNotEmpty(t, server, "/v1/franchises")
 	assertListNotEmpty(t, server, "/v1/clubs")
@@ -185,6 +243,10 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-entries")
+	assertListNotEmpty(t, server, "/v1/seasons")
+	assertListNotEmpty(t, server, "/v1/schedule-groups")
+	assertListNotEmpty(t, server, "/v1/fixtures")
+	assertListNotEmpty(t, server, "/v1/matches")
 }
 
 func TestHierarchyAPIValidationFailure(t *testing.T) {
@@ -234,6 +296,13 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": int64(0),
 		"teamId":  int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/matches", map[string]any{
+		"fixtureId":  int64(1),
+		"homeTeamId": int64(1),
+		"awayTeamId": int64(1),
+		"state":      "planned",
 	}, http.StatusBadRequest)
 }
 

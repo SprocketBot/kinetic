@@ -176,6 +176,92 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 	if len(queueEntries) == 0 {
 		t.Fatal("expected queue entries to contain at least one row")
 	}
+
+	season, err := store.CreateSeason(ctx, hierarchy.CreateSeasonInput{
+		Name: fmt.Sprintf("Season %d", suffix),
+		Slug: fmt.Sprintf("season-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create season: %v", err)
+	}
+
+	group, err := store.CreateScheduleGroup(ctx, hierarchy.CreateScheduleGroupInput{
+		SeasonID: season.ID,
+		Name:     fmt.Sprintf("Week %d", suffix),
+		Sequence: 1,
+	})
+	if err != nil {
+		t.Fatalf("failed to create schedule group: %v", err)
+	}
+
+	clubTwo, err := store.CreateClub(ctx, hierarchy.CreateClubInput{
+		FranchiseID: franchise.ID,
+		Name:        fmt.Sprintf("Club Two %d", suffix),
+		Slug:        fmt.Sprintf("club-two-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create second club: %v", err)
+	}
+
+	teamTwo, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: clubTwo.ID,
+		Name:   fmt.Sprintf("Team Two %d", suffix),
+		Slug:   fmt.Sprintf("team-two-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create second team: %v", err)
+	}
+
+	fixture, err := store.CreateFixture(ctx, hierarchy.CreateFixtureInput{
+		ScheduleGroupID: group.ID,
+		HomeClubID:      club.ID,
+		AwayClubID:      clubTwo.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create fixture: %v", err)
+	}
+
+	_, err = store.CreateMatch(ctx, hierarchy.CreateMatchInput{
+		FixtureID:  fixture.ID,
+		HomeTeamID: team.ID,
+		AwayTeamID: teamTwo.ID,
+		State:      "planned",
+	})
+	if err != nil {
+		t.Fatalf("failed to create match: %v", err)
+	}
+
+	seasons, err := store.ListSeasons(ctx)
+	if err != nil {
+		t.Fatalf("failed to list seasons: %v", err)
+	}
+	if len(seasons) == 0 {
+		t.Fatal("expected seasons to contain at least one row")
+	}
+
+	groups, err := store.ListScheduleGroups(ctx)
+	if err != nil {
+		t.Fatalf("failed to list schedule groups: %v", err)
+	}
+	if len(groups) == 0 {
+		t.Fatal("expected schedule groups to contain at least one row")
+	}
+
+	fixtures, err := store.ListFixtures(ctx)
+	if err != nil {
+		t.Fatalf("failed to list fixtures: %v", err)
+	}
+	if len(fixtures) == 0 {
+		t.Fatal("expected fixtures to contain at least one row")
+	}
+
+	matches, err := store.ListMatches(ctx)
+	if err != nil {
+		t.Fatalf("failed to list matches: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("expected matches to contain at least one row")
+	}
 }
 
 func TestHierarchyStoreDependencyViolation(t *testing.T) {
@@ -235,6 +321,18 @@ func TestHierarchyStoreDependencyViolation(t *testing.T) {
 	}
 	if !errors.Is(err, hierarchy.ErrDependency) {
 		t.Fatalf("expected dependency error for queue entry, got: %v", err)
+	}
+
+	_, err = store.CreateScheduleGroup(ctx, hierarchy.CreateScheduleGroupInput{
+		SeasonID: 99999999,
+		Name:     "Invalid Group",
+		Sequence: 1,
+	})
+	if err == nil {
+		t.Fatal("expected dependency violation for missing season")
+	}
+	if !errors.Is(err, hierarchy.ErrDependency) {
+		t.Fatalf("expected dependency error for schedule group, got: %v", err)
 	}
 }
 
@@ -446,5 +544,117 @@ func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
 	}
 	if !errors.Is(err, hierarchy.ErrConflict) {
 		t.Fatalf("expected conflict when leaving queue twice, got: %v", err)
+	}
+}
+
+func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{
+		Name: fmt.Sprintf("League Match %d", suffix),
+		Slug: fmt.Sprintf("league-match-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{
+		LeagueID: league.ID,
+		Name:     fmt.Sprintf("Franchise Match %d", suffix),
+		Slug:     fmt.Sprintf("franchise-match-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{
+		FranchiseID: franchise.ID,
+		Name:        fmt.Sprintf("Club Match A %d", suffix),
+		Slug:        fmt.Sprintf("club-match-a-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{
+		FranchiseID: franchise.ID,
+		Name:        fmt.Sprintf("Club Match B %d", suffix),
+		Slug:        fmt.Sprintf("club-match-b-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: clubA.ID,
+		Name:   fmt.Sprintf("Team Match A %d", suffix),
+		Slug:   fmt.Sprintf("team-match-a-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: clubB.ID,
+		Name:   fmt.Sprintf("Team Match B %d", suffix),
+		Slug:   fmt.Sprintf("team-match-b-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+	season, err := store.CreateSeason(ctx, hierarchy.CreateSeasonInput{
+		Name: fmt.Sprintf("Season Match %d", suffix),
+		Slug: fmt.Sprintf("season-match-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create season: %v", err)
+	}
+	group, err := store.CreateScheduleGroup(ctx, hierarchy.CreateScheduleGroupInput{
+		SeasonID: season.ID,
+		Name:     fmt.Sprintf("Week Match %d", suffix),
+		Sequence: 1,
+	})
+	if err != nil {
+		t.Fatalf("failed to create schedule group: %v", err)
+	}
+	fixture, err := store.CreateFixture(ctx, hierarchy.CreateFixtureInput{
+		ScheduleGroupID: group.ID,
+		HomeClubID:      clubA.ID,
+		AwayClubID:      clubB.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to create fixture: %v", err)
+	}
+
+	_, err = store.CreateMatch(ctx, hierarchy.CreateMatchInput{
+		FixtureID:  fixture.ID,
+		HomeTeamID: teamA.ID,
+		AwayTeamID: teamB.ID,
+		State:      "ready",
+	})
+	if err == nil {
+		t.Fatal("expected invalid input for ready match without ratified schedule")
+	}
+	if !errors.Is(err, hierarchy.ErrInvalidInput) {
+		t.Fatalf("expected invalid input for ready match without ratified schedule, got: %v", err)
 	}
 }

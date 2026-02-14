@@ -20,4 +20,12 @@ type Store interface {
 	EnqueueTeam(ctx context.Context, input EnqueueTeamInput) (QueueEntry, error)
 	LeaveQueue(ctx context.Context, input LeaveQueueInput) (QueueEntry, error)
 	ListActiveQueueEntries(ctx context.Context) ([]QueueEntry, error)
+	CreateSeason(ctx context.Context, input CreateSeasonInput) (Season, error)
+	ListSeasons(ctx context.Context) ([]Season, error)
+	CreateScheduleGroup(ctx context.Context, input CreateScheduleGroupInput) (ScheduleGroup, error)
+	ListScheduleGroups(ctx context.Context) ([]ScheduleGroup, error)
+	CreateFixture(ctx context.Context, input CreateFixtureInput) (Fixture, error)
+	ListFixtures(ctx context.Context) ([]Fixture, error)
+	CreateMatch(ctx context.Context, input CreateMatchInput) (Match, error)
+	ListMatches(ctx context.Context) ([]Match, error)
 }

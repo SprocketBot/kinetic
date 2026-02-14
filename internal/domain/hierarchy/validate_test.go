@@ -1,6 +1,9 @@
 package hierarchy
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestValidateCreateLeagueInput(t *testing.T) {
 	t.Parallel()
@@ -193,5 +196,100 @@ func TestValidateLeaveQueueInput(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected missing teamId to fail validation")
+	}
+}
+
+func TestValidateCreateSeasonInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateSeasonInput(CreateSeasonInput{
+		Name: "Season 1",
+		Slug: "season-1",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateSeasonInput(CreateSeasonInput{
+		Name: "Season 1",
+		Slug: "Season-1",
+	})
+	if err == nil {
+		t.Fatal("expected invalid season slug to fail validation")
+	}
+}
+
+func TestValidateCreateScheduleGroupInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateScheduleGroupInput(CreateScheduleGroupInput{
+		SeasonID: 1,
+		Name:     "Week 1",
+		Sequence: 1,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateScheduleGroupInput(CreateScheduleGroupInput{
+		SeasonID: 1,
+		Name:     "Week 1",
+		Sequence: 0,
+	})
+	if err == nil {
+		t.Fatal("expected missing sequence to fail validation")
+	}
+}
+
+func TestValidateCreateFixtureInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateFixtureInput(CreateFixtureInput{
+		ScheduleGroupID: 1,
+		HomeClubID:      10,
+		AwayClubID:      20,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateFixtureInput(CreateFixtureInput{
+		ScheduleGroupID: 1,
+		HomeClubID:      10,
+		AwayClubID:      10,
+	})
+	if err == nil {
+		t.Fatal("expected equal clubs to fail validation")
+	}
+}
+
+func TestValidateCreateMatchInput(t *testing.T) {
+	t.Parallel()
+
+	scheduled := time.Now().UTC().Add(24 * time.Hour)
+	homeRatified := scheduled.Add(-2 * time.Hour)
+	awayRatified := scheduled.Add(-1 * time.Hour)
+
+	err := ValidateCreateMatchInput(CreateMatchInput{
+		FixtureID:          1,
+		HomeTeamID:         10,
+		AwayTeamID:         20,
+		State:              "ready",
+		ScheduledFor:       &scheduled,
+		HomeTimeRatifiedAt: &homeRatified,
+		AwayTimeRatifiedAt: &awayRatified,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateMatchInput(CreateMatchInput{
+		FixtureID:  1,
+		HomeTeamID: 10,
+		AwayTeamID: 20,
+		State:      "ready",
+	})
+	if err == nil {
+		t.Fatal("expected ready without scheduling ratification to fail validation")
 	}
 }
