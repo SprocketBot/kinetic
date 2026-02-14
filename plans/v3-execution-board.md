@@ -28,7 +28,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 7 started: `W7-01` through `W7-03` completed on 2026-02-15
 - Week 7 in progress: `W7-04` through `W7-09` completed on 2026-02-15
 - Week 7 completed: `W7-10` not consumed (no blockers)
-- Next up: Week 8 planning and ticketing
+- Week 8 planning prepared (implementation not started)
+- Next up: Week 8 execution (`W8-01` onward)
 
 ## Capacity Guardrails
 
@@ -553,3 +554,74 @@ Out of scope:
 - Full test suite passes: `go test ./...`
 - Postgres test port available (`55432` default)
 - Working tree clean before first Week 7 implementation commit
+
+---
+
+## Week 8 Execution Board (2026-03-30 to 2026-04-05)
+
+Week objective: start scrim orchestration by promoting queued teams into explicit scrim records with deterministic pairing and traceable lifecycle state.
+
+Definition of done for Week 8:
+
+- Scrim schema exists and is migrated
+- Scrim creation path exists from queue context (API-driven baseline)
+- Queue-to-scrim promotion deactivates consumed queue entries atomically
+- Integration tests cover pairing, queue consumption, and conflict/dependency failures
+- Week 8 onboarding notes and smoke automation are available
+
+### Scope Boundaries
+
+In scope:
+
+- scrim entity and lifecycle baseline (`created`, `in_progress`, `closed`, `voided`)
+- promotion workflow from active queue entries to scrim
+- deterministic pairing strategy for Week 8 baseline
+- tests and onboarding/smoke docs
+
+Out of scope:
+
+- full asynchronous matchmaker worker orchestration
+- MMR/skill-based matchmaking
+- scheduled match integration
+- dispute/ratification flow for scrims
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize scrim contract and promotion invariants | `docs/adr/010-scrim-orchestration-slice.md` |
+| Tue | 2h | Implement scrim migration + domain/store interfaces | `migrations/000009_*.sql`, domain/store updates |
+| Wed | 2h | Implement DB methods/API routes for scrim create/list/promotion | `/v1/scrims`, `/v1/scrim-promotions` |
+| Thu | 2h | Integration tests for queue consumption and conflict handling | DB/API integration test coverage |
+| Fri | 2h | Onboarding docs + smoke script + cleanup/buffer | `docs/onboarding/week8.md`, `tools/week8-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W8-01 | Define scrim orchestration contract | 0.75h | Todo | scrim fields + promotion invariants documented in ADR |
+| W8-02 | Add migration for scrim schema | 1.25h | Todo | schema migrates cleanly and is idempotent |
+| W8-03 | Extend domain/store interfaces for scrim workflows | 0.75h | Todo | compile-safe contracts in place |
+| W8-04 | Implement DB methods for scrim create/list/promotion | 1.25h | Todo | promotion creates scrim and consumes queue entries atomically |
+| W8-05 | Implement API handlers/routes for scrim workflows | 1.25h | Todo | stable JSON and status codes for create/list/promote |
+| W8-06 | Add validation and error mapping for scrim payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
+| W8-07 | Write unit tests for scrim validation/lifecycle guards | 0.75h | Todo | lifecycle/state and required fields covered |
+| W8-08 | Write integration tests for queue-to-scrim behavior | 1.0h | Todo | duplicate/insufficient queue entry and dependency cases validated |
+| W8-09 | Write Week 8 onboarding notes + smoke automation | 0.5h | Todo | contributor can run scrim checks quickly |
+| W8-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 8 Risks and Mitigations
+
+- Risk: scrim promotion semantics overlap with scheduled match semantics.
+  - Mitigation: keep Week 8 strictly in scrim domain and preserve ADR-008 terminology boundaries.
+- Risk: pairing logic becomes hard to reason about for contributors.
+  - Mitigation: ship deterministic baseline pairing first; defer advanced matchmaking.
+- Risk: queue entry consumption race conditions.
+  - Mitigation: use transactional promotion path and explicit integration tests for contention/conflict cases.
+
+### Week 8 Start Checklist
+
+- Week 7 smoke script passes: `./tools/week7-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Working tree clean before first Week 8 implementation commit
