@@ -35,6 +35,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 9 started: `W9-01` completed on 2026-02-14
 - Week 9 in progress: `W9-02` through `W9-09` completed on 2026-02-14
 - Week 9 completed: `W9-10` not consumed (no blockers)
+- Week 10 planning prepared (implementation not started)
 - Next up: Week 10 execution (`W10-01` onward)
 
 ## Capacity Guardrails
@@ -731,3 +732,78 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 9 implementation commit
+
+---
+
+## Week 10 Execution Board (2026-04-13 to 2026-04-19)
+
+Week objective: finish queue + scrim flow MVP by adding a deterministic promotion processing path and operational controls to run it safely and observably.
+
+Definition of done for Week 10:
+
+- Promotion orchestration endpoint/job path exists and can process eligible queues without manual SQL intervention
+- Promotion processing is idempotent and safe under concurrent invocations
+- Promotion run summary/metrics are emitted in API response and logs
+- Integration tests cover re-run idempotency and concurrency conflict handling
+- Week 10 onboarding notes and both smoke automations are available (`week10-smoke.sh` and `week10-k8s-smoke.sh`)
+
+### Scope Boundaries
+
+In scope:
+
+- synchronous promotion processing endpoint for MVP operations
+- idempotency and conflict handling around repeated processing attempts
+- operator-visible processing summary output (processed queues, promotions created, conflicts)
+- tests and onboarding/smoke docs
+
+Out of scope:
+
+- fully asynchronous scheduler/worker framework
+- distributed queue partitioning strategy
+- advanced rate limiting and autoscaling policy tuning
+- replay/result submission lifecycle work (starts Week 11)
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Define Week 10 processing contract and idempotency semantics | `docs/adr/015-queue-promotion-processing-mvp.md` |
+| Tue | 2h | Implement promotion processing service/store path with safety guards | service/store code updates |
+| Wed | 2h | Add API endpoint for processing queues + structured run summary | `/v1/scrim-promotions/process` (or equivalent) |
+| Thu | 2h | Integration tests for idempotency/concurrency and error mapping | DB/API integration coverage |
+| Fri | 2h | Onboarding docs + local/k8s smoke scripts + cleanup/buffer | `docs/onboarding/week10.md`, `tools/week10-smoke.sh`, `tools/week10-k8s-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W10-01 | Define queue promotion processing contract and idempotency semantics | 0.75h | Todo | processing trigger, safety constraints, and response contract documented |
+| W10-02 | Add persistence hooks for processing run metadata (if needed) | 0.75h | Todo | schema remains additive and idempotent |
+| W10-03 | Implement processing service to evaluate/promote eligible queues deterministically | 1.25h | Todo | eligible queues produce deterministic promotions |
+| W10-04 | Add concurrency/idempotency guards for repeated processing calls | 1.0h | Todo | duplicate invocations do not duplicate promotions |
+| W10-05 | Implement API endpoint/handler for promotion processing trigger | 1.0h | Todo | endpoint returns stable processing summary payload |
+| W10-06 | Add validation and error mapping for processing requests | 0.75h | Todo | malformed/unsupported requests return stable 4xx |
+| W10-07 | Write unit tests for processing summary and safety logic | 0.75h | Todo | idempotency and conflict paths covered |
+| W10-08 | Write integration tests for concurrent/duplicate processing behavior | 1.0h | Todo | no duplicate promotion side effects under repeated calls |
+| W10-09 | Write Week 10 onboarding notes + local/k8s smoke automations | 0.5h | Todo | contributor can run week slice in local and minikube paths |
+| W10-10 | Risk/overflow buffer | 1.25h | Todo | consumed only for blockers |
+
+### Week 10 Risks and Mitigations
+
+- Risk: processing endpoint semantics drift from eventual async worker model.
+  - Mitigation: keep endpoint contract command-like and service-oriented so it can back future worker triggers.
+- Risk: concurrency races create duplicate scrims.
+  - Mitigation: enforce transaction boundaries, locking, and idempotency checks; validate with concurrency integration tests.
+- Risk: insufficient observability makes operator behavior unclear.
+  - Mitigation: include explicit processing summary payload plus structured logs per run.
+- Risk: timeline pressure from upcoming Week 11 replay/submission work.
+  - Mitigation: keep Week 10 focused on MVP processing controls and defer non-essential scheduler features; use end-of-roadmap slack for spillover.
+
+### Week 10 Start Checklist
+
+- Week 9 smoke script passes: `./tools/week9-smoke.sh`
+- Week 9 minikube smoke script passes: `./tools/week9-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 10 implementation commit
