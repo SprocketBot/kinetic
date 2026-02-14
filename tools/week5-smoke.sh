@@ -107,16 +107,24 @@ team_code=$(curl -s -o /tmp/week5_create_team.json -w '%{http_code}' \
 assert_code 201 "$team_code" "create team"
 team_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week5_create_team.json)
 
+team_two_slug="week5-team-two-${suffix}"
+team_two_code=$(curl -s -o /tmp/week5_create_team_two.json -w '%{http_code}' \
+  -X POST http://localhost:8080/v1/teams \
+  -H 'content-type: application/json' \
+  -d "{\"clubId\":${club_id},\"name\":\"Week5 Team Two ${suffix}\",\"slug\":\"${team_two_slug}\"}")
+assert_code 201 "$team_two_code" "create second team"
+team_two_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week5_create_team_two.json)
+
 player_code=$(curl -s -o /tmp/week5_create_player.json -w '%{http_code}' \
   -X POST http://localhost:8080/v1/players \
   -H 'content-type: application/json' \
-  -d "{\"teamId\":${team_id},\"displayName\":\"Week5 Player ${suffix}\",\"slug\":\"${player_slug}\"}")
+  -d "{\"displayName\":\"Week5 Player ${suffix}\",\"slug\":\"${player_slug}\"}")
 assert_code 201 "$player_code" "create player"
 
 player_two_code=$(curl -s -o /tmp/week5_create_player_two.json -w '%{http_code}' \
   -X POST http://localhost:8080/v1/players \
   -H 'content-type: application/json' \
-  -d "{\"teamId\":${team_id},\"displayName\":\"Week5 Player Two ${suffix}\",\"slug\":\"${player_two_slug}\"}")
+  -d "{\"displayName\":\"Week5 Player Two ${suffix}\",\"slug\":\"${player_two_slug}\"}")
 assert_code 201 "$player_two_code" "create second player"
 player_two_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week5_create_player_two.json)
 
@@ -129,8 +137,8 @@ assert_code 201 "$membership_code" "create roster membership"
 dup_membership_code=$(curl -s -o /tmp/week5_duplicate_membership.json -w '%{http_code}' \
   -X POST http://localhost:8080/v1/roster-memberships \
   -H 'content-type: application/json' \
-  -d "{\"playerId\":${player_two_id},\"teamId\":${team_id}}")
-assert_code 409 "$dup_membership_code" "duplicate active roster membership"
+  -d "{\"playerId\":${player_two_id},\"teamId\":${team_two_id}}")
+assert_code 409 "$dup_membership_code" "second active roster membership"
 
 bad_membership_fk_code=$(curl -s -o /tmp/week5_bad_membership_fk.json -w '%{http_code}' \
   -X POST http://localhost:8080/v1/roster-memberships \

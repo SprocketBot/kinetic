@@ -58,9 +58,6 @@ func ValidateCreateTeamInput(input CreateTeamInput) error {
 }
 
 func ValidateCreatePlayerInput(input CreatePlayerInput) error {
-	if input.TeamID <= 0 {
-		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
-	}
 	if strings.TrimSpace(input.DisplayName) == "" {
 		return fmt.Errorf("%w: player displayName is required", ErrInvalidInput)
 	}

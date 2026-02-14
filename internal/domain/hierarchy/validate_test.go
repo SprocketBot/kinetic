@@ -92,7 +92,6 @@ func TestValidateCreatePlayerInput(t *testing.T) {
 	t.Parallel()
 
 	err := ValidateCreatePlayerInput(CreatePlayerInput{
-		TeamID:      1,
 		DisplayName: "Player One",
 		Slug:        "player-one",
 	})
@@ -101,12 +100,11 @@ func TestValidateCreatePlayerInput(t *testing.T) {
 	}
 
 	err = ValidateCreatePlayerInput(CreatePlayerInput{
-		TeamID:      0,
-		DisplayName: "Player One",
+		DisplayName: "",
 		Slug:        "player-one",
 	})
 	if err == nil {
-		t.Fatal("expected missing teamId to fail validation")
+		t.Fatal("expected missing displayName to fail validation")
 	}
 }
 

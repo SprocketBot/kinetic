@@ -1,6 +1,6 @@
 # ADR-005: Week 5 Roster Membership Slice Contract
 
-- Status: Accepted
+- Status: Superseded by ADR-006
 - Date: 2026-02-09
 - Owner: jacbaile
 
@@ -21,7 +21,7 @@ Add `RosterMembership` as an explicit Player-to-Team relationship with create/li
 - `team_id` (bigint, FK -> `teams.id`, required)
 - `is_active` (boolean, required, default `true`)
 - `created_at` (timestamptz, required, default `now()`)
-- uniqueness: active duplicate prevention via partial unique index on `(player_id, team_id)` where `is_active=true`
+- uniqueness: initially introduced as active duplicate prevention by pair; superseded by ADR-006 to enforce one active team per player
 
 ### API contract (Week 5 scope)
 
@@ -52,11 +52,10 @@ Add `RosterMembership` as an explicit Player-to-Team relationship with create/li
 
 ### Negative / Tradeoffs
 
-- `Player.team_id` and `RosterMembership.team_id` can diverge until a consolidation strategy is introduced.
 - Historical membership lifecycle is deferred, so current-state behavior only is modeled.
 
 ## Follow-ups
 
 - Define transfer workflow and deactivation semantics.
-- Reconcile or deprecate direct `player.team_id` ownership semantics.
+- See ADR-006 for authoritative ownership semantics.
 - Add filtered list/query endpoints (`activeOnly`, by team/player).

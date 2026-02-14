@@ -1,6 +1,6 @@
 # ADR-004: Week 4 Team and Player Slice Contract
 
-- Status: Accepted
+- Status: Accepted (Player ownership semantics superseded by ADR-006)
 - Date: 2026-02-08
 - Owner: jacbaile
 
@@ -24,7 +24,7 @@ Add Team and Player as the next relational slice with create/list APIs.
 - `created_at` (timestamptz, required, default `now()`)
 - uniqueness: `(club_id, name)`
 
-2. Player
+2. Player (initial Week 4 shape; `team_id` later removed by ADR-006)
 - `id` (bigserial, PK)
 - `team_id` (bigint, FK -> `teams.id`, required)
 - `display_name` (text, required)
@@ -74,4 +74,3 @@ Add Team and Player as the next relational slice with create/list APIs.
 - Introduce roster spots and membership history in Week 5+.
 - Add update/deactivate semantics for Team/Player lifecycle.
 - Evaluate scoped authz per organization layer for mutating routes.
-

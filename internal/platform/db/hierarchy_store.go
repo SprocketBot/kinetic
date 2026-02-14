@@ -220,13 +220,12 @@ func (s *HierarchyStore) CreatePlayer(ctx context.Context, input hierarchy.Creat
 	}
 
 	const stmt = `
-INSERT INTO players(team_id, display_name, slug)
-VALUES ($1, $2, $3)
-RETURNING id, team_id, display_name, slug, is_active, created_at;`
+INSERT INTO players(display_name, slug)
+VALUES ($1, $2)
+RETURNING id, display_name, slug, is_active, created_at;`
 	var player hierarchy.Player
-	err := s.db.QueryRowContext(ctx, stmt, input.TeamID, input.DisplayName, input.Slug).Scan(
+	err := s.db.QueryRowContext(ctx, stmt, input.DisplayName, input.Slug).Scan(
 		&player.ID,
-		&player.TeamID,
 		&player.DisplayName,
 		&player.Slug,
 		&player.IsActive,
@@ -240,7 +239,7 @@ RETURNING id, team_id, display_name, slug, is_active, created_at;`
 
 func (s *HierarchyStore) ListPlayers(ctx context.Context) ([]hierarchy.Player, error) {
 	const stmt = `
-SELECT id, team_id, display_name, slug, is_active, created_at
+SELECT id, display_name, slug, is_active, created_at
 FROM players
 ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
@@ -252,7 +251,7 @@ ORDER BY id ASC;`
 	players := make([]hierarchy.Player, 0)
 	for rows.Next() {
 		var player hierarchy.Player
-		if err := rows.Scan(&player.ID, &player.TeamID, &player.DisplayName, &player.Slug, &player.IsActive, &player.CreatedAt); err != nil {
+		if err := rows.Scan(&player.ID, &player.DisplayName, &player.Slug, &player.IsActive, &player.CreatedAt); err != nil {
 			return nil, err
 		}
 		players = append(players, player)

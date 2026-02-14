@@ -47,7 +47,7 @@ curl -s http://localhost:8080/v1/roster-memberships
 
 ## Expected constraint behavior
 
-- duplicate active (`playerId`, `teamId`) pair -> `409`
+- second active membership for the same `playerId` -> `409`
 - missing parent FK (`playerId` or `teamId`) -> `409`
 - invalid IDs (`<= 0`) -> `400`
 

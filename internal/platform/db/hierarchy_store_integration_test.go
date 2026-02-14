@@ -98,7 +98,6 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 	}
 
 	_, err = store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
-		TeamID:      team.ID,
 		DisplayName: fmt.Sprintf("Player %d", suffix),
 		Slug:        fmt.Sprintf("player-%d", suffix),
 	})
@@ -107,7 +106,6 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 	}
 
 	playerTwo, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
-		TeamID:      team.ID,
 		DisplayName: fmt.Sprintf("Player Two %d", suffix),
 		Slug:        fmt.Sprintf("player-two-%d", suffix),
 	})
@@ -185,18 +183,6 @@ func TestHierarchyStoreDependencyViolation(t *testing.T) {
 		t.Fatalf("expected dependency error, got: %v", err)
 	}
 
-	_, err = store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
-		TeamID:      99999999,
-		DisplayName: "Invalid Player",
-		Slug:        "invalid-player-dep-test",
-	})
-	if err == nil {
-		t.Fatal("expected dependency violation for missing team")
-	}
-	if !errors.Is(err, hierarchy.ErrDependency) {
-		t.Fatalf("expected dependency error for player, got: %v", err)
-	}
-
 	_, err = store.CreateRosterMembership(ctx, hierarchy.CreateRosterMembershipInput{
 		PlayerID: 99999999,
 		TeamID:   99999998,
@@ -272,7 +258,6 @@ func TestHierarchyStoreRosterMembershipConflict(t *testing.T) {
 	}
 
 	player, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
-		TeamID:      team.ID,
 		DisplayName: fmt.Sprintf("Player Conflict %d", suffix),
 		Slug:        fmt.Sprintf("player-conflict-%d", suffix),
 	})
@@ -288,14 +273,23 @@ func TestHierarchyStoreRosterMembershipConflict(t *testing.T) {
 		t.Fatalf("failed to create initial roster membership: %v", err)
 	}
 
+	teamTwo, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: club.ID,
+		Name:   fmt.Sprintf("Team Conflict Two %d", suffix),
+		Slug:   fmt.Sprintf("team-conflict-two-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create second team: %v", err)
+	}
+
 	_, err = store.CreateRosterMembership(ctx, hierarchy.CreateRosterMembershipInput{
 		PlayerID: player.ID,
-		TeamID:   team.ID,
+		TeamID:   teamTwo.ID,
 	})
 	if err == nil {
-		t.Fatal("expected conflict for duplicate active roster membership")
+		t.Fatal("expected conflict for second active roster membership")
 	}
 	if !errors.Is(err, hierarchy.ErrConflict) {
-		t.Fatalf("expected conflict error for duplicate roster membership, got: %v", err)
+		t.Fatalf("expected conflict error for second active roster membership, got: %v", err)
 	}
 }

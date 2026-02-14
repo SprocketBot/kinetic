@@ -104,19 +104,11 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	teamID := int64(teamResp["id"].(float64))
 
 	createEntity(t, server, "/v1/players", map[string]any{
-		"teamId":      int64(99999999),
-		"displayName": "Invalid Player",
-		"slug":        fmt.Sprintf("invalid-player-%d", suffix),
-	}, http.StatusConflict)
-
-	createEntity(t, server, "/v1/players", map[string]any{
-		"teamId":      teamID,
 		"displayName": fmt.Sprintf("Player %d", suffix),
 		"slug":        fmt.Sprintf("player-%d", suffix),
 	}, http.StatusCreated)
 
 	playerTwoResp := createEntity(t, server, "/v1/players", map[string]any{
-		"teamId":      teamID,
 		"displayName": fmt.Sprintf("Player Two %d", suffix),
 		"slug":        fmt.Sprintf("player-two-%d", suffix),
 	}, http.StatusCreated)
@@ -130,6 +122,11 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	createEntity(t, server, "/v1/roster-memberships", map[string]any{
 		"playerId": playerTwoID,
 		"teamId":   teamID,
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/roster-memberships", map[string]any{
+		"playerId": playerTwoID,
+		"teamId":   int64(99999999),
 	}, http.StatusConflict)
 
 	createEntity(t, server, "/v1/roster-memberships", map[string]any{

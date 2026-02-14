@@ -241,7 +241,6 @@ func TestCreatePlayerSuccess(t *testing.T) {
 	store := &fakeHierarchyStore{
 		playerToReturn: hierarchy.Player{
 			ID:          1,
-			TeamID:      1,
 			DisplayName: "Player One",
 			Slug:        "player-one",
 			IsActive:    true,
@@ -252,7 +251,7 @@ func TestCreatePlayerSuccess(t *testing.T) {
 		HierarchyStore: store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/players", strings.NewReader(`{"teamId":1,"displayName":"Player One","slug":"player-one"}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/players", strings.NewReader(`{"displayName":"Player One","slug":"player-one"}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

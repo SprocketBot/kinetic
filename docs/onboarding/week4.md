@@ -45,7 +45,7 @@ Create player:
 ```bash
 curl -s -X POST http://localhost:8080/v1/players \
   -H 'content-type: application/json' \
-  -d '{"teamId":1,"displayName":"Player One","slug":"player-one"}'
+  -d '{"displayName":"Player One","slug":"player-one"}'
 ```
 
 List entities:
@@ -58,7 +58,7 @@ curl -s http://localhost:8080/v1/players
 ## Expected constraint behavior
 
 - duplicate team/player `slug` -> `409`
-- missing parent FK (`clubId` for team, `teamId` for player) -> `409`
+- missing parent FK (`clubId` for team) -> `409`
 - invalid slug format -> `400`
 
 ## Test commands

@@ -109,7 +109,7 @@ team_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week4_create_team.json)
 player_code=$(curl -s -o /tmp/week4_create_player.json -w '%{http_code}' \
   -X POST http://localhost:8080/v1/players \
   -H 'content-type: application/json' \
-  -d "{\"teamId\":${team_id},\"displayName\":\"Week4 Player ${suffix}\",\"slug\":\"${player_slug}\"}")
+  -d "{\"displayName\":\"Week4 Player ${suffix}\",\"slug\":\"${player_slug}\"}")
 assert_code 201 "$player_code" "create player"
 
 bad_team_fk_code=$(curl -s -o /tmp/week4_bad_team_fk.json -w '%{http_code}' \
@@ -117,12 +117,6 @@ bad_team_fk_code=$(curl -s -o /tmp/week4_bad_team_fk.json -w '%{http_code}' \
   -H 'content-type: application/json' \
   -d "{\"clubId\":9999999,\"name\":\"Bad Team\",\"slug\":\"bad-team-${suffix}\"}")
 assert_code 409 "$bad_team_fk_code" "bad team FK"
-
-bad_player_fk_code=$(curl -s -o /tmp/week4_bad_player_fk.json -w '%{http_code}' \
-  -X POST http://localhost:8080/v1/players \
-  -H 'content-type: application/json' \
-  -d "{\"teamId\":9999999,\"displayName\":\"Bad Player\",\"slug\":\"bad-player-${suffix}\"}")
-assert_code 409 "$bad_player_fk_code" "bad player FK"
 
 list_teams_code=$(curl -s -o /tmp/week4_list_teams.json -w '%{http_code}' http://localhost:8080/v1/teams)
 assert_code 200 "$list_teams_code" "list teams"

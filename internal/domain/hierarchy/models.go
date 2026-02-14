@@ -39,7 +39,6 @@ type Team struct {
 
 type Player struct {
 	ID          int64     `json:"id"`
-	TeamID      int64     `json:"teamId"`
 	DisplayName string    `json:"displayName"`
 	Slug        string    `json:"slug"`
 	IsActive    bool      `json:"isActive"`
@@ -78,7 +77,6 @@ type CreateTeamInput struct {
 }
 
 type CreatePlayerInput struct {
-	TeamID      int64  `json:"teamId"`
 	DisplayName string `json:"displayName"`
 	Slug        string `json:"slug"`
 }
