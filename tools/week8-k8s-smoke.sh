@@ -5,13 +5,22 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 NAMESPACE="${K8S_NAMESPACE:-sprocket-v3}"
 PF_PORT="${PF_PORT:-18080}"
 API_BASE="http://localhost:${PF_PORT}"
+PG_APP="sprocket-v3-pg-smoke"
+PG_SVC="${PG_APP}"
 PF_PID=""
+SERVICE_PORT=""
 
 cleanup() {
   if [[ -n "${PF_PID}" ]]; then
     kill "${PF_PID}" >/dev/null 2>&1 || true
     wait "${PF_PID}" 2>/dev/null || true
   fi
+
+  kubectl -n "${NAMESPACE}" delete deployment "${PG_APP}" --ignore-not-found >/dev/null 2>&1 || true
+  kubectl -n "${NAMESPACE}" delete service "${PG_SVC}" --ignore-not-found >/dev/null 2>&1 || true
+
+  kubectl -n "${NAMESPACE}" set env deploy/sprocket-v3-api DATABASE_URL- REQUIRE_DATABASE- RUN_MIGRATIONS_ON_START- >/dev/null 2>&1 || true
+  kubectl -n "${NAMESPACE}" rollout status deploy/sprocket-v3-api --timeout=180s >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -43,12 +52,78 @@ cd "$ROOT_DIR"
 echo "Deploying latest image to minikube"
 ./deploy/scripts/apply-local.sh
 
+echo "Creating temporary in-cluster Postgres"
+cat <<SQL | kubectl -n "${NAMESPACE}" apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${PG_APP}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${PG_APP}
+  template:
+    metadata:
+      labels:
+        app: ${PG_APP}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: sprocket
+          ports:
+            - containerPort: 5432
+              name: pg
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U postgres -d sprocket
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${PG_SVC}
+spec:
+  selector:
+    app: ${PG_APP}
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: 5432
+SQL
+
+kubectl -n "${NAMESPACE}" rollout status deployment/"${PG_APP}" --timeout=180s
+
+echo "Configuring API deployment for DB-required mode"
+kubectl -n "${NAMESPACE}" set env deploy/sprocket-v3-api \
+  DATABASE_URL="postgres://postgres:postgres@${PG_SVC}:5432/sprocket?sslmode=disable" \
+  REQUIRE_DATABASE=true \
+  RUN_MIGRATIONS_ON_START=true
+kubectl -n "${NAMESPACE}" rollout status deploy/sprocket-v3-api --timeout=180s
+
+SERVICE_PORT="$(kubectl -n "$NAMESPACE" get svc sprocket-v3-api -o jsonpath='{.spec.ports[0].port}')"
+if [[ -z "${SERVICE_PORT}" ]]; then
+  echo "Unable to determine service port for ${NAMESPACE}/sprocket-v3-api" >&2
+  exit 1
+fi
+
 echo "Starting port-forward on ${PF_PORT}"
-kubectl -n "$NAMESPACE" port-forward svc/sprocket-v3-api "${PF_PORT}:8080" >/tmp/sprocket_v3_week8_k8s_pf.log 2>&1 &
+kubectl -n "$NAMESPACE" port-forward svc/sprocket-v3-api "${PF_PORT}:${SERVICE_PORT}" >/tmp/sprocket_v3_week8_k8s_pf.log 2>&1 &
 PF_PID=$!
 
 for i in $(seq 1 40); do
-  code=$(curl -s -o /tmp/week8_k8s_healthz.json -w '%{http_code}' "${API_BASE}/healthz" || true)
+  code="$(curl -s -o /tmp/week8_k8s_healthz.json -w '%{http_code}' "${API_BASE}/healthz" || true)"
   if [[ "$code" == "200" ]]; then
     break
   fi
@@ -73,98 +148,98 @@ player_slug="week8-k8s-player-${suffix}"
 league_code=$(curl -s -o /tmp/week8_k8s_create_league.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/leagues" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"Week8 K8s League ${suffix}\",\"slug\":\"${league_slug}\"}")
+  -d "{\"name\":\"Week8 K8s League ${suffix}\",\"slug\":\"${league_slug}\"}" || true)
 assert_code 201 "$league_code" "create league"
 league_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_league.json)
 
 franchise_code=$(curl -s -o /tmp/week8_k8s_create_franchise.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/franchises" \
   -H 'content-type: application/json' \
-  -d "{\"leagueId\":${league_id},\"name\":\"Week8 K8s Franchise ${suffix}\",\"slug\":\"${franchise_slug}\"}")
+  -d "{\"leagueId\":${league_id},\"name\":\"Week8 K8s Franchise ${suffix}\",\"slug\":\"${franchise_slug}\"}" || true)
 assert_code 201 "$franchise_code" "create franchise"
 franchise_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_franchise.json)
 
 club_a_code=$(curl -s -o /tmp/week8_k8s_create_club_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/clubs" \
   -H 'content-type: application/json' \
-  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week8 K8s Club A ${suffix}\",\"slug\":\"${club_a_slug}\"}")
+  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week8 K8s Club A ${suffix}\",\"slug\":\"${club_a_slug}\"}" || true)
 assert_code 201 "$club_a_code" "create club A"
 club_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_club_a.json)
 
 club_b_code=$(curl -s -o /tmp/week8_k8s_create_club_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/clubs" \
   -H 'content-type: application/json' \
-  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week8 K8s Club B ${suffix}\",\"slug\":\"${club_b_slug}\"}")
+  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week8 K8s Club B ${suffix}\",\"slug\":\"${club_b_slug}\"}" || true)
 assert_code 201 "$club_b_code" "create club B"
 club_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_club_b.json)
 
 team_a_code=$(curl -s -o /tmp/week8_k8s_create_team_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/teams" \
   -H 'content-type: application/json' \
-  -d "{\"clubId\":${club_a_id},\"name\":\"Week8 K8s Team A ${suffix}\",\"slug\":\"${team_a_slug}\"}")
+  -d "{\"clubId\":${club_a_id},\"name\":\"Week8 K8s Team A ${suffix}\",\"slug\":\"${team_a_slug}\"}" || true)
 assert_code 201 "$team_a_code" "create team A"
 team_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_team_a.json)
 
 team_b_code=$(curl -s -o /tmp/week8_k8s_create_team_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/teams" \
   -H 'content-type: application/json' \
-  -d "{\"clubId\":${club_b_id},\"name\":\"Week8 K8s Team B ${suffix}\",\"slug\":\"${team_b_slug}\"}")
+  -d "{\"clubId\":${club_b_id},\"name\":\"Week8 K8s Team B ${suffix}\",\"slug\":\"${team_b_slug}\"}" || true)
 assert_code 201 "$team_b_code" "create team B"
 team_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_team_b.json)
 
 queue_code=$(curl -s -o /tmp/week8_k8s_create_queue.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queues" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"Week8 K8s Queue ${suffix}\",\"slug\":\"${queue_slug}\"}")
+  -d "{\"name\":\"Week8 K8s Queue ${suffix}\",\"slug\":\"${queue_slug}\"}" || true)
 assert_code 201 "$queue_code" "create queue"
 queue_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week8_k8s_create_queue.json)
 
 enqueue_a_code=$(curl -s -o /tmp/week8_k8s_enqueue_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queue-entries" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id},\"teamId\":${team_a_id}}")
+  -d "{\"queueId\":${queue_id},\"teamId\":${team_a_id}}" || true)
 assert_code 201 "$enqueue_a_code" "enqueue team A"
 
 enqueue_b_code=$(curl -s -o /tmp/week8_k8s_enqueue_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queue-entries" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id},\"teamId\":${team_b_id}}")
+  -d "{\"queueId\":${queue_id},\"teamId\":${team_b_id}}" || true)
 assert_code 201 "$enqueue_b_code" "enqueue team B"
 
 patch_stage_code=$(curl -s -o /tmp/week8_k8s_patch_stage_ok.json -w '%{http_code}' \
   -X PATCH "${API_BASE}/v1/queue-entries" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id},\"teamId\":${team_a_id},\"stage\":2}")
+  -d "{\"queueId\":${queue_id},\"teamId\":${team_a_id},\"stage\":2}" || true)
 assert_code 200 "$patch_stage_code" "advance queue stage"
 
 promote_code=$(curl -s -o /tmp/week8_k8s_promote_ok.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/scrim-promotions" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id}}")
+  -d "{\"queueId\":${queue_id}}" || true)
 assert_code 201 "$promote_code" "promote queue to scrim"
 
 promote_again_code=$(curl -s -o /tmp/week8_k8s_promote_conflict.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/scrim-promotions" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id}}")
+  -d "{\"queueId\":${queue_id}}" || true)
 assert_code 409 "$promote_again_code" "insufficient entries conflict"
 
 scrim_code=$(curl -s -o /tmp/week8_k8s_create_scrim.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/scrims" \
   -H 'content-type: application/json' \
-  -d "{\"queueId\":${queue_id},\"homeTeamId\":${team_a_id},\"awayTeamId\":${team_b_id},\"state\":\"created\"}")
+  -d "{\"queueId\":${queue_id},\"homeTeamId\":${team_a_id},\"awayTeamId\":${team_b_id},\"state\":\"created\"}" || true)
 assert_code 201 "$scrim_code" "create scrim"
 
 player_code=$(curl -s -o /tmp/week8_k8s_create_player.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/players" \
   -H 'content-type: application/json' \
-  -d "{\"displayName\":\"Week8 K8s Player ${suffix}\",\"slug\":\"${player_slug}\"}")
+  -d "{\"displayName\":\"Week8 K8s Player ${suffix}\",\"slug\":\"${player_slug}\"}" || true)
 assert_code 201 "$player_code" "create player"
 
-ratings_code=$(curl -s -o /tmp/week8_k8s_list_ratings.json -w '%{http_code}' "${API_BASE}/v1/player-ratings")
+ratings_code=$(curl -s -o /tmp/week8_k8s_list_ratings.json -w '%{http_code}' "${API_BASE}/v1/player-ratings" || true)
 assert_code 200 "$ratings_code" "list player ratings"
 
-decisions_code=$(curl -s -o /tmp/week8_k8s_list_decisions.json -w '%{http_code}' "${API_BASE}/v1/matchmaking-decisions")
+decisions_code=$(curl -s -o /tmp/week8_k8s_list_decisions.json -w '%{http_code}' "${API_BASE}/v1/matchmaking-decisions" || true)
 assert_code 200 "$decisions_code" "list matchmaking decisions"
 if ! grep -q "\"queueId\":${queue_id}" /tmp/week8_k8s_list_decisions.json; then
   echo "matchmaking decisions did not include expected queueId=${queue_id}" >&2

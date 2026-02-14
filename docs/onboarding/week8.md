@@ -101,3 +101,4 @@ Notes:
 
 - `week8-smoke.sh` runs API + Postgres locally via Docker.
 - `week8-k8s-smoke.sh` deploys to minikube, port-forwards the service, and exercises the Week 8 flow against the in-cluster runtime.
+- `week8-k8s-smoke.sh` creates a temporary in-cluster Postgres deployment/service for the test run and cleans it up on exit.

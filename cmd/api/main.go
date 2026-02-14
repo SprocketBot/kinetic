@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
@@ -53,7 +54,7 @@ func main() {
 
 	tokenValidator := auth.NewLocalTokenValidator("local")
 	var evaluator authz.Evaluator
-	var hierarchyStore *db.HierarchyStore
+	var hierarchyStore hierarchy.Store
 	if conn != nil {
 		dbEvaluator, err := authz.NewDatabaseBackedEvaluator(ctx, conn, authz.DefaultPermissions())
 		if err != nil {
