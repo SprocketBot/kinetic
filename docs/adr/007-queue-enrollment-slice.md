@@ -7,7 +7,7 @@
 ## Context
 
 Week 5 completed roster assignment primitives.
-Week 6 begins the queue + match flow MVP by adding deterministic queue enrollment behavior without introducing match orchestration complexity yet.
+Week 6 begins the queue + scrim flow MVP by adding deterministic queue enrollment behavior without introducing scheduled league match orchestration complexity yet.
 
 ## Decision
 
@@ -54,7 +54,7 @@ Add `Queue` and `QueueEntry` primitives with join/leave/list API behavior.
 
 ### Week 6 non-goals
 
-- match creation and team pairing
+- scheduled match creation and team pairing
 - MMR/rating logic
 - queue worker orchestration or timeout handling
 - readiness checks and policy engine
@@ -63,7 +63,7 @@ Add `Queue` and `QueueEntry` primitives with join/leave/list API behavior.
 
 ### Positive
 
-- Introduces a clean queue boundary for match flow MVP.
+- Introduces a clean queue boundary for scrim flow MVP.
 - Encodes active enrollment constraints in the database.
 - Keeps deterministic ordering explicit and testable.
 
@@ -74,6 +74,7 @@ Add `Queue` and `QueueEntry` primitives with join/leave/list API behavior.
 
 ## Follow-ups
 
-- Add match candidate promotion from queue entries.
+- Add scrim candidate promotion from queue entries.
+- Model scheduled competition separately (`season -> schedule_group -> fixture -> match`).
 - Introduce queue policies (size, region, mode, readiness checks).
 - Add queue metrics and operational visibility.

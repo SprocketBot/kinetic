@@ -40,7 +40,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 | 1-2 | Foundation | 16h | Go service scaffold + local dev + first K8s deploy |
 | 3-4 | Auth + RBAC baseline | 16h | Authenticated API + role checks + tests |
 | 5-7 | League hierarchy core | 24h | League/Franchise/Club/Team/Player vertical slice |
-| 8-10 | Queue + match flow MVP | 24h | Join/leave/process queue end-to-end |
+| 8-10 | Queue + scrim flow MVP | 24h | Join/leave/process queue end-to-end |
 | 11-12 | Submission + ratification MVP | 16h | Submission lifecycle with state transitions |
 | 13-14 | Handoff + hardening | 16h | Contributor-ready docs/runbooks + CI quality gates |
 
@@ -411,7 +411,7 @@ Out of scope:
 
 ## Week 6 Execution Board (2026-03-16 to 2026-03-22)
 
-Week objective: begin queue + match flow MVP by shipping deterministic queue enrollment behavior (join/leave/list) for teams.
+Week objective: begin queue + scrim flow MVP by shipping deterministic queue enrollment behavior (join/leave/list) for teams.
 
 Definition of done for Week 6:
 

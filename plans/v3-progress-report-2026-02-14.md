@@ -1,7 +1,7 @@
 # Sprocket v3 Progress Report
 
 Date: 2026-02-14
-Scope covered: Weeks 1-5 complete, Week 6 planned
+Scope covered: Weeks 1-6 complete
 
 ## Executive Summary
 
@@ -48,28 +48,36 @@ Remaining work is meaningful but bounded, and is achievable as a hobby project a
 - `players.team_id` removed via migration (`000006`)
 - ADRs and onboarding updated to the new contract
 
+### Week 6: Queue Enrollment Slice
+
+- Queue and queue-entry schema/API delivered
+- Join/leave/list queue behaviors implemented
+- Active enrollment constraints and FIFO ordering contract tested
+- Week 6 onboarding and smoke automation added
+
 ## Current System Snapshot
 
-- ADRs: 6 (`/Users/jacbaile/Sprocket-v3/docs/adr`)
-- Migrations: 6 (`/Users/jacbaile/Sprocket-v3/migrations`)
-- Week smoke scripts: 4 (`week1`, `week3`, `week4`, `week5`)
-- HTTP v1 routes in service: admin ping + 6 hierarchy/roster routes
-- Test cases in `internal/*`: 33 (`func Test...` count)
+- ADRs: 8 (`/Users/jacbaile/Sprocket-v3/docs/adr`)
+- Migrations: 7 (`/Users/jacbaile/Sprocket-v3/migrations`)
+- Week smoke scripts: 5 (`week1`, `week3`, `week4`, `week5`, `week6`)
+- HTTP v1 routes in service: admin ping + 8 hierarchy/roster/queue routes
+- Test cases in `internal/*`: 39 (`func Test...` count)
 
 ## Remaining Work
 
 ### Product and Platform Roadmap (High Level)
 
 1. Week 6: queue enrollment slice (join/leave/list, FIFO ordering contract)
-2. Week 7: match flow MVP entry point (promote queued teams into match candidates)
-3. Weeks 8-10: queue + match lifecycle completion, reliability passes, deeper functional coverage
-4. Weeks 11-12: submission and ratification lifecycle (state transitions + constraints)
+2. Week 7: scheduled competition slice kickoff (`season -> schedule_group -> fixture -> match`)
+3. Weeks 8-10: queue + scrim lifecycle completion, reliability passes, deeper functional coverage
+4. Weeks 11-12: scheduled match submission and ratification lifecycle (state transitions + constraints)
 5. Weeks 13-14: handoff hardening (runbooks, contributor docs, CI quality gates, operability polish)
 
 ### Technical Debt and Open Decisions
 
 - Roster lifecycle currently active-state only (no transfer/deactivate workflow yet)
-- Queue design must remain additive to avoid rework when match orchestration lands
+- Match and scrim domains must stay explicitly separated to avoid semantic drift
+- Match `ready` state requires ratified agreed play time (not just pre-scheduled existence)
 - Operational maturity is baseline-level; hardening is intentionally deferred
 
 ## Capacity and Estimate
@@ -93,8 +101,8 @@ Range:
 
 ## Risk Watchlist
 
-- Scope expansion before queue/match MVP stabilizes
-- Hidden complexity in asynchronous match processing
+- Scope expansion before queue/scrim MVP stabilizes
+- Hidden complexity in scheduled match ratification and asynchronous processing
 - Handoff quality slipping if docs/tests are postponed late
 
 ## Recommendation
