@@ -21,6 +21,7 @@ This is intentionally a foundation slice and does not implement the full async m
 
 - Week 7 smoke passes: `./tools/week7-smoke.sh`
 - Postgres available on local test port (`55432` default)
+- Minikube running for in-cluster smoke: `minikube start`
 
 ## Run migrations
 
@@ -89,8 +90,14 @@ go test ./...
 go test ./internal/domain/hierarchy ./internal/platform/db ./internal/platform/http
 ```
 
-## Optional full smoke
+## Full smoke
 
 ```bash
 ./tools/week8-smoke.sh
+./tools/week8-k8s-smoke.sh
 ```
+
+Notes:
+
+- `week8-smoke.sh` runs API + Postgres locally via Docker.
+- `week8-k8s-smoke.sh` deploys to minikube, port-forwards the service, and exercises the Week 8 flow against the in-cluster runtime.

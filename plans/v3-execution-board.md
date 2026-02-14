@@ -39,6 +39,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Delivery target: 8h
 - Reserve: 2h (planning, CI/debug, context switching)
 - Hard rule: no week is complete unless code + tests + docs are all done
+- Verification rule: each week must include both local smoke (`tools/weekX-smoke.sh`) and minikube smoke (`tools/weekX-k8s-smoke.sh` once introduced) for that slice.
 
 ## 14-Week Macro Plan
 
@@ -115,6 +116,7 @@ Copy this section per week.
 
 - Behavior shipped
 - Unit + integration/functional tests shipped
+- Local smoke script and minikube smoke script pass for the week slice
 - Docs/runbook updated
 
 ### Week X Day Plan (2h sessions)
@@ -132,6 +134,14 @@ Copy this section per week.
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
 | WX-01 |  |  | Todo |  |
+
+### Week X Start Checklist
+
+- Previous week local smoke passes (`./tools/week{X-1}-smoke.sh`)
+- Previous week minikube smoke passes (`./tools/week{X-1}-k8s-smoke.sh` once available)
+- Full test suite passes: `go test ./...`
+- Minikube context selected: `kubectl config use-context minikube`
+- Minikube cluster reachable: `minikube status`
 
 ---
 
@@ -570,7 +580,7 @@ Definition of done for Week 8:
 - Queue attempt expansion-stage tracking foundation exists (monotonic-stage baseline data model)
 - Queue-to-scrim promotion deactivates consumed queue entries atomically and records decision metadata
 - Integration tests cover foundational invariants and queue-to-scrim conflict/dependency failures
-- Week 8 onboarding notes and smoke automation are available
+- Week 8 onboarding notes and both smoke automations are available (`week8-smoke.sh` and `week8-k8s-smoke.sh`)
 
 ### Scope Boundaries
 
@@ -602,7 +612,7 @@ Out of scope:
 | Tue | 2h | Implement schema foundations (scrims, player ratings baseline, queue attempt stage + decision metadata) | `migrations/000009_*.sql` |
 | Wed | 2h | Implement DB methods/API routes for scrim create/list/promotion + rating snapshot read path | `/v1/scrims`, `/v1/scrim-promotions`, `/v1/player-ratings` |
 | Thu | 2h | Integration tests for invariant foundations and queue consumption/conflicts | DB/API integration test coverage |
-| Fri | 2h | Onboarding docs + smoke script + cleanup/buffer | `docs/onboarding/week8.md`, `tools/week8-smoke.sh` |
+| Fri | 2h | Onboarding docs + smoke scripts + cleanup/buffer | `docs/onboarding/week8.md`, `tools/week8-smoke.sh`, `tools/week8-k8s-smoke.sh` |
 
 ### Ticket Board
 
@@ -616,7 +626,7 @@ Out of scope:
 | W8-06 | Add validation and error mapping for scrim/rating payloads | 0.75h | Done | invalid payloads map to stable 4xx |
 | W8-07 | Write unit tests for foundational invariants | 0.75h | Done | single identity + monotonic stage + lifecycle guard checks covered |
 | W8-08 | Write integration tests for queue-to-scrim + invariant persistence behavior | 1.0h | Done | duplicate/insufficient queue entry and decision metadata cases validated |
-| W8-09 | Write Week 8 onboarding notes + smoke automation | 0.5h | Done | contributor can run scrim checks quickly |
+| W8-09 | Write Week 8 onboarding notes + smoke automations | 0.5h | Done | contributor can run local and minikube scrim checks quickly |
 | W8-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 8 Risks and Mitigations
@@ -635,6 +645,8 @@ Out of scope:
 ### Week 8 Start Checklist
 
 - Week 7 smoke script passes: `./tools/week7-smoke.sh`
+- Week 7 minikube smoke script passes when available: `./tools/week7-k8s-smoke.sh`
 - Full test suite passes: `go test ./...`
 - Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 8 implementation commit
