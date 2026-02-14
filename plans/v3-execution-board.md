@@ -1,6 +1,6 @@
 # Sprocket v3 Execution Board
 
-Last updated: 2026-02-09
+Last updated: 2026-02-14
 Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 
 ## Current Progress
@@ -20,7 +20,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 5 started: `W5-01` through `W5-03` completed on 2026-02-09
 - Week 5 in progress: `W5-04` through `W5-09` completed on 2026-02-09
 - Week 5 completed: `W5-10` not consumed (no blockers)
-- Next up: Week 6 planning and ticketing
+- Week 6 planning prepared (implementation not started)
+- Next up: Week 6 execution (`W6-01` onward)
 
 ## Capacity Guardrails
 
@@ -402,3 +403,74 @@ Out of scope:
 - Full test suite passes: `go test ./...`
 - Postgres test port available (`55432` default)
 - Working tree clean before first Week 5 implementation commit
+
+---
+
+## Week 6 Execution Board (2026-03-16 to 2026-03-22)
+
+Week objective: begin queue + match flow MVP by shipping deterministic queue enrollment behavior (join/leave/list) for teams.
+
+Definition of done for Week 6:
+
+- Queue and queue entry schema exists and is migrated
+- Join/leave/list queue endpoints are implemented
+- Duplicate active queue entries are prevented at DB level
+- Integration tests cover queue ordering, duplicate prevention, and dependency violations
+- Week 6 onboarding notes and smoke automation are available
+
+### Scope Boundaries
+
+In scope:
+
+- queue primitives (`Queue`, `QueueEntry`)
+- API behavior for queue join/leave/list
+- FIFO ordering contract for active entries
+- tests and onboarding/smoke docs
+
+Out of scope:
+
+- full match creation pipeline
+- MMR/skill balancing
+- backfill and timeout processing workers
+- season-specific queue policy engine
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize queue contract and constraints | `docs/adr/007-queue-enrollment-slice.md`, migration notes |
+| Tue | 2h | Implement queue migrations + domain/store interfaces | `migrations/000007_*.sql`, `internal/domain/hierarchy/*` updates |
+| Wed | 2h | Implement DB methods and API routes for queue join/leave/list | `/v1/queues`, `/v1/queue-entries` |
+| Thu | 2h | Integration tests for ordering and constraints | DB/API integration tests for duplicates/FK/order |
+| Fri | 2h | Onboarding docs + smoke script + cleanup/buffer | `docs/onboarding/week6.md`, `tools/week6-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W6-01 | Define queue enrollment contract | 0.75h | Todo | fields + invariants documented in ADR |
+| W6-02 | Add queue + queue entry migrations | 1.25h | Todo | schema migrates cleanly and is idempotent |
+| W6-03 | Extend domain/store interfaces for queue behavior | 0.75h | Todo | compile-safe contracts in place |
+| W6-04 | Implement DB methods for join/leave/list | 1.25h | Todo | active queue operations map errors correctly |
+| W6-05 | Implement API handlers/routes for queue operations | 1.25h | Todo | stable JSON and status codes for join/leave/list |
+| W6-06 | Add validation and error mapping for queue payloads | 0.75h | Todo | invalid payloads return stable 4xx |
+| W6-07 | Write unit tests for queue validation + ordering helper | 0.75h | Todo | required fields and FIFO ordering checks covered |
+| W6-08 | Write integration tests for queue constraints | 1.0h | Todo | duplicate active entries and missing dependencies validated |
+| W6-09 | Write Week 6 onboarding notes + smoke automation | 0.5h | Todo | contributor can run queue checks quickly |
+| W6-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 6 Risks and Mitigations
+
+- Risk: queue API shape may conflict with later match orchestration.
+  - Mitigation: keep Week 6 contract minimal and additive; defer orchestration concerns.
+- Risk: ordering bugs create hidden fairness issues.
+  - Mitigation: enforce deterministic FIFO (`created_at`, then `id`) in DB queries and tests.
+- Risk: drift between team readiness and queue state assumptions.
+  - Mitigation: Week 6 keeps readiness out of scope; add explicit readiness checks in Week 7+.
+
+### Week 6 Start Checklist
+
+- Week 5 smoke script passes: `./tools/week5-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Working tree clean before first Week 6 implementation commit
