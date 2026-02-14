@@ -258,6 +258,80 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/queues", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			queues, err := deps.HierarchyStore.ListQueues(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list queues", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, queues)
+		case http.MethodPost:
+			var input hierarchy.CreateQueueInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			queue, err := deps.HierarchyStore.CreateQueue(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, queue)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/queue-entries", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			entries, err := deps.HierarchyStore.ListActiveQueueEntries(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list queue entries", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, entries)
+		case http.MethodPost:
+			var input hierarchy.EnqueueTeamInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			entry, err := deps.HierarchyStore.EnqueueTeam(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, entry)
+		case http.MethodDelete:
+			var input hierarchy.LeaveQueueInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			entry, err := deps.HierarchyStore.LeaveQueue(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, entry)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,

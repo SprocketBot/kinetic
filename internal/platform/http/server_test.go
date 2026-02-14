@@ -32,18 +32,25 @@ type fakeHierarchyStore struct {
 	teamToReturn       hierarchy.Team
 	playerToReturn     hierarchy.Player
 	membershipToReturn hierarchy.RosterMembership
+	queueToReturn      hierarchy.Queue
+	queueEntryToReturn hierarchy.QueueEntry
 	leaguesToList      []hierarchy.League
 	franchisesToList   []hierarchy.Franchise
 	clubsToList        []hierarchy.Club
 	teamsToList        []hierarchy.Team
 	playersToList      []hierarchy.Player
 	membershipsToList  []hierarchy.RosterMembership
+	queuesToList       []hierarchy.Queue
+	queueEntriesToList []hierarchy.QueueEntry
 	createLeagueErr    error
 	createFranchiseErr error
 	createClubErr      error
 	createTeamErr      error
 	createPlayerErr    error
 	createMemberErr    error
+	createQueueErr     error
+	enqueueTeamErr     error
+	leaveQueueErr      error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -81,6 +88,21 @@ func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarc
 }
 func (f *fakeHierarchyStore) ListRosterMemberships(_ context.Context) ([]hierarchy.RosterMembership, error) {
 	return f.membershipsToList, nil
+}
+func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
+	return f.queueToReturn, f.createQueueErr
+}
+func (f *fakeHierarchyStore) ListQueues(_ context.Context) ([]hierarchy.Queue, error) {
+	return f.queuesToList, nil
+}
+func (f *fakeHierarchyStore) EnqueueTeam(_ context.Context, _ hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
+	return f.queueEntryToReturn, f.enqueueTeamErr
+}
+func (f *fakeHierarchyStore) LeaveQueue(_ context.Context, _ hierarchy.LeaveQueueInput) (hierarchy.QueueEntry, error) {
+	return f.queueEntryToReturn, f.leaveQueueErr
+}
+func (f *fakeHierarchyStore) ListActiveQueueEntries(_ context.Context) ([]hierarchy.QueueEntry, error) {
+	return f.queueEntriesToList, nil
 }
 
 func TestHealthEndpoint(t *testing.T) {
@@ -276,6 +298,54 @@ func TestCreateRosterMembershipSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/roster-memberships", strings.NewReader(`{"playerId":10,"teamId":20}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestCreateQueueSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		queueToReturn: hierarchy.Queue{
+			ID:        1,
+			Name:      "3v3 Ranked",
+			Slug:      "3v3-ranked",
+			IsActive:  true,
+			CreatedAt: now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/queues", strings.NewReader(`{"name":"3v3 Ranked","slug":"3v3-ranked"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestJoinQueueSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		queueEntryToReturn: hierarchy.QueueEntry{
+			ID:        1,
+			QueueID:   10,
+			TeamID:    20,
+			IsActive:  true,
+			CreatedAt: now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/queue-entries", strings.NewReader(`{"queueId":10,"teamId":20}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

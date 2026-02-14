@@ -103,6 +103,13 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	}, http.StatusCreated)
 	teamID := int64(teamResp["id"].(float64))
 
+	teamTwoResp := createEntity(t, server, "/v1/teams", map[string]any{
+		"clubId": clubID,
+		"name":   fmt.Sprintf("Team Two %d", suffix),
+		"slug":   fmt.Sprintf("team-two-%d", suffix),
+	}, http.StatusCreated)
+	teamTwoID := int64(teamTwoResp["id"].(float64))
+
 	createEntity(t, server, "/v1/players", map[string]any{
 		"displayName": fmt.Sprintf("Player %d", suffix),
 		"slug":        fmt.Sprintf("player-%d", suffix),
@@ -134,12 +141,50 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":   teamID,
 	}, http.StatusConflict)
 
+	queueResp := createEntity(t, server, "/v1/queues", map[string]any{
+		"name": fmt.Sprintf("Queue %d", suffix),
+		"slug": fmt.Sprintf("queue-%d", suffix),
+	}, http.StatusCreated)
+	queueID := int64(queueResp["id"].(float64))
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  int64(99999999),
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": int64(99999999),
+		"teamId":  teamTwoID,
+	}, http.StatusConflict)
+
+	deleteEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusOK)
+
+	deleteEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusConflict)
+
 	assertListNotEmpty(t, server, "/v1/leagues")
 	assertListNotEmpty(t, server, "/v1/franchises")
 	assertListNotEmpty(t, server, "/v1/clubs")
 	assertListNotEmpty(t, server, "/v1/teams")
 	assertListNotEmpty(t, server, "/v1/players")
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
+	assertListNotEmpty(t, server, "/v1/queues")
+	assertListNotEmpty(t, server, "/v1/queue-entries")
 }
 
 func TestHierarchyAPIValidationFailure(t *testing.T) {
@@ -179,6 +224,16 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/roster-memberships", map[string]any{
 		"playerId": int64(0),
 		"teamId":   int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/queues", map[string]any{
+		"name": "Queue Validation",
+		"slug": "NOT-VALID",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": int64(0),
+		"teamId":  int64(1),
 	}, http.StatusBadRequest)
 }
 
@@ -227,6 +282,24 @@ func assertListNotEmpty(t *testing.T, server *Server, path string) {
 	}
 	if len(items) == 0 {
 		t.Fatalf("expected non-empty list for %s", path)
+	}
+}
+
+func deleteEntity(t *testing.T, server *Server, path string, payload map[string]any, expectedStatus int) {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != expectedStatus {
+		t.Fatalf("expected status %d for %s, got %d body=%s", expectedStatus, path, rr.Code, rr.Body.String())
 	}
 }
 

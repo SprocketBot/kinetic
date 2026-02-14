@@ -310,6 +310,132 @@ ORDER BY id ASC;`
 	return memberships, nil
 }
 
+func (s *HierarchyStore) CreateQueue(ctx context.Context, input hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
+	if err := hierarchy.ValidateCreateQueueInput(input); err != nil {
+		return hierarchy.Queue{}, err
+	}
+
+	const stmt = `
+INSERT INTO queues(name, slug)
+VALUES ($1, $2)
+RETURNING id, name, slug, is_active, created_at;`
+	var queue hierarchy.Queue
+	err := s.db.QueryRowContext(ctx, stmt, input.Name, input.Slug).Scan(
+		&queue.ID,
+		&queue.Name,
+		&queue.Slug,
+		&queue.IsActive,
+		&queue.CreatedAt,
+	)
+	if err != nil {
+		return hierarchy.Queue{}, mapSQLError(err)
+	}
+	return queue, nil
+}
+
+func (s *HierarchyStore) ListQueues(ctx context.Context) ([]hierarchy.Queue, error) {
+	const stmt = `
+SELECT id, name, slug, is_active, created_at
+FROM queues
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	queues := make([]hierarchy.Queue, 0)
+	for rows.Next() {
+		var queue hierarchy.Queue
+		if err := rows.Scan(&queue.ID, &queue.Name, &queue.Slug, &queue.IsActive, &queue.CreatedAt); err != nil {
+			return nil, err
+		}
+		queues = append(queues, queue)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return queues, nil
+}
+
+func (s *HierarchyStore) EnqueueTeam(ctx context.Context, input hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
+	if err := hierarchy.ValidateEnqueueTeamInput(input); err != nil {
+		return hierarchy.QueueEntry{}, err
+	}
+
+	const stmt = `
+INSERT INTO queue_entries(queue_id, team_id)
+VALUES ($1, $2)
+RETURNING id, queue_id, team_id, is_active, created_at, left_at;`
+	var entry hierarchy.QueueEntry
+	err := s.db.QueryRowContext(ctx, stmt, input.QueueID, input.TeamID).Scan(
+		&entry.ID,
+		&entry.QueueID,
+		&entry.TeamID,
+		&entry.IsActive,
+		&entry.CreatedAt,
+		&entry.LeftAt,
+	)
+	if err != nil {
+		return hierarchy.QueueEntry{}, mapSQLError(err)
+	}
+	return entry, nil
+}
+
+func (s *HierarchyStore) LeaveQueue(ctx context.Context, input hierarchy.LeaveQueueInput) (hierarchy.QueueEntry, error) {
+	if err := hierarchy.ValidateLeaveQueueInput(input); err != nil {
+		return hierarchy.QueueEntry{}, err
+	}
+
+	const stmt = `
+UPDATE queue_entries
+SET is_active = FALSE, left_at = NOW()
+WHERE queue_id = $1 AND team_id = $2 AND is_active = TRUE
+RETURNING id, queue_id, team_id, is_active, created_at, left_at;`
+	var entry hierarchy.QueueEntry
+	err := s.db.QueryRowContext(ctx, stmt, input.QueueID, input.TeamID).Scan(
+		&entry.ID,
+		&entry.QueueID,
+		&entry.TeamID,
+		&entry.IsActive,
+		&entry.CreatedAt,
+		&entry.LeftAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.QueueEntry{}, fmt.Errorf("%w: active queue entry not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.QueueEntry{}, mapSQLError(err)
+	}
+	return entry, nil
+}
+
+func (s *HierarchyStore) ListActiveQueueEntries(ctx context.Context) ([]hierarchy.QueueEntry, error) {
+	const stmt = `
+SELECT id, queue_id, team_id, is_active, created_at, left_at
+FROM queue_entries
+WHERE is_active = TRUE
+ORDER BY queue_id ASC, created_at ASC, id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	entries := make([]hierarchy.QueueEntry, 0)
+	for rows.Next() {
+		var entry hierarchy.QueueEntry
+		if err := rows.Scan(&entry.ID, &entry.QueueID, &entry.TeamID, &entry.IsActive, &entry.CreatedAt, &entry.LeftAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return entries, nil
+}
+
 func mapSQLError(err error) error {
 	var pgError *pgconn.PgError
 	if errors.As(err, &pgError) {

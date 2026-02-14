@@ -21,7 +21,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 5 in progress: `W5-04` through `W5-09` completed on 2026-02-09
 - Week 5 completed: `W5-10` not consumed (no blockers)
 - Week 6 planning prepared (implementation not started)
-- Next up: Week 6 execution (`W6-01` onward)
+- Week 6 started: `W6-01` through `W6-03` completed on 2026-02-14
+- Week 6 in progress: `W6-04` through `W6-09` completed on 2026-02-14
+- Week 6 completed: `W6-10` not consumed (no blockers)
+- Next up: Week 7 planning and ticketing
 
 ## Capacity Guardrails
 
@@ -448,16 +451,16 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W6-01 | Define queue enrollment contract | 0.75h | Todo | fields + invariants documented in ADR |
-| W6-02 | Add queue + queue entry migrations | 1.25h | Todo | schema migrates cleanly and is idempotent |
-| W6-03 | Extend domain/store interfaces for queue behavior | 0.75h | Todo | compile-safe contracts in place |
-| W6-04 | Implement DB methods for join/leave/list | 1.25h | Todo | active queue operations map errors correctly |
-| W6-05 | Implement API handlers/routes for queue operations | 1.25h | Todo | stable JSON and status codes for join/leave/list |
-| W6-06 | Add validation and error mapping for queue payloads | 0.75h | Todo | invalid payloads return stable 4xx |
-| W6-07 | Write unit tests for queue validation + ordering helper | 0.75h | Todo | required fields and FIFO ordering checks covered |
-| W6-08 | Write integration tests for queue constraints | 1.0h | Todo | duplicate active entries and missing dependencies validated |
-| W6-09 | Write Week 6 onboarding notes + smoke automation | 0.5h | Todo | contributor can run queue checks quickly |
-| W6-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W6-01 | Define queue enrollment contract | 0.75h | Done | fields + invariants documented in ADR |
+| W6-02 | Add queue + queue entry migrations | 1.25h | Done | schema migrates cleanly and is idempotent |
+| W6-03 | Extend domain/store interfaces for queue behavior | 0.75h | Done | compile-safe contracts in place |
+| W6-04 | Implement DB methods for join/leave/list | 1.25h | Done | active queue operations map errors correctly |
+| W6-05 | Implement API handlers/routes for queue operations | 1.25h | Done | stable JSON and status codes for join/leave/list |
+| W6-06 | Add validation and error mapping for queue payloads | 0.75h | Done | invalid payloads return stable 4xx |
+| W6-07 | Write unit tests for queue validation + ordering helper | 0.75h | Done | required fields and FIFO ordering checks covered |
+| W6-08 | Write integration tests for queue constraints | 1.0h | Done | duplicate active entries and missing dependencies validated |
+| W6-09 | Write Week 6 onboarding notes + smoke automation | 0.5h | Done | contributor can run queue checks quickly |
+| W6-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 6 Risks and Mitigations
 

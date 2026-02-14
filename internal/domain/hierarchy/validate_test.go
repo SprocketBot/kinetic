@@ -135,3 +135,63 @@ func TestValidateCreateRosterMembershipInput(t *testing.T) {
 		t.Fatal("expected missing teamId to fail validation")
 	}
 }
+
+func TestValidateCreateQueueInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateQueueInput(CreateQueueInput{
+		Name: "3v3 Ranked",
+		Slug: "3v3-ranked",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateQueueInput(CreateQueueInput{
+		Name: "",
+		Slug: "3v3-ranked",
+	})
+	if err == nil {
+		t.Fatal("expected missing queue name to fail validation")
+	}
+}
+
+func TestValidateEnqueueTeamInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateEnqueueTeamInput(EnqueueTeamInput{
+		QueueID: 1,
+		TeamID:  2,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateEnqueueTeamInput(EnqueueTeamInput{
+		QueueID: 0,
+		TeamID:  2,
+	})
+	if err == nil {
+		t.Fatal("expected missing queueId to fail validation")
+	}
+}
+
+func TestValidateLeaveQueueInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateLeaveQueueInput(LeaveQueueInput{
+		QueueID: 1,
+		TeamID:  2,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateLeaveQueueInput(LeaveQueueInput{
+		QueueID: 1,
+		TeamID:  0,
+	})
+	if err == nil {
+		t.Fatal("expected missing teamId to fail validation")
+	}
+}

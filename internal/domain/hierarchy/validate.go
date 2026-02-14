@@ -76,3 +76,33 @@ func ValidateCreateRosterMembershipInput(input CreateRosterMembershipInput) erro
 	}
 	return nil
 }
+
+func ValidateCreateQueueInput(input CreateQueueInput) error {
+	if strings.TrimSpace(input.Name) == "" {
+		return fmt.Errorf("%w: queue name is required", ErrInvalidInput)
+	}
+	if !slugPattern.MatchString(input.Slug) {
+		return fmt.Errorf("%w: queue slug must be lowercase kebab-case", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateEnqueueTeamInput(input EnqueueTeamInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateLeaveQueueInput(input LeaveQueueInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}

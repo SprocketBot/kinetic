@@ -15,4 +15,9 @@ type Store interface {
 	ListPlayers(ctx context.Context) ([]Player, error)
 	CreateRosterMembership(ctx context.Context, input CreateRosterMembershipInput) (RosterMembership, error)
 	ListRosterMemberships(ctx context.Context) ([]RosterMembership, error)
+	CreateQueue(ctx context.Context, input CreateQueueInput) (Queue, error)
+	ListQueues(ctx context.Context) ([]Queue, error)
+	EnqueueTeam(ctx context.Context, input EnqueueTeamInput) (QueueEntry, error)
+	LeaveQueue(ctx context.Context, input LeaveQueueInput) (QueueEntry, error)
+	ListActiveQueueEntries(ctx context.Context) ([]QueueEntry, error)
 }

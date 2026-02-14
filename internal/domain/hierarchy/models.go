@@ -53,6 +53,23 @@ type RosterMembership struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type Queue struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+type QueueEntry struct {
+	ID        int64      `json:"id"`
+	QueueID   int64      `json:"queueId"`
+	TeamID    int64      `json:"teamId"`
+	IsActive  bool       `json:"isActive"`
+	CreatedAt time.Time  `json:"createdAt"`
+	LeftAt    *time.Time `json:"leftAt,omitempty"`
+}
+
 type CreateLeagueInput struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`
@@ -84,4 +101,19 @@ type CreatePlayerInput struct {
 type CreateRosterMembershipInput struct {
 	PlayerID int64 `json:"playerId"`
 	TeamID   int64 `json:"teamId"`
+}
+
+type CreateQueueInput struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+type EnqueueTeamInput struct {
+	QueueID int64 `json:"queueId"`
+	TeamID  int64 `json:"teamId"`
+}
+
+type LeaveQueueInput struct {
+	QueueID int64 `json:"queueId"`
+	TeamID  int64 `json:"teamId"`
 }
