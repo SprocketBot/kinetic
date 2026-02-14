@@ -31,6 +31,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 8 started: `W8-01` through `W8-03` completed on 2026-02-15
 - Week 8 in progress: `W8-04` through `W8-09` completed on 2026-02-15
 - Week 8 completed: `W8-10` not consumed (no blockers)
+- Week 9 planning prepared (implementation not started)
 - Next up: Week 9 execution (`W9-01` onward)
 
 ## Capacity Guardrails
@@ -650,3 +651,80 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 8 implementation commit
+
+---
+
+## Week 9 Execution Board (2026-04-06 to 2026-04-12)
+
+Week objective: deliver deterministic queue processing behavior for scrim creation (rating-first + queue-age tie-break) and explicit scrim lifecycle transitions (`created -> in_progress -> closed|voided`).
+
+Definition of done for Week 9:
+
+- Deterministic candidate ordering is implemented for queue-to-scrim promotion (rating-first with deterministic tie-breaks)
+- Team rating snapshot derivation path exists for matchmaking decisions (baseline aggregate model)
+- Scrim lifecycle transition endpoint(s) enforce legal state transitions
+- Matchmaking decision metadata captures ordering rationale fields needed for debugging
+- Integration tests cover ordering behavior and invalid lifecycle transitions
+- Week 9 onboarding notes and both smoke automations are available (`week9-smoke.sh` and `week9-k8s-smoke.sh`)
+
+### Scope Boundaries
+
+In scope:
+
+- deterministic promotion candidate ordering implementation
+- baseline team rating derivation for promotion decisions
+- scrim lifecycle transitions and validation
+- decision observability enrichment for ordering rationale
+- tests and onboarding/smoke docs
+
+Out of scope:
+
+- async queue worker/scheduler infrastructure
+- full rating update pipeline post-result submission
+- cross-mode tuning/config simulation tooling
+- scheduled-match to scrim convergence
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize Week 9 ordering + lifecycle contract and invariants | `docs/adr/014-scrim-promotion-ordering-and-lifecycle.md` |
+| Tue | 2h | Implement store-layer ordering logic and decision metadata enrichment | DB/store updates + migration adjustments if required |
+| Wed | 2h | Implement scrim lifecycle transition API/routes + validation | `/v1/scrims/{id}/state` (or equivalent contract) |
+| Thu | 2h | Integration tests for deterministic ordering + lifecycle guardrails | DB/API integration coverage |
+| Fri | 2h | Onboarding docs + local/k8s smoke scripts + cleanup/buffer | `docs/onboarding/week9.md`, `tools/week9-smoke.sh`, `tools/week9-k8s-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W9-01 | Define deterministic ordering and scrim lifecycle transition contract | 0.75h | Todo | ordering fields, tie-breaks, and legal transitions documented |
+| W9-02 | Extend persistence model for ordering rationale fields (if needed) | 1.0h | Todo | schema remains idempotent and backward-compatible |
+| W9-03 | Implement rating-first deterministic candidate ordering in promotion path | 1.25h | Todo | ordering is deterministic and stable under equal ratings |
+| W9-04 | Implement team rating snapshot derivation for promotion decisions | 0.75h | Todo | promotion path computes consistent team rating baseline |
+| W9-05 | Implement scrim lifecycle transition endpoint(s) and handlers | 1.25h | Todo | only legal state transitions succeed |
+| W9-06 | Add validation/error mapping for transition and promotion edge cases | 0.75h | Todo | invalid transitions/payloads map to stable 4xx |
+| W9-07 | Write unit tests for ordering and lifecycle validation logic | 0.75h | Todo | deterministic tie-break + transition matrix covered |
+| W9-08 | Write integration tests for ordering outcomes and lifecycle constraints | 1.0h | Todo | expected pairing and state transitions validated end-to-end |
+| W9-09 | Write Week 9 onboarding notes + local/k8s smoke automations | 0.5h | Todo | contributor can run week slice in local and minikube paths |
+| W9-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 9 Risks and Mitigations
+
+- Risk: ordering policy churn causes rework mid-week.
+  - Mitigation: lock deterministic tie-break hierarchy in ADR before coding.
+- Risk: lifecycle transitions conflict with future dispute/submission model.
+  - Mitigation: keep transition contract minimal and additive; avoid embedding result semantics.
+- Risk: rating snapshot derivation is expensive or ambiguous.
+  - Mitigation: ship simple baseline aggregation now; defer optimization and advanced weighting.
+- Risk: k8s smoke becomes flaky due to environment setup.
+  - Mitigation: reuse week8-k8s approach (ephemeral in-cluster Postgres + explicit preflight checks).
+
+### Week 9 Start Checklist
+
+- Week 8 smoke script passes: `./tools/week8-smoke.sh`
+- Week 8 minikube smoke script passes: `./tools/week8-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 9 implementation commit
