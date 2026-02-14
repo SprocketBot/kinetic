@@ -32,7 +32,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 8 in progress: `W8-04` through `W8-09` completed on 2026-02-15
 - Week 8 completed: `W8-10` not consumed (no blockers)
 - Week 9 planning prepared (implementation not started)
-- Next up: Week 9 execution (`W9-01` onward)
+- Week 9 started: `W9-01` completed on 2026-02-14
+- Next up: Week 9 execution (`W9-02` onward)
 
 ## Capacity Guardrails
 
@@ -698,7 +699,7 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W9-01 | Define deterministic ordering and scrim lifecycle transition contract | 0.75h | Todo | ordering fields, tie-breaks, and legal transitions documented |
+| W9-01 | Define deterministic ordering and scrim lifecycle transition contract | 0.75h | Done | ordering fields, tie-breaks, and legal transitions documented |
 | W9-02 | Extend persistence model for ordering rationale fields (if needed) | 1.0h | Todo | schema remains idempotent and backward-compatible |
 | W9-03 | Implement rating-first deterministic candidate ordering in promotion path | 1.25h | Todo | ordering is deterministic and stable under equal ratings |
 | W9-04 | Implement team rating snapshot derivation for promotion decisions | 0.75h | Todo | promotion path computes consistent team rating baseline |
