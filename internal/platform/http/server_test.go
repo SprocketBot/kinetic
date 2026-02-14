@@ -67,6 +67,7 @@ type fakeHierarchyStore struct {
 	createScrimErr     error
 	updateScrimErr     error
 	promoteQueueErr    error
+	processPromoteErr  error
 	createSeasonErr    error
 	createGroupErr     error
 	createFixtureErr   error
@@ -138,6 +139,13 @@ func (f *fakeHierarchyStore) UpdateScrimState(_ context.Context, _ hierarchy.Upd
 }
 func (f *fakeHierarchyStore) PromoteQueueToScrim(_ context.Context, _ hierarchy.PromoteQueueToScrimInput) (hierarchy.Scrim, error) {
 	return f.scrimToReturn, f.promoteQueueErr
+}
+func (f *fakeHierarchyStore) ProcessQueuePromotions(_ context.Context, _ hierarchy.ProcessQueuePromotionsInput) (hierarchy.ProcessQueuePromotionsResult, error) {
+	return hierarchy.ProcessQueuePromotionsResult{
+		ProcessedQueues:   1,
+		PromotionsCreated: 1,
+		Conflicts:         0,
+	}, f.processPromoteErr
 }
 func (f *fakeHierarchyStore) ListPlayerRatings(_ context.Context) ([]hierarchy.PlayerRating, error) {
 	return f.ratingsToList, nil
@@ -519,6 +527,21 @@ func TestUpdateScrimStateSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPatch, "/v1/scrims", strings.NewReader(`{"scrimId":1,"state":"in_progress"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestProcessQueuePromotionsSuccess(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions/process", strings.NewReader(`{"queueId":0}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

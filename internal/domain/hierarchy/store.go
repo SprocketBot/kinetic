@@ -25,6 +25,7 @@ type Store interface {
 	UpdateScrimState(ctx context.Context, input UpdateScrimStateInput) (Scrim, error)
 	ListScrims(ctx context.Context) ([]Scrim, error)
 	PromoteQueueToScrim(ctx context.Context, input PromoteQueueToScrimInput) (Scrim, error)
+	ProcessQueuePromotions(ctx context.Context, input ProcessQueuePromotionsInput) (ProcessQueuePromotionsResult, error)
 	ListPlayerRatings(ctx context.Context) ([]PlayerRating, error)
 	ListMatchmakingDecisions(ctx context.Context) ([]MatchmakingDecision, error)
 	CreateSeason(ctx context.Context, input CreateSeasonInput) (Season, error)

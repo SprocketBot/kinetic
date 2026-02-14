@@ -299,6 +299,10 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"queueId": queueID,
 	}, http.StatusConflict)
 
+	createEntity(t, server, "/v1/scrim-promotions/process", map[string]any{
+		"queueId": queueID,
+	}, http.StatusOK)
+
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": queueID,
 		"teamId":  teamID,
@@ -390,6 +394,10 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 
 	createEntity(t, server, "/v1/scrim-promotions", map[string]any{
 		"queueId": int64(0),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/scrim-promotions/process", map[string]any{
+		"queueId": int64(-1),
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/matches", map[string]any{

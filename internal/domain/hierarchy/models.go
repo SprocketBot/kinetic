@@ -218,6 +218,16 @@ type UpdateScrimStateInput struct {
 	State   string `json:"state"`
 }
 
+type ProcessQueuePromotionsInput struct {
+	QueueID int64 `json:"queueId"`
+}
+
+type ProcessQueuePromotionsResult struct {
+	ProcessedQueues   int32 `json:"processedQueues"`
+	PromotionsCreated int32 `json:"promotionsCreated"`
+	Conflicts         int32 `json:"conflicts"`
+}
+
 type CreateSeasonInput struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`

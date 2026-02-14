@@ -747,6 +747,58 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 	return scrim, nil
 }
 
+func (s *HierarchyStore) ProcessQueuePromotions(ctx context.Context, input hierarchy.ProcessQueuePromotionsInput) (hierarchy.ProcessQueuePromotionsResult, error) {
+	if err := hierarchy.ValidateProcessQueuePromotionsInput(input); err != nil {
+		return hierarchy.ProcessQueuePromotionsResult{}, err
+	}
+
+	queueIDs := make([]int64, 0)
+	if input.QueueID > 0 {
+		queueIDs = append(queueIDs, input.QueueID)
+	} else {
+		const queuesStmt = `
+SELECT id
+FROM queues
+WHERE is_active = TRUE
+ORDER BY id ASC;`
+		rows, err := s.db.QueryContext(ctx, queuesStmt)
+		if err != nil {
+			return hierarchy.ProcessQueuePromotionsResult{}, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var queueID int64
+			if err := rows.Scan(&queueID); err != nil {
+				return hierarchy.ProcessQueuePromotionsResult{}, err
+			}
+			queueIDs = append(queueIDs, queueID)
+		}
+		if err := rows.Err(); err != nil {
+			return hierarchy.ProcessQueuePromotionsResult{}, err
+		}
+	}
+
+	result := hierarchy.ProcessQueuePromotionsResult{}
+	for _, queueID := range queueIDs {
+		result.ProcessedQueues++
+		for {
+			_, err := s.PromoteQueueToScrim(ctx, hierarchy.PromoteQueueToScrimInput{QueueID: queueID})
+			if err == nil {
+				result.PromotionsCreated++
+				continue
+			}
+			if errors.Is(err, hierarchy.ErrConflict) || errors.Is(err, hierarchy.ErrDependency) {
+				result.Conflicts++
+				break
+			}
+			return hierarchy.ProcessQueuePromotionsResult{}, err
+		}
+	}
+
+	return result, nil
+}
+
 func (s *HierarchyStore) ListPlayerRatings(ctx context.Context) ([]hierarchy.PlayerRating, error) {
 	const stmt = `
 SELECT id, player_id, context_key, rating, uncertainty, matches_played, last_competed_at, is_active, updated_at

@@ -36,7 +36,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 9 in progress: `W9-02` through `W9-09` completed on 2026-02-14
 - Week 9 completed: `W9-10` not consumed (no blockers)
 - Week 10 planning prepared (implementation not started)
-- Next up: Week 10 execution (`W10-01` onward)
+- Week 10 started: `W10-01` completed on 2026-02-14
+- Next up: Week 10 execution (`W10-02` onward)
 
 ## Capacity Guardrails
 
@@ -777,7 +778,7 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W10-01 | Define queue promotion processing contract and idempotency semantics | 0.75h | Todo | processing trigger, safety constraints, and response contract documented |
+| W10-01 | Define queue promotion processing contract and idempotency semantics | 0.75h | Done | processing trigger, safety constraints, and response contract documented |
 | W10-02 | Add persistence hooks for processing run metadata (if needed) | 0.75h | Todo | schema remains additive and idempotent |
 | W10-03 | Implement processing service to evaluate/promote eligible queues deterministically | 1.25h | Todo | eligible queues produce deterministic promotions |
 | W10-04 | Add concurrency/idempotency guards for repeated processing calls | 1.0h | Todo | duplicate invocations do not duplicate promotions |

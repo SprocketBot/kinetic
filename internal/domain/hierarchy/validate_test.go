@@ -385,3 +385,21 @@ func TestValidateUpdateScrimStateInput(t *testing.T) {
 		t.Fatal("expected missing scrimId to fail validation")
 	}
 }
+
+func TestValidateProcessQueuePromotionsInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateProcessQueuePromotionsInput(ProcessQueuePromotionsInput{
+		QueueID: 0,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateProcessQueuePromotionsInput(ProcessQueuePromotionsInput{
+		QueueID: -1,
+	})
+	if err == nil {
+		t.Fatal("expected negative queueId to fail validation")
+	}
+}

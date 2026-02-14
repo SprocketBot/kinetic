@@ -1041,3 +1041,86 @@ func TestHierarchyStoreScrimStateTransitions(t *testing.T) {
 		t.Fatalf("expected conflict on invalid transition, got: %v", err)
 	}
 }
+
+func TestHierarchyStoreProcessQueuePromotionsIdempotent(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League W10 %d", suffix), Slug: fmt.Sprintf("league-w10-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise W10 %d", suffix), Slug: fmt.Sprintf("franchise-w10-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W10 A %d", suffix), Slug: fmt.Sprintf("club-w10-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W10 B %d", suffix), Slug: fmt.Sprintf("club-w10-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubA.ID, Name: fmt.Sprintf("Team W10 A %d", suffix), Slug: fmt.Sprintf("team-w10-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubB.ID, Name: fmt.Sprintf("Team W10 B %d", suffix), Slug: fmt.Sprintf("team-w10-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+
+	queue, err := store.CreateQueue(ctx, hierarchy.CreateQueueInput{Name: fmt.Sprintf("Queue W10 %d", suffix), Slug: fmt.Sprintf("queue-w10-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+	if _, err := store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{QueueID: queue.ID, TeamID: teamA.ID}); err != nil {
+		t.Fatalf("failed to enqueue team A: %v", err)
+	}
+	if _, err := store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{QueueID: queue.ID, TeamID: teamB.ID}); err != nil {
+		t.Fatalf("failed to enqueue team B: %v", err)
+	}
+
+	first, err := store.ProcessQueuePromotions(ctx, hierarchy.ProcessQueuePromotionsInput{QueueID: queue.ID})
+	if err != nil {
+		t.Fatalf("failed to process queue promotions first run: %v", err)
+	}
+	if first.PromotionsCreated != 1 {
+		t.Fatalf("expected one promotion on first run, got %d", first.PromotionsCreated)
+	}
+
+	second, err := store.ProcessQueuePromotions(ctx, hierarchy.ProcessQueuePromotionsInput{QueueID: queue.ID})
+	if err != nil {
+		t.Fatalf("failed to process queue promotions second run: %v", err)
+	}
+	if second.PromotionsCreated != 0 {
+		t.Fatalf("expected zero promotions on second run, got %d", second.PromotionsCreated)
+	}
+	if second.Conflicts == 0 {
+		t.Fatal("expected conflict count > 0 on second run")
+	}
+}

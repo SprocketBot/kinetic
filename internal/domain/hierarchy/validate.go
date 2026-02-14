@@ -165,6 +165,13 @@ func ValidateUpdateScrimStateInput(input UpdateScrimStateInput) error {
 	}
 }
 
+func ValidateProcessQueuePromotionsInput(input ProcessQueuePromotionsInput) error {
+	if input.QueueID < 0 {
+		return fmt.Errorf("%w: queueId must be zero (all queues) or greater", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)
