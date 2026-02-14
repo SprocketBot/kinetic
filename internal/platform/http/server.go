@@ -429,7 +429,33 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				handleHierarchyError(w, err)
 				return
 			}
+			logger.Info(
+				"scrim promotion processing completed",
+				"queueId", input.QueueID,
+				"processedQueues", result.ProcessedQueues,
+				"promotionsCreated", result.PromotionsCreated,
+				"conflicts", result.Conflicts,
+			)
 			writeJSON(w, http.StatusOK, result)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/promotion-processing-runs", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			runs, err := deps.HierarchyStore.ListPromotionProcessingRuns(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list promotion processing runs", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, runs)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

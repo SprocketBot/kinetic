@@ -228,6 +228,16 @@ type ProcessQueuePromotionsResult struct {
 	Conflicts         int32 `json:"conflicts"`
 }
 
+type PromotionProcessingRun struct {
+	ID                int64     `json:"id"`
+	QueueID           *int64    `json:"queueId,omitempty"`
+	ProcessedQueues   int32     `json:"processedQueues"`
+	PromotionsCreated int32     `json:"promotionsCreated"`
+	Conflicts         int32     `json:"conflicts"`
+	DurationMs        int32     `json:"durationMs"`
+	CreatedAt         time.Time `json:"createdAt"`
+}
+
 type CreateSeasonInput struct {
 	Name string `json:"name"`
 	Slug string `json:"slug"`

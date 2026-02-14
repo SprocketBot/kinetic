@@ -1123,4 +1123,12 @@ func TestHierarchyStoreProcessQueuePromotionsIdempotent(t *testing.T) {
 	if second.Conflicts == 0 {
 		t.Fatal("expected conflict count > 0 on second run")
 	}
+
+	runs, err := store.ListPromotionProcessingRuns(ctx)
+	if err != nil {
+		t.Fatalf("failed to list promotion processing runs: %v", err)
+	}
+	if len(runs) == 0 {
+		t.Fatal("expected at least one promotion processing run")
+	}
 }

@@ -37,7 +37,9 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 9 completed: `W9-10` not consumed (no blockers)
 - Week 10 planning prepared (implementation not started)
 - Week 10 started: `W10-01` completed on 2026-02-14
-- Next up: Week 10 execution (`W10-02` onward)
+- Week 10 in progress: `W10-02` through `W10-09` completed on 2026-02-14
+- Week 10 completed: `W10-10` not consumed (no blockers)
+- Next up: Week 11 execution (`W11-01` onward)
 
 ## Capacity Guardrails
 
@@ -779,15 +781,15 @@ Out of scope:
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
 | W10-01 | Define queue promotion processing contract and idempotency semantics | 0.75h | Done | processing trigger, safety constraints, and response contract documented |
-| W10-02 | Add persistence hooks for processing run metadata (if needed) | 0.75h | Todo | schema remains additive and idempotent |
-| W10-03 | Implement processing service to evaluate/promote eligible queues deterministically | 1.25h | Todo | eligible queues produce deterministic promotions |
-| W10-04 | Add concurrency/idempotency guards for repeated processing calls | 1.0h | Todo | duplicate invocations do not duplicate promotions |
-| W10-05 | Implement API endpoint/handler for promotion processing trigger | 1.0h | Todo | endpoint returns stable processing summary payload |
-| W10-06 | Add validation and error mapping for processing requests | 0.75h | Todo | malformed/unsupported requests return stable 4xx |
-| W10-07 | Write unit tests for processing summary and safety logic | 0.75h | Todo | idempotency and conflict paths covered |
-| W10-08 | Write integration tests for concurrent/duplicate processing behavior | 1.0h | Todo | no duplicate promotion side effects under repeated calls |
-| W10-09 | Write Week 10 onboarding notes + local/k8s smoke automations | 0.5h | Todo | contributor can run week slice in local and minikube paths |
-| W10-10 | Risk/overflow buffer | 1.25h | Todo | consumed only for blockers |
+| W10-02 | Add persistence hooks for processing run metadata (if needed) | 0.75h | Done | schema remains additive and idempotent |
+| W10-03 | Implement processing service to evaluate/promote eligible queues deterministically | 1.25h | Done | eligible queues produce deterministic promotions |
+| W10-04 | Add concurrency/idempotency guards for repeated processing calls | 1.0h | Done | duplicate invocations do not duplicate promotions |
+| W10-05 | Implement API endpoint/handler for promotion processing trigger | 1.0h | Done | endpoint returns stable processing summary payload |
+| W10-06 | Add validation and error mapping for processing requests | 0.75h | Done | malformed/unsupported requests return stable 4xx |
+| W10-07 | Write unit tests for processing summary and safety logic | 0.75h | Done | idempotency and conflict paths covered |
+| W10-08 | Write integration tests for concurrent/duplicate processing behavior | 1.0h | Done | no duplicate promotion side effects under repeated calls |
+| W10-09 | Write Week 10 onboarding notes + local/k8s smoke automations | 0.5h | Done | contributor can run week slice in local and minikube paths |
+| W10-10 | Risk/overflow buffer | 1.25h | Done | not consumed (no blockers) |
 
 ### Week 10 Risks and Mitigations
 

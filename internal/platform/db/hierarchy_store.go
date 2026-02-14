@@ -751,6 +751,7 @@ func (s *HierarchyStore) ProcessQueuePromotions(ctx context.Context, input hiera
 	if err := hierarchy.ValidateProcessQueuePromotionsInput(input); err != nil {
 		return hierarchy.ProcessQueuePromotionsResult{}, err
 	}
+	startedAt := time.Now().UTC()
 
 	queueIDs := make([]int64, 0)
 	if input.QueueID > 0 {
@@ -796,7 +797,63 @@ ORDER BY id ASC;`
 		}
 	}
 
+	const runStmt = `
+INSERT INTO promotion_processing_runs(queue_id, processed_queues, promotions_created, conflicts, duration_ms)
+VALUES ($1, $2, $3, $4, $5);`
+	var queueID *int64
+	if input.QueueID > 0 {
+		queueID = &input.QueueID
+	}
+	durationMs := int32(time.Since(startedAt).Milliseconds())
+	if durationMs < 0 {
+		durationMs = 0
+	}
+	if _, err := s.db.ExecContext(
+		ctx,
+		runStmt,
+		queueID,
+		result.ProcessedQueues,
+		result.PromotionsCreated,
+		result.Conflicts,
+		durationMs,
+	); err != nil {
+		return hierarchy.ProcessQueuePromotionsResult{}, err
+	}
+
 	return result, nil
+}
+
+func (s *HierarchyStore) ListPromotionProcessingRuns(ctx context.Context) ([]hierarchy.PromotionProcessingRun, error) {
+	const stmt = `
+SELECT id, queue_id, processed_queues, promotions_created, conflicts, duration_ms, created_at
+FROM promotion_processing_runs
+ORDER BY id DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	runs := make([]hierarchy.PromotionProcessingRun, 0)
+	for rows.Next() {
+		var run hierarchy.PromotionProcessingRun
+		if err := rows.Scan(
+			&run.ID,
+			&run.QueueID,
+			&run.ProcessedQueues,
+			&run.PromotionsCreated,
+			&run.Conflicts,
+			&run.DurationMs,
+			&run.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		runs = append(runs, run)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return runs, nil
 }
 
 func (s *HierarchyStore) ListPlayerRatings(ctx context.Context) ([]hierarchy.PlayerRating, error) {

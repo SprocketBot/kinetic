@@ -48,6 +48,7 @@ type fakeHierarchyStore struct {
 	queuesToList       []hierarchy.Queue
 	queueEntriesToList []hierarchy.QueueEntry
 	scrimsToList       []hierarchy.Scrim
+	runsToList         []hierarchy.PromotionProcessingRun
 	ratingsToList      []hierarchy.PlayerRating
 	decisionsToList    []hierarchy.MatchmakingDecision
 	seasonsToList      []hierarchy.Season
@@ -146,6 +147,9 @@ func (f *fakeHierarchyStore) ProcessQueuePromotions(_ context.Context, _ hierarc
 		PromotionsCreated: 1,
 		Conflicts:         0,
 	}, f.processPromoteErr
+}
+func (f *fakeHierarchyStore) ListPromotionProcessingRuns(_ context.Context) ([]hierarchy.PromotionProcessingRun, error) {
+	return f.runsToList, nil
 }
 func (f *fakeHierarchyStore) ListPlayerRatings(_ context.Context) ([]hierarchy.PlayerRating, error) {
 	return f.ratingsToList, nil
@@ -542,6 +546,35 @@ func TestProcessQueuePromotionsSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions/process", strings.NewReader(`{"queueId":0}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListPromotionProcessingRunsSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	queueID := int64(10)
+	store := &fakeHierarchyStore{
+		runsToList: []hierarchy.PromotionProcessingRun{
+			{
+				ID:                1,
+				QueueID:           &queueID,
+				ProcessedQueues:   1,
+				PromotionsCreated: 1,
+				Conflicts:         0,
+				DurationMs:        12,
+				CreatedAt:         now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/promotion-processing-runs", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

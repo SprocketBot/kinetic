@@ -317,6 +317,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-entries")
 	assertListNotEmpty(t, server, "/v1/scrims")
+	assertListNotEmpty(t, server, "/v1/promotion-processing-runs")
 	assertListNotEmpty(t, server, "/v1/player-ratings")
 	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
 	assertListNotEmpty(t, server, "/v1/seasons")
