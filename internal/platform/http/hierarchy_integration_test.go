@@ -174,6 +174,18 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":  teamTwoID,
 	}, http.StatusConflict)
 
+	patchEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+		"stage":   int32(2),
+	}, http.StatusOK)
+
+	patchEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+		"stage":   int32(0),
+	}, http.StatusBadRequest)
+
 	deleteEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": queueID,
 		"teamId":  teamID,
@@ -235,6 +247,47 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"awayTimeRatifiedAt": "2030-01-01T09:00:00Z",
 	}, http.StatusCreated)
 
+	createEntity(t, server, "/v1/scrims", map[string]any{
+		"queueId":    queueID,
+		"homeTeamId": teamID,
+		"awayTeamId": teamTwoID,
+		"state":      "created",
+	}, http.StatusCreated)
+
+	if _, err := conn.ExecContext(
+		ctx,
+		`INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played) VALUES ($1, $2, $3, $4, $5)`,
+		playerTwoID,
+		"scrim-3v3",
+		1025,
+		320,
+		7,
+	); err != nil {
+		t.Fatalf("failed to insert player rating baseline row: %v", err)
+	}
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusCreated)
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamTwoID,
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/scrim-promotions", map[string]any{
+		"queueId": queueID,
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/scrim-promotions", map[string]any{
+		"queueId": queueID,
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusCreated)
+
 	assertListNotEmpty(t, server, "/v1/leagues")
 	assertListNotEmpty(t, server, "/v1/franchises")
 	assertListNotEmpty(t, server, "/v1/clubs")
@@ -243,6 +296,9 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-entries")
+	assertListNotEmpty(t, server, "/v1/scrims")
+	assertListNotEmpty(t, server, "/v1/player-ratings")
+	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
 	assertListNotEmpty(t, server, "/v1/seasons")
 	assertListNotEmpty(t, server, "/v1/schedule-groups")
 	assertListNotEmpty(t, server, "/v1/fixtures")
@@ -296,6 +352,23 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": int64(0),
 		"teamId":  int64(1),
+	}, http.StatusBadRequest)
+
+	patchEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": int64(1),
+		"teamId":  int64(1),
+		"stage":   int32(0),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/scrims", map[string]any{
+		"queueId":    int64(1),
+		"homeTeamId": int64(1),
+		"awayTeamId": int64(1),
+		"state":      "created",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/scrim-promotions", map[string]any{
+		"queueId": int64(0),
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/matches", map[string]any{
@@ -363,6 +436,24 @@ func deleteEntity(t *testing.T, server *Server, path string, payload map[string]
 	}
 
 	req := httptest.NewRequest(http.MethodDelete, path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != expectedStatus {
+		t.Fatalf("expected status %d for %s, got %d body=%s", expectedStatus, path, rr.Code, rr.Body.String())
+	}
+}
+
+func patchEntity(t *testing.T, server *Server, path string, payload map[string]any, expectedStatus int) {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("failed to marshal payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPatch, path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	server.Handler().ServeHTTP(rr, req)

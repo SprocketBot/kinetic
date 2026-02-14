@@ -293,3 +293,67 @@ func TestValidateCreateMatchInput(t *testing.T) {
 		t.Fatal("expected ready without scheduling ratification to fail validation")
 	}
 }
+
+func TestValidateAdvanceQueueEntryStageInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateAdvanceQueueEntryStageInput(AdvanceQueueEntryStageInput{
+		QueueID: 1,
+		TeamID:  2,
+		Stage:   2,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateAdvanceQueueEntryStageInput(AdvanceQueueEntryStageInput{
+		QueueID: 1,
+		TeamID:  2,
+		Stage:   0,
+	})
+	if err == nil {
+		t.Fatal("expected invalid stage to fail validation")
+	}
+}
+
+func TestValidateCreateScrimInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateScrimInput(CreateScrimInput{
+		QueueID:    1,
+		HomeTeamID: 10,
+		AwayTeamID: 20,
+		State:      "created",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateScrimInput(CreateScrimInput{
+		QueueID:    1,
+		HomeTeamID: 10,
+		AwayTeamID: 10,
+		State:      "created",
+	})
+	if err == nil {
+		t.Fatal("expected equal teams to fail validation")
+	}
+}
+
+func TestValidatePromoteQueueToScrimInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidatePromoteQueueToScrimInput(PromoteQueueToScrimInput{
+		QueueID: 1,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidatePromoteQueueToScrimInput(PromoteQueueToScrimInput{
+		QueueID: 0,
+	})
+	if err == nil {
+		t.Fatal("expected missing queueId to fail validation")
+	}
+}

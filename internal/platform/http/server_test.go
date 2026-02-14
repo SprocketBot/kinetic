@@ -34,6 +34,7 @@ type fakeHierarchyStore struct {
 	membershipToReturn hierarchy.RosterMembership
 	queueToReturn      hierarchy.Queue
 	queueEntryToReturn hierarchy.QueueEntry
+	scrimToReturn      hierarchy.Scrim
 	seasonToReturn     hierarchy.Season
 	groupToReturn      hierarchy.ScheduleGroup
 	fixtureToReturn    hierarchy.Fixture
@@ -46,6 +47,9 @@ type fakeHierarchyStore struct {
 	membershipsToList  []hierarchy.RosterMembership
 	queuesToList       []hierarchy.Queue
 	queueEntriesToList []hierarchy.QueueEntry
+	scrimsToList       []hierarchy.Scrim
+	ratingsToList      []hierarchy.PlayerRating
+	decisionsToList    []hierarchy.MatchmakingDecision
 	seasonsToList      []hierarchy.Season
 	groupsToList       []hierarchy.ScheduleGroup
 	fixturesToList     []hierarchy.Fixture
@@ -59,6 +63,9 @@ type fakeHierarchyStore struct {
 	createQueueErr     error
 	enqueueTeamErr     error
 	leaveQueueErr      error
+	advanceStageErr    error
+	createScrimErr     error
+	promoteQueueErr    error
 	createSeasonErr    error
 	createGroupErr     error
 	createFixtureErr   error
@@ -113,8 +120,26 @@ func (f *fakeHierarchyStore) EnqueueTeam(_ context.Context, _ hierarchy.EnqueueT
 func (f *fakeHierarchyStore) LeaveQueue(_ context.Context, _ hierarchy.LeaveQueueInput) (hierarchy.QueueEntry, error) {
 	return f.queueEntryToReturn, f.leaveQueueErr
 }
+func (f *fakeHierarchyStore) AdvanceQueueEntryStage(_ context.Context, _ hierarchy.AdvanceQueueEntryStageInput) (hierarchy.QueueEntry, error) {
+	return f.queueEntryToReturn, f.advanceStageErr
+}
 func (f *fakeHierarchyStore) ListActiveQueueEntries(_ context.Context) ([]hierarchy.QueueEntry, error) {
 	return f.queueEntriesToList, nil
+}
+func (f *fakeHierarchyStore) CreateScrim(_ context.Context, _ hierarchy.CreateScrimInput) (hierarchy.Scrim, error) {
+	return f.scrimToReturn, f.createScrimErr
+}
+func (f *fakeHierarchyStore) ListScrims(_ context.Context) ([]hierarchy.Scrim, error) {
+	return f.scrimsToList, nil
+}
+func (f *fakeHierarchyStore) PromoteQueueToScrim(_ context.Context, _ hierarchy.PromoteQueueToScrimInput) (hierarchy.Scrim, error) {
+	return f.scrimToReturn, f.promoteQueueErr
+}
+func (f *fakeHierarchyStore) ListPlayerRatings(_ context.Context) ([]hierarchy.PlayerRating, error) {
+	return f.ratingsToList, nil
+}
+func (f *fakeHierarchyStore) ListMatchmakingDecisions(_ context.Context) ([]hierarchy.MatchmakingDecision, error) {
+	return f.decisionsToList, nil
 }
 func (f *fakeHierarchyStore) CreateSeason(_ context.Context, _ hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
 	return f.seasonToReturn, f.createSeasonErr
@@ -439,6 +464,31 @@ func TestCreateMatchReadySuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/matches", strings.NewReader(
 		`{"fixtureId":10,"homeTeamId":20,"awayTeamId":30,"state":"ready","scheduledFor":"2030-01-01T10:00:00Z","homeTimeRatifiedAt":"2030-01-01T08:00:00Z","awayTimeRatifiedAt":"2030-01-01T09:00:00Z"}`,
 	))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestPromoteQueueToScrimSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		scrimToReturn: hierarchy.Scrim{
+			ID:         1,
+			QueueID:    10,
+			HomeTeamID: 20,
+			AwayTeamID: 30,
+			State:      "created",
+			CreatedAt:  now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions", strings.NewReader(`{"queueId":10}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

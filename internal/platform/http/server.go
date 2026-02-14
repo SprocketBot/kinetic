@@ -327,6 +327,111 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				return
 			}
 			writeJSON(w, http.StatusOK, entry)
+		case http.MethodPatch:
+			var input hierarchy.AdvanceQueueEntryStageInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			entry, err := deps.HierarchyStore.AdvanceQueueEntryStage(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, entry)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/scrims", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			scrims, err := deps.HierarchyStore.ListScrims(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list scrims", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, scrims)
+		case http.MethodPost:
+			var input hierarchy.CreateScrimInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			scrim, err := deps.HierarchyStore.CreateScrim(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, scrim)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/scrim-promotions", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var input hierarchy.PromoteQueueToScrimInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			scrim, err := deps.HierarchyStore.PromoteQueueToScrim(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, scrim)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/player-ratings", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			ratings, err := deps.HierarchyStore.ListPlayerRatings(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list player ratings", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, ratings)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/matchmaking-decisions", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			decisions, err := deps.HierarchyStore.ListMatchmakingDecisions(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list matchmaking decisions", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, decisions)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

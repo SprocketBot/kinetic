@@ -14,17 +14,27 @@ Map each matchmaking invariant to actionable implementation tasks across schema,
 - Do not mark an invariant complete without test coverage and telemetry.
 - Keep thresholds in config, not hardcoded service logic.
 
+## Week 8 Mapping (Implemented 2026-02-15)
+
+- Implemented foundations:
+  - Invariant 1: `player_ratings` schema, unique active identity index, and read endpoint.
+  - Invariant 4: queue entry monotonic stage tracking (`expansion_stage`, `stage_advanced_at`) with regression rejection.
+  - Invariant 9: `matchmaking_decisions` persistence during queue-to-scrim promotion and read endpoint.
+- Deferred by design:
+  - ADR-012 and ADR-013 replay/evidence workflows.
+  - async matcher orchestration and production rating update pipeline.
+
 ## Invariant 1: Single Rating Identity
 
 Schema tasks:
 
-- [ ] Add `player_ratings` table with unique active row per `(player_id, context_key)`.
-- [ ] Add columns: `rating`, `uncertainty`, `matches_played`, `last_competed_at`, `updated_at`.
-- [ ] Add unique partial index for active identity and FK to `players`.
+- [x] Add `player_ratings` table with unique active row per `(player_id, context_key)`.
+- [x] Add columns: `rating`, `uncertainty`, `matches_played`, `last_competed_at`, `updated_at`.
+- [x] Add unique partial index for active identity and FK to `players`.
 
 API tasks:
 
-- [ ] Add read endpoint for player rating snapshot.
+- [x] Add read endpoint for player rating snapshot.
 - [ ] Ensure no write endpoint allows duplicate active ratings per context.
 
 Service tasks:
@@ -81,7 +91,7 @@ Testing tasks:
 
 Schema tasks:
 
-- [ ] Add queue attempt tracking fields: `enqueued_at`, `current_stage`, `stage_advanced_at`.
+- [x] Add queue attempt tracking fields: `enqueued_at`, `current_stage`, `stage_advanced_at`.
 
 API tasks:
 
@@ -90,7 +100,7 @@ API tasks:
 Service tasks:
 
 - [ ] Implement stage function from queue age.
-- [ ] Block stage regression within one active queue attempt.
+- [x] Block stage regression within one active queue attempt.
 
 Testing tasks:
 
@@ -181,15 +191,15 @@ Testing tasks:
 
 Schema tasks:
 
-- [ ] Add `matchmaking_decisions` table with queue age, stage, rating spread, cross-group flag.
+- [x] Add `matchmaking_decisions` table with queue age, stage, rating spread, cross-group flag.
 
 API tasks:
 
-- [ ] Add admin endpoint to query recent decision records.
+- [x] Add admin endpoint to query recent decision records.
 
 Service tasks:
 
-- [ ] Emit decision record at match creation time.
+- [x] Emit decision record at match creation time.
 - [ ] Log decision ID in structured logs for traceability.
 
 Testing tasks:

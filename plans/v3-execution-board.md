@@ -28,8 +28,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 7 started: `W7-01` through `W7-03` completed on 2026-02-15
 - Week 7 in progress: `W7-04` through `W7-09` completed on 2026-02-15
 - Week 7 completed: `W7-10` not consumed (no blockers)
-- Week 8 planning prepared (implementation not started)
-- Next up: Week 8 execution (`W8-01` onward)
+- Week 8 started: `W8-01` through `W8-03` completed on 2026-02-15
+- Week 8 in progress: `W8-04` through `W8-09` completed on 2026-02-15
+- Week 8 completed: `W8-10` not consumed (no blockers)
+- Next up: Week 9 execution (`W9-01` onward)
 
 ## Capacity Guardrails
 
@@ -606,16 +608,16 @@ Out of scope:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| W8-01 | Map Week 8 slice to ADR-010/011 invariants and ADR-012/013 boundaries | 0.75h | Todo | Week 8 tasks linked to invariant checklist with explicit replay boundary notes |
-| W8-02 | Add migration for scrim + rating identity + queue stage/decision metadata foundations | 1.25h | Todo | schema migrates cleanly and is idempotent |
-| W8-03 | Extend domain/store interfaces for scrim and rating snapshot workflows | 0.75h | Todo | compile-safe contracts in place |
-| W8-04 | Implement DB methods for scrim create/list/promotion + decision metadata writes | 1.25h | Todo | promotion is transactional and observability fields persist |
-| W8-05 | Implement API handlers/routes for scrim workflows and rating snapshot reads | 1.25h | Todo | stable JSON/status codes for create/list/promote/read |
-| W8-06 | Add validation and error mapping for scrim/rating payloads | 0.75h | Todo | invalid payloads map to stable 4xx |
-| W8-07 | Write unit tests for foundational invariants | 0.75h | Todo | single identity + monotonic stage + lifecycle guard checks covered |
-| W8-08 | Write integration tests for queue-to-scrim + invariant persistence behavior | 1.0h | Todo | duplicate/insufficient queue entry and decision metadata cases validated |
-| W8-09 | Write Week 8 onboarding notes + smoke automation | 0.5h | Todo | contributor can run scrim checks quickly |
-| W8-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W8-01 | Map Week 8 slice to ADR-010/011 invariants and ADR-012/013 boundaries | 0.75h | Done | Week 8 tasks linked to invariant checklist with explicit replay boundary notes |
+| W8-02 | Add migration for scrim + rating identity + queue stage/decision metadata foundations | 1.25h | Done | schema migrates cleanly and is idempotent |
+| W8-03 | Extend domain/store interfaces for scrim and rating snapshot workflows | 0.75h | Done | compile-safe contracts in place |
+| W8-04 | Implement DB methods for scrim create/list/promotion + decision metadata writes | 1.25h | Done | promotion is transactional and observability fields persist |
+| W8-05 | Implement API handlers/routes for scrim workflows and rating snapshot reads | 1.25h | Done | stable JSON/status codes for create/list/promote/read |
+| W8-06 | Add validation and error mapping for scrim/rating payloads | 0.75h | Done | invalid payloads map to stable 4xx |
+| W8-07 | Write unit tests for foundational invariants | 0.75h | Done | single identity + monotonic stage + lifecycle guard checks covered |
+| W8-08 | Write integration tests for queue-to-scrim + invariant persistence behavior | 1.0h | Done | duplicate/insufficient queue entry and decision metadata cases validated |
+| W8-09 | Write Week 8 onboarding notes + smoke automation | 0.5h | Done | contributor can run scrim checks quickly |
+| W8-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 8 Risks and Mitigations
 

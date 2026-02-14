@@ -66,8 +66,44 @@ type QueueEntry struct {
 	QueueID   int64      `json:"queueId"`
 	TeamID    int64      `json:"teamId"`
 	IsActive  bool       `json:"isActive"`
+	Stage     int32      `json:"stage"`
 	CreatedAt time.Time  `json:"createdAt"`
+	StageAt   time.Time  `json:"stageAt"`
 	LeftAt    *time.Time `json:"leftAt,omitempty"`
+}
+
+type Scrim struct {
+	ID         int64      `json:"id"`
+	QueueID    int64      `json:"queueId"`
+	HomeTeamID int64      `json:"homeTeamId"`
+	AwayTeamID int64      `json:"awayTeamId"`
+	State      string     `json:"state"`
+	CreatedAt  time.Time  `json:"createdAt"`
+	StartedAt  *time.Time `json:"startedAt,omitempty"`
+	EndedAt    *time.Time `json:"endedAt,omitempty"`
+}
+
+type PlayerRating struct {
+	ID             int64      `json:"id"`
+	PlayerID       int64      `json:"playerId"`
+	ContextKey     string     `json:"contextKey"`
+	Rating         int32      `json:"rating"`
+	Uncertainty    int32      `json:"uncertainty"`
+	MatchesPlayed  int32      `json:"matchesPlayed"`
+	LastCompetedAt *time.Time `json:"lastCompetedAt,omitempty"`
+	IsActive       bool       `json:"isActive"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
+}
+
+type MatchmakingDecision struct {
+	ID               int64     `json:"id"`
+	ScrimID          int64     `json:"scrimId"`
+	QueueID          int64     `json:"queueId"`
+	QueueWaitSeconds int32     `json:"queueWaitSeconds"`
+	ExpansionStage   int32     `json:"expansionStage"`
+	RatingSpread     int32     `json:"ratingSpread"`
+	CrossGroup       bool      `json:"crossGroup"`
+	CreatedAt        time.Time `json:"createdAt"`
 }
 
 type Season struct {
@@ -154,6 +190,23 @@ type EnqueueTeamInput struct {
 type LeaveQueueInput struct {
 	QueueID int64 `json:"queueId"`
 	TeamID  int64 `json:"teamId"`
+}
+
+type AdvanceQueueEntryStageInput struct {
+	QueueID int64 `json:"queueId"`
+	TeamID  int64 `json:"teamId"`
+	Stage   int32 `json:"stage"`
+}
+
+type CreateScrimInput struct {
+	QueueID    int64  `json:"queueId"`
+	HomeTeamID int64  `json:"homeTeamId"`
+	AwayTeamID int64  `json:"awayTeamId"`
+	State      string `json:"state"`
+}
+
+type PromoteQueueToScrimInput struct {
+	QueueID int64 `json:"queueId"`
 }
 
 type CreateSeasonInput struct {

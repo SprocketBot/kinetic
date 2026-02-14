@@ -108,6 +108,49 @@ func ValidateLeaveQueueInput(input LeaveQueueInput) error {
 	return nil
 }
 
+func ValidateAdvanceQueueEntryStageInput(input AdvanceQueueEntryStageInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.Stage < 1 {
+		return fmt.Errorf("%w: stage must be greater than or equal to one", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreateScrimInput(input CreateScrimInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeTeamID <= 0 {
+		return fmt.Errorf("%w: homeTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.AwayTeamID <= 0 {
+		return fmt.Errorf("%w: awayTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.HomeTeamID == input.AwayTeamID {
+		return fmt.Errorf("%w: scrim homeTeamId and awayTeamId must differ", ErrInvalidInput)
+	}
+
+	state := strings.TrimSpace(input.State)
+	switch state {
+	case "created", "in_progress", "closed", "voided":
+		return nil
+	default:
+		return fmt.Errorf("%w: scrim state must be created, in_progress, closed, or voided", ErrInvalidInput)
+	}
+}
+
+func ValidatePromoteQueueToScrimInput(input PromoteQueueToScrimInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)

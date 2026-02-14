@@ -177,6 +177,14 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 		t.Fatal("expected queue entries to contain at least one row")
 	}
 
+	if _, err := store.AdvanceQueueEntryStage(ctx, hierarchy.AdvanceQueueEntryStageInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+		Stage:   2,
+	}); err != nil {
+		t.Fatalf("failed to advance queue stage: %v", err)
+	}
+
 	season, err := store.CreateSeason(ctx, hierarchy.CreateSeasonInput{
 		Name: fmt.Sprintf("Season %d", suffix),
 		Slug: fmt.Sprintf("season-%d", suffix),
@@ -210,6 +218,55 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("failed to create second team: %v", err)
+	}
+
+	if _, err := store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{
+		QueueID: queue.ID,
+		TeamID:  teamTwo.ID,
+	}); err != nil {
+		t.Fatalf("failed to enqueue second team: %v", err)
+	}
+
+	if _, err := store.PromoteQueueToScrim(ctx, hierarchy.PromoteQueueToScrimInput{
+		QueueID: queue.ID,
+	}); err != nil {
+		t.Fatalf("failed to promote queue to scrim: %v", err)
+	}
+
+	scrims, err := store.ListScrims(ctx)
+	if err != nil {
+		t.Fatalf("failed to list scrims: %v", err)
+	}
+	if len(scrims) == 0 {
+		t.Fatal("expected scrims to contain at least one row")
+	}
+
+	decisions, err := store.ListMatchmakingDecisions(ctx)
+	if err != nil {
+		t.Fatalf("failed to list matchmaking decisions: %v", err)
+	}
+	if len(decisions) == 0 {
+		t.Fatal("expected matchmaking decisions to contain at least one row")
+	}
+
+	if _, err := conn.ExecContext(
+		ctx,
+		`INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played) VALUES ($1, $2, $3, $4, $5)`,
+		playerTwo.ID,
+		"scrim-3v3",
+		1025,
+		320,
+		7,
+	); err != nil {
+		t.Fatalf("failed to insert player rating baseline row: %v", err)
+	}
+
+	ratings, err := store.ListPlayerRatings(ctx)
+	if err != nil {
+		t.Fatalf("failed to list player ratings: %v", err)
+	}
+	if len(ratings) == 0 {
+		t.Fatal("expected player ratings to contain at least one row")
 	}
 
 	fixture, err := store.CreateFixture(ctx, hierarchy.CreateFixtureInput{
@@ -333,6 +390,19 @@ func TestHierarchyStoreDependencyViolation(t *testing.T) {
 	}
 	if !errors.Is(err, hierarchy.ErrDependency) {
 		t.Fatalf("expected dependency error for schedule group, got: %v", err)
+	}
+
+	_, err = store.CreateScrim(ctx, hierarchy.CreateScrimInput{
+		QueueID:    99999999,
+		HomeTeamID: 99999998,
+		AwayTeamID: 99999997,
+		State:      "created",
+	})
+	if err == nil {
+		t.Fatal("expected dependency violation for missing queue/teams on scrim create")
+	}
+	if !errors.Is(err, hierarchy.ErrDependency) {
+		t.Fatalf("expected dependency error for scrim create, got: %v", err)
 	}
 }
 
@@ -510,6 +580,26 @@ func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
 		t.Fatalf("failed to enqueue team: %v", err)
 	}
 
+	if _, err := store.AdvanceQueueEntryStage(ctx, hierarchy.AdvanceQueueEntryStageInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+		Stage:   2,
+	}); err != nil {
+		t.Fatalf("failed to advance queue stage: %v", err)
+	}
+
+	_, err = store.AdvanceQueueEntryStage(ctx, hierarchy.AdvanceQueueEntryStageInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+		Stage:   1,
+	})
+	if err == nil {
+		t.Fatal("expected conflict when decreasing queue entry stage")
+	}
+	if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict when decreasing stage, got: %v", err)
+	}
+
 	_, err = store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{
 		QueueID: queue.ID,
 		TeamID:  team.ID,
@@ -544,6 +634,18 @@ func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
 	}
 	if !errors.Is(err, hierarchy.ErrConflict) {
 		t.Fatalf("expected conflict when leaving queue twice, got: %v", err)
+	}
+
+	_, err = store.AdvanceQueueEntryStage(ctx, hierarchy.AdvanceQueueEntryStageInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+		Stage:   1,
+	})
+	if err == nil {
+		t.Fatal("expected conflict when advancing stage on inactive queue entry")
+	}
+	if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict when advancing stage on inactive entry, got: %v", err)
 	}
 }
 
