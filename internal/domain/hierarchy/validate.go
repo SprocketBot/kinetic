@@ -151,6 +151,20 @@ func ValidatePromoteQueueToScrimInput(input PromoteQueueToScrimInput) error {
 	return nil
 }
 
+func ValidateUpdateScrimStateInput(input UpdateScrimStateInput) error {
+	if input.ScrimID <= 0 {
+		return fmt.Errorf("%w: scrimId must be greater than zero", ErrInvalidInput)
+	}
+
+	state := strings.TrimSpace(input.State)
+	switch state {
+	case "in_progress", "closed", "voided":
+		return nil
+	default:
+		return fmt.Errorf("%w: scrim state transition target must be in_progress, closed, or voided", ErrInvalidInput)
+	}
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)

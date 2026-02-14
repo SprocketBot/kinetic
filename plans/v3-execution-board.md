@@ -33,7 +33,9 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 8 completed: `W8-10` not consumed (no blockers)
 - Week 9 planning prepared (implementation not started)
 - Week 9 started: `W9-01` completed on 2026-02-14
-- Next up: Week 9 execution (`W9-02` onward)
+- Week 9 in progress: `W9-02` through `W9-09` completed on 2026-02-14
+- Week 9 completed: `W9-10` not consumed (no blockers)
+- Next up: Week 10 execution (`W10-01` onward)
 
 ## Capacity Guardrails
 
@@ -700,15 +702,15 @@ Out of scope:
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
 | W9-01 | Define deterministic ordering and scrim lifecycle transition contract | 0.75h | Done | ordering fields, tie-breaks, and legal transitions documented |
-| W9-02 | Extend persistence model for ordering rationale fields (if needed) | 1.0h | Todo | schema remains idempotent and backward-compatible |
-| W9-03 | Implement rating-first deterministic candidate ordering in promotion path | 1.25h | Todo | ordering is deterministic and stable under equal ratings |
-| W9-04 | Implement team rating snapshot derivation for promotion decisions | 0.75h | Todo | promotion path computes consistent team rating baseline |
-| W9-05 | Implement scrim lifecycle transition endpoint(s) and handlers | 1.25h | Todo | only legal state transitions succeed |
-| W9-06 | Add validation/error mapping for transition and promotion edge cases | 0.75h | Todo | invalid transitions/payloads map to stable 4xx |
-| W9-07 | Write unit tests for ordering and lifecycle validation logic | 0.75h | Todo | deterministic tie-break + transition matrix covered |
-| W9-08 | Write integration tests for ordering outcomes and lifecycle constraints | 1.0h | Todo | expected pairing and state transitions validated end-to-end |
-| W9-09 | Write Week 9 onboarding notes + local/k8s smoke automations | 0.5h | Todo | contributor can run week slice in local and minikube paths |
-| W9-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+| W9-02 | Extend persistence model for ordering rationale fields (if needed) | 1.0h | Done | schema remains idempotent and backward-compatible |
+| W9-03 | Implement rating-first deterministic candidate ordering in promotion path | 1.25h | Done | ordering is deterministic and stable under equal ratings |
+| W9-04 | Implement team rating snapshot derivation for promotion decisions | 0.75h | Done | promotion path computes consistent team rating baseline |
+| W9-05 | Implement scrim lifecycle transition endpoint(s) and handlers | 1.25h | Done | only legal state transitions succeed |
+| W9-06 | Add validation/error mapping for transition and promotion edge cases | 0.75h | Done | invalid transitions/payloads map to stable 4xx |
+| W9-07 | Write unit tests for ordering and lifecycle validation logic | 0.75h | Done | deterministic tie-break + transition matrix covered |
+| W9-08 | Write integration tests for ordering outcomes and lifecycle constraints | 1.0h | Done | expected pairing and state transitions validated end-to-end |
+| W9-09 | Write Week 9 onboarding notes + local/k8s smoke automations | 0.5h | Done | contributor can run week slice in local and minikube paths |
+| W9-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
 
 ### Week 9 Risks and Mitigations
 

@@ -65,6 +65,7 @@ type fakeHierarchyStore struct {
 	leaveQueueErr      error
 	advanceStageErr    error
 	createScrimErr     error
+	updateScrimErr     error
 	promoteQueueErr    error
 	createSeasonErr    error
 	createGroupErr     error
@@ -131,6 +132,9 @@ func (f *fakeHierarchyStore) CreateScrim(_ context.Context, _ hierarchy.CreateSc
 }
 func (f *fakeHierarchyStore) ListScrims(_ context.Context) ([]hierarchy.Scrim, error) {
 	return f.scrimsToList, nil
+}
+func (f *fakeHierarchyStore) UpdateScrimState(_ context.Context, _ hierarchy.UpdateScrimStateInput) (hierarchy.Scrim, error) {
+	return f.scrimToReturn, f.updateScrimErr
 }
 func (f *fakeHierarchyStore) PromoteQueueToScrim(_ context.Context, _ hierarchy.PromoteQueueToScrimInput) (hierarchy.Scrim, error) {
 	return f.scrimToReturn, f.promoteQueueErr
@@ -494,6 +498,32 @@ func TestPromoteQueueToScrimSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestUpdateScrimStateSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		scrimToReturn: hierarchy.Scrim{
+			ID:         1,
+			QueueID:    10,
+			HomeTeamID: 20,
+			AwayTeamID: 30,
+			State:      "in_progress",
+			CreatedAt:  now.Add(-10 * time.Minute),
+			StartedAt:  &now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPatch, "/v1/scrims", strings.NewReader(`{"scrimId":1,"state":"in_progress"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 }
 

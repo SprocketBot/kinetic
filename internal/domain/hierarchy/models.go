@@ -100,9 +100,13 @@ type MatchmakingDecision struct {
 	ScrimID          int64     `json:"scrimId"`
 	QueueID          int64     `json:"queueId"`
 	QueueWaitSeconds int32     `json:"queueWaitSeconds"`
+	WaitSkewSeconds  int32     `json:"waitSkewSeconds"`
 	ExpansionStage   int32     `json:"expansionStage"`
 	RatingSpread     int32     `json:"ratingSpread"`
+	HomeTeamRating   int32     `json:"homeTeamRating"`
+	AwayTeamRating   int32     `json:"awayTeamRating"`
 	CrossGroup       bool      `json:"crossGroup"`
+	OrderingStrategy string    `json:"orderingStrategy"`
 	CreatedAt        time.Time `json:"createdAt"`
 }
 
@@ -207,6 +211,11 @@ type CreateScrimInput struct {
 
 type PromoteQueueToScrimInput struct {
 	QueueID int64 `json:"queueId"`
+}
+
+type UpdateScrimStateInput struct {
+	ScrimID int64  `json:"scrimId"`
+	State   string `json:"state"`
 }
 
 type CreateSeasonInput struct {

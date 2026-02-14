@@ -247,12 +247,28 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"awayTimeRatifiedAt": "2030-01-01T09:00:00Z",
 	}, http.StatusCreated)
 
-	createEntity(t, server, "/v1/scrims", map[string]any{
+	scrimResp := createEntity(t, server, "/v1/scrims", map[string]any{
 		"queueId":    queueID,
 		"homeTeamId": teamID,
 		"awayTeamId": teamTwoID,
 		"state":      "created",
 	}, http.StatusCreated)
+	scrimID := int64(scrimResp["id"].(float64))
+
+	patchEntity(t, server, "/v1/scrims", map[string]any{
+		"scrimId": scrimID,
+		"state":   "in_progress",
+	}, http.StatusOK)
+
+	patchEntity(t, server, "/v1/scrims", map[string]any{
+		"scrimId": scrimID,
+		"state":   "closed",
+	}, http.StatusOK)
+
+	patchEntity(t, server, "/v1/scrims", map[string]any{
+		"scrimId": scrimID,
+		"state":   "in_progress",
+	}, http.StatusConflict)
 
 	if _, err := conn.ExecContext(
 		ctx,
@@ -365,6 +381,11 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"homeTeamId": int64(1),
 		"awayTeamId": int64(1),
 		"state":      "created",
+	}, http.StatusBadRequest)
+
+	patchEntity(t, server, "/v1/scrims", map[string]any{
+		"scrimId": int64(1),
+		"state":   "created",
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/scrim-promotions", map[string]any{

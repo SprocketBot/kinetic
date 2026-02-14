@@ -357,3 +357,31 @@ func TestValidatePromoteQueueToScrimInput(t *testing.T) {
 		t.Fatal("expected missing queueId to fail validation")
 	}
 }
+
+func TestValidateUpdateScrimStateInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateUpdateScrimStateInput(UpdateScrimStateInput{
+		ScrimID: 1,
+		State:   "in_progress",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateUpdateScrimStateInput(UpdateScrimStateInput{
+		ScrimID: 1,
+		State:   "created",
+	})
+	if err == nil {
+		t.Fatal("expected invalid target state to fail validation")
+	}
+
+	err = ValidateUpdateScrimStateInput(UpdateScrimStateInput{
+		ScrimID: 0,
+		State:   "closed",
+	})
+	if err == nil {
+		t.Fatal("expected missing scrimId to fail validation")
+	}
+}

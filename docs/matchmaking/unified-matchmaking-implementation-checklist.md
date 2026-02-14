@@ -24,6 +24,14 @@ Map each matchmaking invariant to actionable implementation tasks across schema,
   - ADR-012 and ADR-013 replay/evidence workflows.
   - async matcher orchestration and production rating update pipeline.
 
+## Week 9 Mapping (Implemented 2026-02-14)
+
+- Implemented foundations:
+  - Invariant 5: rating-first deterministic candidate selection with queue-age skew tie-breaks.
+  - Invariant 9: decision metadata enriched with ordering strategy and team rating/wait rationale fields.
+- Still deferred:
+  - full uncertainty-weighted candidate confidence model and property-based ordering test harness.
+
 ## Invariant 1: Single Rating Identity
 
 Schema tasks:

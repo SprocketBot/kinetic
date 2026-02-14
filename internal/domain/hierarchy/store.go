@@ -22,6 +22,7 @@ type Store interface {
 	AdvanceQueueEntryStage(ctx context.Context, input AdvanceQueueEntryStageInput) (QueueEntry, error)
 	ListActiveQueueEntries(ctx context.Context) ([]QueueEntry, error)
 	CreateScrim(ctx context.Context, input CreateScrimInput) (Scrim, error)
+	UpdateScrimState(ctx context.Context, input UpdateScrimStateInput) (Scrim, error)
 	ListScrims(ctx context.Context) ([]Scrim, error)
 	PromoteQueueToScrim(ctx context.Context, input PromoteQueueToScrimInput) (Scrim, error)
 	ListPlayerRatings(ctx context.Context) ([]PlayerRating, error)

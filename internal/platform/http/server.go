@@ -370,6 +370,18 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				return
 			}
 			writeJSON(w, http.StatusCreated, scrim)
+		case http.MethodPatch:
+			var input hierarchy.UpdateScrimStateInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			scrim, err := deps.HierarchyStore.UpdateScrimState(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, scrim)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -13,6 +14,18 @@ import (
 
 type HierarchyStore struct {
 	db *sql.DB
+}
+
+const (
+	defaultTeamRating              int32  = 1000
+	matchmakingOrderingStrategyV1  string = "rating_spread_wait_skew_v1"
+	fallbackRatingContextGlobalKey string = "scrim-3v3"
+)
+
+type promotionCandidate struct {
+	entry            hierarchy.QueueEntry
+	teamRating       int32
+	queueWaitSeconds int32
 }
 
 func NewHierarchyStore(db *sql.DB) *HierarchyStore {
@@ -500,6 +513,52 @@ RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_a
 	return scrim, nil
 }
 
+func (s *HierarchyStore) UpdateScrimState(ctx context.Context, input hierarchy.UpdateScrimStateInput) (hierarchy.Scrim, error) {
+	if err := hierarchy.ValidateUpdateScrimStateInput(input); err != nil {
+		return hierarchy.Scrim{}, err
+	}
+
+	const stmt = `
+UPDATE scrims
+SET
+	state = $2,
+	started_at = CASE
+		WHEN $2 = 'in_progress' AND started_at IS NULL THEN NOW()
+		ELSE started_at
+	END,
+	ended_at = CASE
+		WHEN $2 IN ('closed', 'voided') THEN NOW()
+		ELSE ended_at
+	END
+WHERE id = $1
+  AND state <> $2
+  AND (
+		(state = 'created' AND $2 IN ('in_progress', 'voided'))
+		OR (state = 'in_progress' AND $2 IN ('closed', 'voided'))
+  )
+RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at;`
+
+	var scrim hierarchy.Scrim
+	err := s.db.QueryRowContext(ctx, stmt, input.ScrimID, input.State).Scan(
+		&scrim.ID,
+		&scrim.QueueID,
+		&scrim.HomeTeamID,
+		&scrim.AwayTeamID,
+		&scrim.State,
+		&scrim.CreatedAt,
+		&scrim.StartedAt,
+		&scrim.EndedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Scrim{}, fmt.Errorf("%w: scrim transition not allowed or scrim not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.Scrim{}, mapSQLError(err)
+	}
+
+	return scrim, nil
+}
+
 func (s *HierarchyStore) ListScrims(ctx context.Context) ([]hierarchy.Scrim, error) {
 	const stmt = `
 SELECT id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at
@@ -547,19 +606,30 @@ func (s *HierarchyStore) PromoteQueueToScrim(ctx context.Context, input hierarch
 		_ = tx.Rollback()
 	}()
 
+	const queueSlugStmt = `
+SELECT slug
+FROM queues
+WHERE id = $1;`
+	var queueSlug string
+	if err := tx.QueryRowContext(ctx, queueSlugStmt, input.QueueID).Scan(&queueSlug); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Scrim{}, fmt.Errorf("%w: queue not found", hierarchy.ErrDependency)
+		}
+		return hierarchy.Scrim{}, err
+	}
+
 	const selectEntriesStmt = `
 SELECT id, queue_id, team_id, is_active, expansion_stage, created_at, stage_advanced_at, left_at
 FROM queue_entries
 WHERE queue_id = $1 AND is_active = TRUE
 ORDER BY created_at ASC, id ASC
-LIMIT 2
 FOR UPDATE;`
 	rows, err := tx.QueryContext(ctx, selectEntriesStmt, input.QueueID)
 	if err != nil {
 		return hierarchy.Scrim{}, err
 	}
 
-	entries := make([]hierarchy.QueueEntry, 0, 2)
+	entries := make([]hierarchy.QueueEntry, 0)
 	for rows.Next() {
 		var entry hierarchy.QueueEntry
 		if err := rows.Scan(&entry.ID, &entry.QueueID, &entry.TeamID, &entry.IsActive, &entry.Stage, &entry.CreatedAt, &entry.StageAt, &entry.LeftAt); err != nil {
@@ -577,12 +647,48 @@ FOR UPDATE;`
 		return hierarchy.Scrim{}, fmt.Errorf("%w: insufficient active queue entries", hierarchy.ErrConflict)
 	}
 
+	candidates := make([]promotionCandidate, 0, len(entries))
+	now := time.Now().UTC()
+	for _, entry := range entries {
+		teamRating, err := deriveTeamRatingForQueue(ctx, tx, entry.TeamID, queueSlug)
+		if err != nil {
+			return hierarchy.Scrim{}, err
+		}
+		waitSeconds := int32(now.Sub(entry.CreatedAt).Seconds())
+		if waitSeconds < 0 {
+			waitSeconds = 0
+		}
+		candidates = append(candidates, promotionCandidate{
+			entry:            entry,
+			teamRating:       teamRating,
+			queueWaitSeconds: waitSeconds,
+		})
+	}
+
+	bestLeft := 0
+	bestRight := 1
+	for i := 0; i < len(candidates)-1; i++ {
+		for j := i + 1; j < len(candidates); j++ {
+			if isBetterPair(candidates[i], candidates[j], candidates[bestLeft], candidates[bestRight]) {
+				bestLeft = i
+				bestRight = j
+			}
+		}
+	}
+
+	home := candidates[bestLeft]
+	away := candidates[bestRight]
+	ratingSpread := abs32(home.teamRating - away.teamRating)
+	waitSkewSeconds := abs32(home.queueWaitSeconds - away.queueWaitSeconds)
+	queueWaitSeconds := max32(home.queueWaitSeconds, away.queueWaitSeconds)
+	expansionStage := max32(home.entry.Stage, away.entry.Stage)
+
 	const createScrimStmt = `
 INSERT INTO scrims(queue_id, home_team_id, away_team_id, state)
 VALUES ($1, $2, $3, 'created')
 RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at;`
 	var scrim hierarchy.Scrim
-	err = tx.QueryRowContext(ctx, createScrimStmt, input.QueueID, entries[0].TeamID, entries[1].TeamID).Scan(
+	err = tx.QueryRowContext(ctx, createScrimStmt, input.QueueID, home.entry.TeamID, away.entry.TeamID).Scan(
 		&scrim.ID,
 		&scrim.QueueID,
 		&scrim.HomeTeamID,
@@ -600,22 +706,38 @@ RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_a
 UPDATE queue_entries
 SET is_active = FALSE, left_at = NOW()
 WHERE id = ANY($1) AND is_active = TRUE;`
-	if _, err := tx.ExecContext(ctx, consumeEntriesStmt, []int64{entries[0].ID, entries[1].ID}); err != nil {
+	if _, err := tx.ExecContext(ctx, consumeEntriesStmt, []int64{home.entry.ID, away.entry.ID}); err != nil {
 		return hierarchy.Scrim{}, err
 	}
 
 	const decisionStmt = `
-INSERT INTO matchmaking_decisions(scrim_id, queue_id, queue_wait_seconds, expansion_stage, rating_spread, cross_group)
-VALUES ($1, $2, $3, $4, $5, $6);`
-	queueWaitSeconds := int32(time.Since(entries[0].CreatedAt).Seconds())
-	if queueWaitSeconds < 0 {
-		queueWaitSeconds = 0
-	}
-	expansionStage := entries[0].Stage
-	if entries[1].Stage > expansionStage {
-		expansionStage = entries[1].Stage
-	}
-	if _, err := tx.ExecContext(ctx, decisionStmt, scrim.ID, input.QueueID, queueWaitSeconds, expansionStage, 0, false); err != nil {
+INSERT INTO matchmaking_decisions(
+	scrim_id,
+	queue_id,
+	queue_wait_seconds,
+	wait_skew_seconds,
+	expansion_stage,
+	rating_spread,
+	home_team_rating,
+	away_team_rating,
+	cross_group,
+	ordering_strategy
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
+	if _, err := tx.ExecContext(
+		ctx,
+		decisionStmt,
+		scrim.ID,
+		input.QueueID,
+		queueWaitSeconds,
+		waitSkewSeconds,
+		expansionStage,
+		ratingSpread,
+		home.teamRating,
+		away.teamRating,
+		false,
+		matchmakingOrderingStrategyV1,
+	); err != nil {
 		return hierarchy.Scrim{}, err
 	}
 
@@ -663,7 +785,19 @@ ORDER BY id ASC;`
 
 func (s *HierarchyStore) ListMatchmakingDecisions(ctx context.Context) ([]hierarchy.MatchmakingDecision, error) {
 	const stmt = `
-SELECT id, scrim_id, queue_id, queue_wait_seconds, expansion_stage, rating_spread, cross_group, created_at
+SELECT
+	id,
+	scrim_id,
+	queue_id,
+	queue_wait_seconds,
+	wait_skew_seconds,
+	expansion_stage,
+	rating_spread,
+	home_team_rating,
+	away_team_rating,
+	cross_group,
+	ordering_strategy,
+	created_at
 FROM matchmaking_decisions
 ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
@@ -680,9 +814,13 @@ ORDER BY id ASC;`
 			&decision.ScrimID,
 			&decision.QueueID,
 			&decision.QueueWaitSeconds,
+			&decision.WaitSkewSeconds,
 			&decision.ExpansionStage,
 			&decision.RatingSpread,
+			&decision.HomeTeamRating,
+			&decision.AwayTeamRating,
 			&decision.CrossGroup,
+			&decision.OrderingStrategy,
 			&decision.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -693,6 +831,81 @@ ORDER BY id ASC;`
 		return nil, err
 	}
 	return decisions, nil
+}
+
+func deriveTeamRatingForQueue(ctx context.Context, tx *sql.Tx, teamID int64, queueSlug string) (int32, error) {
+	const stmt = `
+SELECT COALESCE(ROUND(AVG(COALESCE(selected.rating, $3)))::INT, $3)::INT
+FROM roster_memberships rm
+LEFT JOIN LATERAL (
+	SELECT pr.rating
+	FROM player_ratings pr
+	WHERE pr.player_id = rm.player_id
+	  AND pr.is_active = TRUE
+	  AND (pr.context_key = $2 OR pr.context_key = $4)
+	ORDER BY
+	  CASE WHEN pr.context_key = $2 THEN 0 ELSE 1 END,
+	  pr.updated_at DESC,
+	  pr.id DESC
+	LIMIT 1
+) selected ON TRUE
+WHERE rm.team_id = $1
+  AND rm.is_active = TRUE;`
+
+	var rating int32
+	if err := tx.QueryRowContext(ctx, stmt, teamID, queueSlug, defaultTeamRating, fallbackRatingContextGlobalKey).Scan(&rating); err != nil {
+		return 0, err
+	}
+	return rating, nil
+}
+
+func isBetterPair(leftA, rightA, leftB, rightB promotionCandidate) bool {
+	spreadA := abs32(leftA.teamRating - rightA.teamRating)
+	spreadB := abs32(leftB.teamRating - rightB.teamRating)
+	if spreadA != spreadB {
+		return spreadA < spreadB
+	}
+
+	waitSkewA := abs32(leftA.queueWaitSeconds - rightA.queueWaitSeconds)
+	waitSkewB := abs32(leftB.queueWaitSeconds - rightB.queueWaitSeconds)
+	if waitSkewA != waitSkewB {
+		return waitSkewA < waitSkewB
+	}
+
+	readyAtA := maxTime(leftA.entry.CreatedAt, rightA.entry.CreatedAt)
+	readyAtB := maxTime(leftB.entry.CreatedAt, rightB.entry.CreatedAt)
+	if !readyAtA.Equal(readyAtB) {
+		return readyAtA.Before(readyAtB)
+	}
+
+	if leftA.entry.CreatedAt.UnixNano() != leftB.entry.CreatedAt.UnixNano() {
+		return leftA.entry.CreatedAt.Before(leftB.entry.CreatedAt)
+	}
+	if leftA.entry.ID != leftB.entry.ID {
+		return leftA.entry.ID < leftB.entry.ID
+	}
+	if rightA.entry.CreatedAt.UnixNano() != rightB.entry.CreatedAt.UnixNano() {
+		return rightA.entry.CreatedAt.Before(rightB.entry.CreatedAt)
+	}
+	return rightA.entry.ID < rightB.entry.ID
+}
+
+func abs32(v int32) int32 {
+	return int32(math.Abs(float64(v)))
+}
+
+func max32(a, b int32) int32 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
 }
 
 func (s *HierarchyStore) CreateSeason(ctx context.Context, input hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
