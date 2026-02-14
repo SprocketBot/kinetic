@@ -1,6 +1,6 @@
 # Sprocket v3 Execution Board
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 
 ## Current Progress
@@ -24,7 +24,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 6 started: `W6-01` through `W6-03` completed on 2026-02-14
 - Week 6 in progress: `W6-04` through `W6-09` completed on 2026-02-14
 - Week 6 completed: `W6-10` not consumed (no blockers)
-- Next up: Week 7 planning and ticketing
+- Week 7 planning prepared (implementation not started)
+- Next up: Week 7 execution (`W7-01` onward)
 
 ## Capacity Guardrails
 
@@ -39,7 +40,8 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 | --- | --- | ---: | --- |
 | 1-2 | Foundation | 16h | Go service scaffold + local dev + first K8s deploy |
 | 3-4 | Auth + RBAC baseline | 16h | Authenticated API + role checks + tests |
-| 5-7 | League hierarchy core | 24h | League/Franchise/Club/Team/Player vertical slice |
+| 5-6 | League hierarchy core | 16h | League/Franchise/Club/Team/Player/roster/queue vertical slices |
+| 7 | Scheduled competition model kickoff | 8h | Season -> ScheduleGroup -> Fixture -> Match schema + APIs |
 | 8-10 | Queue + scrim flow MVP | 24h | Join/leave/process queue end-to-end |
 | 11-12 | Submission + ratification MVP | 16h | Submission lifecycle with state transitions |
 | 13-14 | Handoff + hardening | 16h | Contributor-ready docs/runbooks + CI quality gates |
@@ -477,3 +479,74 @@ Out of scope:
 - Full test suite passes: `go test ./...`
 - Postgres test port available (`55432` default)
 - Working tree clean before first Week 6 implementation commit
+
+---
+
+## Week 7 Execution Board (2026-03-23 to 2026-03-29)
+
+Week objective: introduce scheduled competition primitives (`season -> schedule_group -> fixture -> match`) as a distinct domain from scrims.
+
+Definition of done for Week 7:
+
+- Scheduled competition schema exists and is migrated
+- Create/list endpoints exist for season, schedule groups, fixtures, and matches
+- Match lifecycle includes explicit scheduling metadata and ratification state
+- Validation/error handling and integration tests cover hierarchy dependencies and lifecycle constraints
+- Week 7 onboarding notes and smoke automation are available
+
+### Scope Boundaries
+
+In scope:
+
+- scheduled hierarchy entities and constraints
+- match scheduling fields (`scheduled_for`, ratification timestamps/status)
+- create/list APIs for core scheduled entities
+- tests and onboarding/smoke docs
+
+Out of scope:
+
+- automatic schedule generation
+- standings computation
+- full dispute workflow UI
+- scrim-to-match convergence logic
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Finalize scheduled competition contract + lifecycle | `docs/adr/009-scheduled-competition-slice.md` |
+| Tue | 2h | Implement migrations for season/schedule_group/fixture/match | `migrations/000008_*.sql` |
+| Wed | 2h | Implement domain/store + API create/list routes | `/v1/seasons`, `/v1/schedule-groups`, `/v1/fixtures`, `/v1/matches` |
+| Thu | 2h | Integration tests for hierarchy and lifecycle constraints | DB/API integration coverage |
+| Fri | 2h | Onboarding docs + smoke script + cleanup/buffer | `docs/onboarding/week7.md`, `tools/week7-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W7-01 | Define scheduled competition slice contract | 0.75h | Todo | hierarchy + lifecycle documented in ADR |
+| W7-02 | Add migrations for season/schedule_group/fixture/match | 1.5h | Todo | schema migrates cleanly and is idempotent |
+| W7-03 | Extend domain/store interfaces for scheduled entities | 0.75h | Todo | compile-safe contracts in place |
+| W7-04 | Implement DB methods for create/list scheduled entities | 1.25h | Todo | create/list operations work with dependency mapping |
+| W7-05 | Implement API handlers/routes for scheduled entities | 1.25h | Todo | stable JSON and status codes for create/list |
+| W7-06 | Add validation + lifecycle guardrails for matches | 0.75h | Todo | `ready` requires ratified agreed play time |
+| W7-07 | Write unit tests for scheduled validation rules | 0.75h | Todo | required fields + lifecycle checks covered |
+| W7-08 | Write integration tests for hierarchy/lifecycle constraints | 1.0h | Todo | FK + lifecycle violations validated end-to-end |
+| W7-09 | Write Week 7 onboarding notes + smoke automation | 0.5h | Todo | contributor can run scheduled checks quickly |
+| W7-10 | Risk/overflow buffer | 1.0h | Todo | consumed only for blockers |
+
+### Week 7 Risks and Mitigations
+
+- Risk: scheduled vs scrim domain boundaries drift.
+  - Mitigation: enforce naming and ADR-defined ownership in APIs and docs.
+- Risk: lifecycle ambiguity around scheduling and readiness.
+  - Mitigation: define concrete fields and transitions where `ready` requires ratified schedule time.
+- Risk: schema complexity exceeds weekly time budget.
+  - Mitigation: scope to create/list plus lifecycle invariants only; defer scheduling generation.
+
+### Week 7 Start Checklist
+
+- Week 6 smoke script passes: `./tools/week6-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Working tree clean before first Week 7 implementation commit
