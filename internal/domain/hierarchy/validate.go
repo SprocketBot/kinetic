@@ -172,6 +172,50 @@ func ValidateProcessQueuePromotionsInput(input ProcessQueuePromotionsInput) erro
 	return nil
 }
 
+func ValidateCreateResultSubmissionInput(input CreateResultSubmissionInput) error {
+	switch strings.TrimSpace(input.ContextType) {
+	case "scrim", "match":
+	default:
+		return fmt.Errorf("%w: contextType must be scrim or match", ErrInvalidInput)
+	}
+	if input.ContextID <= 0 {
+		return fmt.Errorf("%w: contextId must be greater than zero", ErrInvalidInput)
+	}
+	if input.SubmittedByTeamID <= 0 {
+		return fmt.Errorf("%w: submittedByTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.WinningTeamID <= 0 || input.LosingTeamID <= 0 {
+		return fmt.Errorf("%w: winningTeamId and losingTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.WinningTeamID == input.LosingTeamID {
+		return fmt.Errorf("%w: winningTeamId and losingTeamId must differ", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateRatifyResultSubmissionInput(input RatifyResultSubmissionInput) error {
+	if input.SubmissionID <= 0 {
+		return fmt.Errorf("%w: submissionId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateRejectResultSubmissionInput(input RejectResultSubmissionInput) error {
+	if input.SubmissionID <= 0 {
+		return fmt.Errorf("%w: submissionId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TeamID <= 0 {
+		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)

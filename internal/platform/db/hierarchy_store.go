@@ -942,6 +942,320 @@ ORDER BY id ASC;`
 	return decisions, nil
 }
 
+func (s *HierarchyStore) CreateResultSubmission(ctx context.Context, input hierarchy.CreateResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	if err := hierarchy.ValidateCreateResultSubmissionInput(input); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+
+	homeTeamID, awayTeamID, err := resolveContextTeams(ctx, s.db, input.ContextType, input.ContextID)
+	if err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+	if input.SubmittedByTeamID != homeTeamID && input.SubmittedByTeamID != awayTeamID {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submittedByTeamId must be a context participant", hierarchy.ErrConflict)
+	}
+	if (input.WinningTeamID != homeTeamID && input.WinningTeamID != awayTeamID) ||
+		(input.LosingTeamID != homeTeamID && input.LosingTeamID != awayTeamID) {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: winning and losing teams must match context participants", hierarchy.ErrConflict)
+	}
+
+	payload := input.PayloadJSON
+	if len(payload) == 0 {
+		payload = []byte(`{}`)
+	}
+
+	const stmt = `
+INSERT INTO result_submissions(
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	payload_json
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at;`
+
+	var submission hierarchy.ResultSubmission
+	err = s.db.QueryRowContext(
+		ctx,
+		stmt,
+		input.ContextType,
+		input.ContextID,
+		input.SubmittedByTeamID,
+		homeTeamID,
+		awayTeamID,
+		input.WinningTeamID,
+		input.LosingTeamID,
+		payload,
+	).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	)
+	if err != nil {
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+	return submission, nil
+}
+
+func (s *HierarchyStore) ListResultSubmissions(ctx context.Context) ([]hierarchy.ResultSubmission, error) {
+	const stmt = `
+SELECT
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at
+FROM result_submissions
+ORDER BY id ASC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	submissions := make([]hierarchy.ResultSubmission, 0)
+	for rows.Next() {
+		var submission hierarchy.ResultSubmission
+		if err := rows.Scan(
+			&submission.ID,
+			&submission.ContextType,
+			&submission.ContextID,
+			&submission.SubmittedByTeamID,
+			&submission.HomeTeamID,
+			&submission.AwayTeamID,
+			&submission.WinningTeamID,
+			&submission.LosingTeamID,
+			&submission.State,
+			&submission.PayloadJSON,
+			&submission.HomeRatifiedAt,
+			&submission.AwayRatifiedAt,
+			&submission.RejectedByTeamID,
+			&submission.RejectionReason,
+			&submission.RejectedAt,
+			&submission.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		submissions = append(submissions, submission)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return submissions, nil
+}
+
+func (s *HierarchyStore) RatifyResultSubmission(ctx context.Context, input hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	if err := hierarchy.ValidateRatifyResultSubmissionInput(input); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const lockStmt = `
+SELECT home_team_id, away_team_id, state, home_ratified_at, away_ratified_at
+FROM result_submissions
+WHERE id = $1
+FOR UPDATE;`
+	var homeTeamID, awayTeamID int64
+	var state string
+	var homeRatifiedAt, awayRatifiedAt *time.Time
+	if err := tx.QueryRowContext(ctx, lockStmt, input.SubmissionID).Scan(
+		&homeTeamID,
+		&awayTeamID,
+		&state,
+		&homeRatifiedAt,
+		&awayRatifiedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.ResultSubmission{}, err
+	}
+	if state != "pending" {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: only pending submissions can be ratified", hierarchy.ErrConflict)
+	}
+	if input.TeamID != homeTeamID && input.TeamID != awayTeamID {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: ratifying team must be a participant", hierarchy.ErrConflict)
+	}
+	if (input.TeamID == homeTeamID && homeRatifiedAt != nil) || (input.TeamID == awayTeamID && awayRatifiedAt != nil) {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: team already ratified", hierarchy.ErrConflict)
+	}
+
+	const ratifyStmt = `
+UPDATE result_submissions
+SET
+	home_ratified_at = CASE
+		WHEN $2 = home_team_id AND home_ratified_at IS NULL THEN NOW()
+		ELSE home_ratified_at
+	END,
+	away_ratified_at = CASE
+		WHEN $2 = away_team_id AND away_ratified_at IS NULL THEN NOW()
+		ELSE away_ratified_at
+	END,
+	state = CASE
+		WHEN
+			(CASE WHEN $2 = home_team_id AND home_ratified_at IS NULL THEN NOW() ELSE home_ratified_at END) IS NOT NULL
+			AND
+			(CASE WHEN $2 = away_team_id AND away_ratified_at IS NULL THEN NOW() ELSE away_ratified_at END) IS NOT NULL
+		THEN 'ratified'
+		ELSE state
+	END
+WHERE id = $1
+RETURNING
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at;`
+	var submission hierarchy.ResultSubmission
+	if err := tx.QueryRowContext(ctx, ratifyStmt, input.SubmissionID, input.TeamID).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	); err != nil {
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+	return submission, nil
+}
+
+func (s *HierarchyStore) RejectResultSubmission(ctx context.Context, input hierarchy.RejectResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	if err := hierarchy.ValidateRejectResultSubmissionInput(input); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+
+	const stmt = `
+UPDATE result_submissions
+SET
+	state = 'rejected',
+	rejected_by_team_id = $2,
+	rejection_reason = $3,
+	rejected_at = NOW()
+WHERE id = $1
+  AND state = 'pending'
+  AND ($2 = home_team_id OR $2 = away_team_id)
+RETURNING
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at;`
+	var submission hierarchy.ResultSubmission
+	err := s.db.QueryRowContext(ctx, stmt, input.SubmissionID, input.TeamID, input.Reason).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission reject not allowed or not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+	return submission, nil
+}
+
 func deriveTeamRatingForQueue(ctx context.Context, tx *sql.Tx, teamID int64, queueSlug string) (int32, error) {
 	const stmt = `
 SELECT COALESCE(ROUND(AVG(COALESCE(selected.rating, $3)))::INT, $3)::INT
@@ -966,6 +1280,29 @@ WHERE rm.team_id = $1
 		return 0, err
 	}
 	return rating, nil
+}
+
+func resolveContextTeams(ctx context.Context, queryer interface {
+	QueryRowContext(context.Context, string, ...any) *sql.Row
+}, contextType string, contextID int64) (int64, int64, error) {
+	var stmt string
+	switch contextType {
+	case "scrim":
+		stmt = `SELECT home_team_id, away_team_id FROM scrims WHERE id = $1;`
+	case "match":
+		stmt = `SELECT home_team_id, away_team_id FROM matches WHERE id = $1;`
+	default:
+		return 0, 0, fmt.Errorf("%w: unsupported context type", hierarchy.ErrInvalidInput)
+	}
+
+	var homeTeamID, awayTeamID int64
+	if err := queryer.QueryRowContext(ctx, stmt, contextID).Scan(&homeTeamID, &awayTeamID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, fmt.Errorf("%w: context not found", hierarchy.ErrDependency)
+		}
+		return 0, 0, err
+	}
+	return homeTeamID, awayTeamID, nil
 }
 
 func isBetterPair(leftA, rightA, leftB, rightB promotionCandidate) bool {

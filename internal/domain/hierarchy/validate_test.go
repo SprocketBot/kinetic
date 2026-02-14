@@ -403,3 +403,71 @@ func TestValidateProcessQueuePromotionsInput(t *testing.T) {
 		t.Fatal("expected negative queueId to fail validation")
 	}
 }
+
+func TestValidateCreateResultSubmissionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateCreateResultSubmissionInput(CreateResultSubmissionInput{
+		ContextType:       "scrim",
+		ContextID:         1,
+		SubmittedByTeamID: 10,
+		WinningTeamID:     10,
+		LosingTeamID:      20,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateCreateResultSubmissionInput(CreateResultSubmissionInput{
+		ContextType:       "bad",
+		ContextID:         1,
+		SubmittedByTeamID: 10,
+		WinningTeamID:     10,
+		LosingTeamID:      20,
+	})
+	if err == nil {
+		t.Fatal("expected invalid contextType to fail validation")
+	}
+}
+
+func TestValidateRatifyResultSubmissionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateRatifyResultSubmissionInput(RatifyResultSubmissionInput{
+		SubmissionID: 1,
+		TeamID:       10,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateRatifyResultSubmissionInput(RatifyResultSubmissionInput{
+		SubmissionID: 0,
+		TeamID:       10,
+	})
+	if err == nil {
+		t.Fatal("expected invalid submissionId to fail validation")
+	}
+}
+
+func TestValidateRejectResultSubmissionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateRejectResultSubmissionInput(RejectResultSubmissionInput{
+		SubmissionID: 1,
+		TeamID:       10,
+		Reason:       "bad replay",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateRejectResultSubmissionInput(RejectResultSubmissionInput{
+		SubmissionID: 1,
+		TeamID:       10,
+		Reason:       "",
+	})
+	if err == nil {
+		t.Fatal("expected missing reason to fail validation")
+	}
+}

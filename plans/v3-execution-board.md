@@ -39,7 +39,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 10 started: `W10-01` completed on 2026-02-14
 - Week 10 in progress: `W10-02` through `W10-09` completed on 2026-02-14
 - Week 10 completed: `W10-10` not consumed (no blockers)
-- Next up: Week 11 execution (`W11-01` onward)
+- Week 11 started: `W11-01` completed on 2026-02-15
+- Week 11 in progress: `W11-02` through `W11-09` completed on 2026-02-15
+- Week 11 completed: `W11-10` not consumed (no blockers)
+- Next up: Week 12 planning/execution (`W12-01` onward)
 
 ## Capacity Guardrails
 
@@ -810,3 +813,78 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 10 implementation commit
+
+---
+
+## Week 11 Execution Board (2026-04-20 to 2026-04-26)
+
+Week objective: ship result submission and ratification MVP for scrim/match contexts, with auditable state transitions and functional coverage in both local and minikube environments.
+
+Definition of done for Week 11:
+
+- Result submission entity/schema supports `scrim` and `match` context binding
+- Submission lifecycle endpoints exist for create/list/ratify/reject
+- State transitions enforce participant-team ownership and terminal-state rules
+- Integration tests cover ratification completion, duplicate pending submission conflict, and rejection flow
+- Week 11 onboarding notes and both smoke automations are available (`week11-smoke.sh` and `week11-k8s-smoke.sh`)
+
+### Scope Boundaries
+
+In scope:
+
+- result submission lifecycle primitives (`pending`, `ratified`, `rejected`)
+- participant-team authorization semantics for ratify/reject
+- JSON payload evidence storage for MVP
+- API + DB + integration tests and onboarding/smoke docs
+
+Out of scope:
+
+- replay binary ingestion/parsing pipeline (Week 12)
+- dispute arbitration workflow beyond single-step rejection
+- automated stat application to standings/ratings
+- background job orchestration for submission processing
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Define submission lifecycle contract and invariants | `docs/adr/016-result-submission-and-ratification-mvp.md` |
+| Tue | 2h | Implement submission schema/store path for create/list | `migrations/000012_create_result_submissions.up.sql`, store code |
+| Wed | 2h | Implement ratify/reject API and state transitions | `/v1/result-submissions`, `/v1/result-submission-ratifications`, `/v1/result-submission-rejections` |
+| Thu | 2h | Integration tests for ratification, rejection, and conflict paths | DB/API integration coverage |
+| Fri | 2h | Onboarding docs + local/k8s smoke scripts + cleanup/buffer | `docs/onboarding/week11.md`, `tools/week11-smoke.sh`, `tools/week11-k8s-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W11-01 | Define result submission lifecycle contract and invariants | 0.75h | Done | states, transition rules, and participant semantics documented |
+| W11-02 | Add persistence model/migration for result submissions | 1.0h | Done | additive schema with pending uniqueness guard and transition metadata |
+| W11-03 | Implement create/list submission store/service path | 1.0h | Done | submissions can be created/listed for valid scrim/match contexts |
+| W11-04 | Implement ratification transition logic | 1.25h | Done | second participant ratification transitions submission to `ratified` |
+| W11-05 | Implement rejection transition logic | 0.75h | Done | participant rejection transitions pending submission to `rejected` with reason |
+| W11-06 | Wire submission lifecycle API handlers and validation/error mapping | 1.0h | Done | handlers return stable 2xx/4xx and map domain/store errors correctly |
+| W11-07 | Write unit tests for submission validation and transition invariants | 0.75h | Done | invalid payload/state/participant scenarios covered |
+| W11-08 | Write DB/API integration tests for end-to-end lifecycle behavior | 1.25h | Done | ratify/reject/conflict behavior validated end-to-end |
+| W11-09 | Write Week 11 onboarding notes + local/k8s smoke automations | 0.5h | Done | contributor can execute week slice locally and on minikube |
+| W11-10 | Risk/overflow buffer | 1.0h | Done | not consumed (no blockers) |
+
+### Week 11 Risks and Mitigations
+
+- Risk: context polymorphism (`scrim` vs `match`) introduces authorization/validation drift.
+  - Mitigation: centralize context participant resolution in store logic and assert via integration tests.
+- Risk: duplicate pending submissions for same context create ambiguity.
+  - Mitigation: enforce partial unique DB index for pending state and verify conflict behavior in smoke/integration paths.
+- Risk: contributor confusion around lifecycle semantics.
+  - Mitigation: publish ADR + onboarding examples using explicit create/ratify/reject flows and expected responses.
+- Risk: local-only verification misses k8s runtime behavior differences.
+  - Mitigation: require both `week11-smoke.sh` and `week11-k8s-smoke.sh` pass before week completion.
+
+### Week 11 Start Checklist
+
+- Week 10 smoke script passes: `./tools/week10-smoke.sh`
+- Week 10 minikube smoke script passes: `./tools/week10-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 11 implementation commit

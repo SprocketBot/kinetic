@@ -1132,3 +1132,123 @@ func TestHierarchyStoreProcessQueuePromotionsIdempotent(t *testing.T) {
 		t.Fatal("expected at least one promotion processing run")
 	}
 }
+
+func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League W11 %d", suffix), Slug: fmt.Sprintf("league-w11-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise W11 %d", suffix), Slug: fmt.Sprintf("franchise-w11-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W11 A %d", suffix), Slug: fmt.Sprintf("club-w11-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W11 B %d", suffix), Slug: fmt.Sprintf("club-w11-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubA.ID, Name: fmt.Sprintf("Team W11 A %d", suffix), Slug: fmt.Sprintf("team-w11-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubB.ID, Name: fmt.Sprintf("Team W11 B %d", suffix), Slug: fmt.Sprintf("team-w11-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+	queue, err := store.CreateQueue(ctx, hierarchy.CreateQueueInput{Name: fmt.Sprintf("Queue W11 %d", suffix), Slug: fmt.Sprintf("queue-w11-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+
+	scrim, err := store.CreateScrim(ctx, hierarchy.CreateScrimInput{
+		QueueID:    queue.ID,
+		HomeTeamID: teamA.ID,
+		AwayTeamID: teamB.ID,
+		State:      "created",
+	})
+	if err != nil {
+		t.Fatalf("failed to create scrim: %v", err)
+	}
+
+	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
+		ContextType:       "scrim",
+		ContextID:         scrim.ID,
+		SubmittedByTeamID: teamA.ID,
+		WinningTeamID:     teamA.ID,
+		LosingTeamID:      teamB.ID,
+		PayloadJSON:       []byte(`{"score":"3-1"}`),
+	})
+	if err != nil {
+		t.Fatalf("failed to create result submission: %v", err)
+	}
+
+	submission, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
+		SubmissionID: submission.ID,
+		TeamID:       teamA.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to ratify submission by home team: %v", err)
+	}
+	if submission.State != "pending" {
+		t.Fatalf("expected pending after first ratification, got %s", submission.State)
+	}
+
+	submission, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
+		SubmissionID: submission.ID,
+		TeamID:       teamB.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to ratify submission by away team: %v", err)
+	}
+	if submission.State != "ratified" {
+		t.Fatalf("expected ratified after both teams ratify, got %s", submission.State)
+	}
+
+	_, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
+		SubmissionID: submission.ID,
+		TeamID:       teamB.ID,
+	})
+	if err == nil {
+		t.Fatal("expected conflict when ratifying an already ratified submission")
+	}
+	if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict on duplicate ratification, got: %v", err)
+	}
+
+	submissions, err := store.ListResultSubmissions(ctx)
+	if err != nil {
+		t.Fatalf("failed to list result submissions: %v", err)
+	}
+	if len(submissions) == 0 {
+		t.Fatal("expected at least one result submission")
+	}
+}

@@ -1,6 +1,9 @@
 package hierarchy
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type League struct {
 	ID        int64     `json:"id"`
@@ -108,6 +111,25 @@ type MatchmakingDecision struct {
 	CrossGroup       bool      `json:"crossGroup"`
 	OrderingStrategy string    `json:"orderingStrategy"`
 	CreatedAt        time.Time `json:"createdAt"`
+}
+
+type ResultSubmission struct {
+	ID                int64           `json:"id"`
+	ContextType       string          `json:"contextType"`
+	ContextID         int64           `json:"contextId"`
+	SubmittedByTeamID int64           `json:"submittedByTeamId"`
+	HomeTeamID        int64           `json:"homeTeamId"`
+	AwayTeamID        int64           `json:"awayTeamId"`
+	WinningTeamID     int64           `json:"winningTeamId"`
+	LosingTeamID      int64           `json:"losingTeamId"`
+	State             string          `json:"state"`
+	PayloadJSON       json.RawMessage `json:"payloadJson"`
+	HomeRatifiedAt    *time.Time      `json:"homeRatifiedAt,omitempty"`
+	AwayRatifiedAt    *time.Time      `json:"awayRatifiedAt,omitempty"`
+	RejectedByTeamID  *int64          `json:"rejectedByTeamId,omitempty"`
+	RejectionReason   *string         `json:"rejectionReason,omitempty"`
+	RejectedAt        *time.Time      `json:"rejectedAt,omitempty"`
+	CreatedAt         time.Time       `json:"createdAt"`
 }
 
 type Season struct {
@@ -236,6 +258,26 @@ type PromotionProcessingRun struct {
 	Conflicts         int32     `json:"conflicts"`
 	DurationMs        int32     `json:"durationMs"`
 	CreatedAt         time.Time `json:"createdAt"`
+}
+
+type CreateResultSubmissionInput struct {
+	ContextType       string          `json:"contextType"`
+	ContextID         int64           `json:"contextId"`
+	SubmittedByTeamID int64           `json:"submittedByTeamId"`
+	WinningTeamID     int64           `json:"winningTeamId"`
+	LosingTeamID      int64           `json:"losingTeamId"`
+	PayloadJSON       json.RawMessage `json:"payloadJson"`
+}
+
+type RatifyResultSubmissionInput struct {
+	SubmissionID int64 `json:"submissionId"`
+	TeamID       int64 `json:"teamId"`
+}
+
+type RejectResultSubmissionInput struct {
+	SubmissionID int64  `json:"submissionId"`
+	TeamID       int64  `json:"teamId"`
+	Reason       string `json:"reason"`
 }
 
 type CreateSeasonInput struct {

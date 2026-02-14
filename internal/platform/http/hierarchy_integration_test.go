@@ -270,6 +270,28 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"state":   "in_progress",
 	}, http.StatusConflict)
 
+	submissionResp := createEntity(t, server, "/v1/result-submissions", map[string]any{
+		"contextType":       "scrim",
+		"contextId":         scrimID,
+		"submittedByTeamId": teamID,
+		"winningTeamId":     teamID,
+		"losingTeamId":      teamTwoID,
+		"payloadJson": map[string]any{
+			"score": "3-1",
+		},
+	}, http.StatusCreated)
+	submissionID := int64(submissionResp["id"].(float64))
+
+	createEntity(t, server, "/v1/result-submission-ratifications", map[string]any{
+		"submissionId": submissionID,
+		"teamId":       teamID,
+	}, http.StatusOK)
+
+	createEntity(t, server, "/v1/result-submission-ratifications", map[string]any{
+		"submissionId": submissionID,
+		"teamId":       teamTwoID,
+	}, http.StatusOK)
+
 	if _, err := conn.ExecContext(
 		ctx,
 		`INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played) VALUES ($1, $2, $3, $4, $5)`,
@@ -320,6 +342,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/promotion-processing-runs")
 	assertListNotEmpty(t, server, "/v1/player-ratings")
 	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
+	assertListNotEmpty(t, server, "/v1/result-submissions")
 	assertListNotEmpty(t, server, "/v1/seasons")
 	assertListNotEmpty(t, server, "/v1/schedule-groups")
 	assertListNotEmpty(t, server, "/v1/fixtures")
@@ -399,6 +422,25 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 
 	createEntity(t, server, "/v1/scrim-promotions/process", map[string]any{
 		"queueId": int64(-1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/result-submissions", map[string]any{
+		"contextType":       "scrim",
+		"contextId":         int64(1),
+		"submittedByTeamId": int64(1),
+		"winningTeamId":     int64(1),
+		"losingTeamId":      int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/result-submission-ratifications", map[string]any{
+		"submissionId": int64(0),
+		"teamId":       int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/result-submission-rejections", map[string]any{
+		"submissionId": int64(1),
+		"teamId":       int64(1),
+		"reason":       "",
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/matches", map[string]any{

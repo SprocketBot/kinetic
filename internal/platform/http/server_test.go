@@ -26,53 +26,58 @@ type adminPingResponse struct {
 }
 
 type fakeHierarchyStore struct {
-	leagueToReturn     hierarchy.League
-	franchiseToReturn  hierarchy.Franchise
-	clubToReturn       hierarchy.Club
-	teamToReturn       hierarchy.Team
-	playerToReturn     hierarchy.Player
-	membershipToReturn hierarchy.RosterMembership
-	queueToReturn      hierarchy.Queue
-	queueEntryToReturn hierarchy.QueueEntry
-	scrimToReturn      hierarchy.Scrim
-	seasonToReturn     hierarchy.Season
-	groupToReturn      hierarchy.ScheduleGroup
-	fixtureToReturn    hierarchy.Fixture
-	matchToReturn      hierarchy.Match
-	leaguesToList      []hierarchy.League
-	franchisesToList   []hierarchy.Franchise
-	clubsToList        []hierarchy.Club
-	teamsToList        []hierarchy.Team
-	playersToList      []hierarchy.Player
-	membershipsToList  []hierarchy.RosterMembership
-	queuesToList       []hierarchy.Queue
-	queueEntriesToList []hierarchy.QueueEntry
-	scrimsToList       []hierarchy.Scrim
-	runsToList         []hierarchy.PromotionProcessingRun
-	ratingsToList      []hierarchy.PlayerRating
-	decisionsToList    []hierarchy.MatchmakingDecision
-	seasonsToList      []hierarchy.Season
-	groupsToList       []hierarchy.ScheduleGroup
-	fixturesToList     []hierarchy.Fixture
-	matchesToList      []hierarchy.Match
-	createLeagueErr    error
-	createFranchiseErr error
-	createClubErr      error
-	createTeamErr      error
-	createPlayerErr    error
-	createMemberErr    error
-	createQueueErr     error
-	enqueueTeamErr     error
-	leaveQueueErr      error
-	advanceStageErr    error
-	createScrimErr     error
-	updateScrimErr     error
-	promoteQueueErr    error
-	processPromoteErr  error
-	createSeasonErr    error
-	createGroupErr     error
-	createFixtureErr   error
-	createMatchErr     error
+	leagueToReturn      hierarchy.League
+	franchiseToReturn   hierarchy.Franchise
+	clubToReturn        hierarchy.Club
+	teamToReturn        hierarchy.Team
+	playerToReturn      hierarchy.Player
+	membershipToReturn  hierarchy.RosterMembership
+	queueToReturn       hierarchy.Queue
+	queueEntryToReturn  hierarchy.QueueEntry
+	scrimToReturn       hierarchy.Scrim
+	submissionToReturn  hierarchy.ResultSubmission
+	seasonToReturn      hierarchy.Season
+	groupToReturn       hierarchy.ScheduleGroup
+	fixtureToReturn     hierarchy.Fixture
+	matchToReturn       hierarchy.Match
+	leaguesToList       []hierarchy.League
+	franchisesToList    []hierarchy.Franchise
+	clubsToList         []hierarchy.Club
+	teamsToList         []hierarchy.Team
+	playersToList       []hierarchy.Player
+	membershipsToList   []hierarchy.RosterMembership
+	queuesToList        []hierarchy.Queue
+	queueEntriesToList  []hierarchy.QueueEntry
+	scrimsToList        []hierarchy.Scrim
+	runsToList          []hierarchy.PromotionProcessingRun
+	ratingsToList       []hierarchy.PlayerRating
+	decisionsToList     []hierarchy.MatchmakingDecision
+	submissionsToList   []hierarchy.ResultSubmission
+	seasonsToList       []hierarchy.Season
+	groupsToList        []hierarchy.ScheduleGroup
+	fixturesToList      []hierarchy.Fixture
+	matchesToList       []hierarchy.Match
+	createLeagueErr     error
+	createFranchiseErr  error
+	createClubErr       error
+	createTeamErr       error
+	createPlayerErr     error
+	createMemberErr     error
+	createQueueErr      error
+	enqueueTeamErr      error
+	leaveQueueErr       error
+	advanceStageErr     error
+	createScrimErr      error
+	updateScrimErr      error
+	promoteQueueErr     error
+	processPromoteErr   error
+	createSubmissionErr error
+	ratifySubmissionErr error
+	rejectSubmissionErr error
+	createSeasonErr     error
+	createGroupErr      error
+	createFixtureErr    error
+	createMatchErr      error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -156,6 +161,18 @@ func (f *fakeHierarchyStore) ListPlayerRatings(_ context.Context) ([]hierarchy.P
 }
 func (f *fakeHierarchyStore) ListMatchmakingDecisions(_ context.Context) ([]hierarchy.MatchmakingDecision, error) {
 	return f.decisionsToList, nil
+}
+func (f *fakeHierarchyStore) CreateResultSubmission(_ context.Context, _ hierarchy.CreateResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	return f.submissionToReturn, f.createSubmissionErr
+}
+func (f *fakeHierarchyStore) ListResultSubmissions(_ context.Context) ([]hierarchy.ResultSubmission, error) {
+	return f.submissionsToList, nil
+}
+func (f *fakeHierarchyStore) RatifyResultSubmission(_ context.Context, _ hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	return f.submissionToReturn, f.ratifySubmissionErr
+}
+func (f *fakeHierarchyStore) RejectResultSubmission(_ context.Context, _ hierarchy.RejectResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	return f.submissionToReturn, f.rejectSubmissionErr
 }
 func (f *fakeHierarchyStore) CreateSeason(_ context.Context, _ hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
 	return f.seasonToReturn, f.createSeasonErr
@@ -575,6 +592,62 @@ func TestListPromotionProcessingRunsSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/promotion-processing-runs", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestCreateResultSubmissionSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		submissionToReturn: hierarchy.ResultSubmission{
+			ID:                1,
+			ContextType:       "scrim",
+			ContextID:         10,
+			SubmittedByTeamID: 20,
+			HomeTeamID:        20,
+			AwayTeamID:        30,
+			WinningTeamID:     20,
+			LosingTeamID:      30,
+			State:             "pending",
+			PayloadJSON:       []byte(`{"score":"3-1"}`),
+			CreatedAt:         now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-submissions", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"winningTeamId":20,"losingTeamId":30,"payloadJson":{"score":"3-1"}}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestRatifyResultSubmissionSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		submissionToReturn: hierarchy.ResultSubmission{
+			ID:             1,
+			ContextType:    "scrim",
+			ContextID:      10,
+			State:          "ratified",
+			HomeRatifiedAt: &now,
+			AwayRatifiedAt: &now,
+			CreatedAt:      now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-submission-ratifications", strings.NewReader(`{"submissionId":1,"teamId":20}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
