@@ -163,6 +163,46 @@ type ResultSubmissionReplayLink struct {
 	CreatedAt          time.Time `json:"createdAt"`
 }
 
+type ExceptionTicket struct {
+	ID               int64           `json:"id"`
+	Category         string          `json:"category"`
+	ContextType      string          `json:"contextType"`
+	ContextID        int64           `json:"contextId"`
+	ReportedByTeamID *int64          `json:"reportedByTeamId,omitempty"`
+	State            string          `json:"state"`
+	ReasonCode       string          `json:"reasonCode"`
+	Severity         int32           `json:"severity"`
+	SuggestedAction  string          `json:"suggestedAction"`
+	DetailsJSON      json.RawMessage `json:"detailsJson"`
+	ResolutionCode   *string         `json:"resolutionCode,omitempty"`
+	OpenedAt         time.Time       `json:"openedAt"`
+	TriagedAt        *time.Time      `json:"triagedAt,omitempty"`
+	ResolvedAt       *time.Time      `json:"resolvedAt,omitempty"`
+}
+
+type ExceptionAction struct {
+	ID           int64     `json:"id"`
+	TicketID     int64     `json:"ticketId"`
+	ActionType   string    `json:"actionType"`
+	Actor        string    `json:"actor"`
+	Automated    bool      `json:"automated"`
+	Notes        string    `json:"notes"`
+	MinutesSpent int32     `json:"minutesSpent"`
+	CreatedAt    time.Time `json:"createdAt"`
+}
+
+type ExceptionMetrics struct {
+	AdminHoursPerWeek       float64 `json:"adminHoursPerWeek"`
+	ManualTouchesPerFixture float64 `json:"manualTouchesPerFixture"`
+	ZeroTouchFixtureRate    float64 `json:"zeroTouchFixtureRate"`
+	TimeToCloseHoursP50     float64 `json:"timeToCloseHoursP50"`
+}
+
+type ExceptionAutomationResult struct {
+	Ticket       ExceptionTicket `json:"ticket"`
+	AutoResolved bool            `json:"autoResolved"`
+}
+
 type Season struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -328,6 +368,59 @@ type ReplayIngestionResult struct {
 	ParseRun           ReplayParseRun `json:"parseRun"`
 	Duplicate          bool           `json:"duplicate"`
 	LinkedSubmissionID *int64         `json:"linkedSubmissionId,omitempty"`
+}
+
+type ReportExceptionInput struct {
+	Category         string          `json:"category"`
+	ContextType      string          `json:"contextType"`
+	ContextID        int64           `json:"contextId"`
+	ReportedByTeamID *int64          `json:"reportedByTeamId,omitempty"`
+	ReasonCode       string          `json:"reasonCode"`
+	Severity         int32           `json:"severity"`
+	SuggestedAction  string          `json:"suggestedAction"`
+	DetailsJSON      json.RawMessage `json:"detailsJson"`
+}
+
+type TriageExceptionInput struct {
+	TicketID        int64  `json:"ticketId"`
+	Actor           string `json:"actor"`
+	ReasonCode      string `json:"reasonCode"`
+	Severity        int32  `json:"severity"`
+	SuggestedAction string `json:"suggestedAction"`
+	MinutesSpent    int32  `json:"minutesSpent"`
+}
+
+type ResolveExceptionInput struct {
+	TicketID       int64  `json:"ticketId"`
+	Actor          string `json:"actor"`
+	ResolutionCode string `json:"resolutionCode"`
+	Notes          string `json:"notes"`
+	Automated      bool   `json:"automated"`
+	MinutesSpent   int32  `json:"minutesSpent"`
+}
+
+type EvaluateSchedulingExceptionInput struct {
+	MatchID       int64  `json:"matchId"`
+	ConflictCode  string `json:"conflictCode"`
+	HomeConfirmed bool   `json:"homeConfirmed"`
+	AwayConfirmed bool   `json:"awayConfirmed"`
+	Actor         string `json:"actor"`
+}
+
+type EvaluateNoShowExceptionInput struct {
+	MatchID       int64  `json:"matchId"`
+	HomeCheckedIn bool   `json:"homeCheckedIn"`
+	AwayCheckedIn bool   `json:"awayCheckedIn"`
+	GraceMinutes  int32  `json:"graceMinutes"`
+	Actor         string `json:"actor"`
+}
+
+type EvaluateReplayDisputeExceptionInput struct {
+	ResultSubmissionID int64  `json:"resultSubmissionId"`
+	ParseStatus        string `json:"parseStatus"`
+	IdentityStatus     string `json:"identityStatus"`
+	DisputeRaised      bool   `json:"disputeRaised"`
+	Actor              string `json:"actor"`
 }
 
 type CreateSeasonInput struct {

@@ -246,6 +246,119 @@ func ValidateIngestReplayEvidenceInput(input IngestReplayEvidenceInput) error {
 	return nil
 }
 
+func ValidateReportExceptionInput(input ReportExceptionInput) error {
+	switch strings.TrimSpace(input.Category) {
+	case "scheduling_conflict", "no_show", "forfeit", "result_dispute", "replay_parse_failure", "replay_identity_mismatch", "roster_eligibility":
+	default:
+		return fmt.Errorf("%w: unsupported category", ErrInvalidInput)
+	}
+	switch strings.TrimSpace(input.ContextType) {
+	case "match", "scrim", "result_submission", "replay_evidence":
+	default:
+		return fmt.Errorf("%w: unsupported contextType", ErrInvalidInput)
+	}
+	if input.ContextID <= 0 {
+		return fmt.Errorf("%w: contextId must be greater than zero", ErrInvalidInput)
+	}
+	if input.ReportedByTeamID != nil && *input.ReportedByTeamID <= 0 {
+		return fmt.Errorf("%w: reportedByTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ReasonCode) == "" {
+		return fmt.Errorf("%w: reasonCode is required", ErrInvalidInput)
+	}
+	if input.Severity < 1 || input.Severity > 5 {
+		return fmt.Errorf("%w: severity must be in range 1-5", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.SuggestedAction) == "" {
+		return fmt.Errorf("%w: suggestedAction is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateTriageExceptionInput(input TriageExceptionInput) error {
+	if input.TicketID <= 0 {
+		return fmt.Errorf("%w: ticketId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ReasonCode) == "" {
+		return fmt.Errorf("%w: reasonCode is required", ErrInvalidInput)
+	}
+	if input.Severity < 1 || input.Severity > 5 {
+		return fmt.Errorf("%w: severity must be in range 1-5", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.SuggestedAction) == "" {
+		return fmt.Errorf("%w: suggestedAction is required", ErrInvalidInput)
+	}
+	if input.MinutesSpent < 0 {
+		return fmt.Errorf("%w: minutesSpent must be greater than or equal to zero", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateResolveExceptionInput(input ResolveExceptionInput) error {
+	if input.TicketID <= 0 {
+		return fmt.Errorf("%w: ticketId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ResolutionCode) == "" {
+		return fmt.Errorf("%w: resolutionCode is required", ErrInvalidInput)
+	}
+	if input.MinutesSpent < 0 {
+		return fmt.Errorf("%w: minutesSpent must be greater than or equal to zero", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateEvaluateSchedulingExceptionInput(input EvaluateSchedulingExceptionInput) error {
+	if input.MatchID <= 0 {
+		return fmt.Errorf("%w: matchId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ConflictCode) == "" {
+		return fmt.Errorf("%w: conflictCode is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateEvaluateNoShowExceptionInput(input EvaluateNoShowExceptionInput) error {
+	if input.MatchID <= 0 {
+		return fmt.Errorf("%w: matchId must be greater than zero", ErrInvalidInput)
+	}
+	if input.GraceMinutes < 0 {
+		return fmt.Errorf("%w: graceMinutes must be greater than or equal to zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateEvaluateReplayDisputeExceptionInput(input EvaluateReplayDisputeExceptionInput) error {
+	if input.ResultSubmissionID <= 0 {
+		return fmt.Errorf("%w: resultSubmissionId must be greater than zero", ErrInvalidInput)
+	}
+	switch strings.TrimSpace(input.ParseStatus) {
+	case "parsed", "failed":
+	default:
+		return fmt.Errorf("%w: parseStatus must be parsed or failed", ErrInvalidInput)
+	}
+	switch strings.TrimSpace(input.IdentityStatus) {
+	case "resolved", "mismatch":
+	default:
+		return fmt.Errorf("%w: identityStatus must be resolved or mismatch", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)

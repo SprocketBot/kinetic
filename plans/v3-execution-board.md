@@ -53,6 +53,12 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 14 completed: `W14-10` not consumed (no blockers)
 - Roadmap status: Weeks 1-14 complete
 - Active priority: Pareto Recovery Track (exception automation + operator time reduction)
+- Pareto P1 completed: instrumentation/metrics baseline primitives merged on 2026-02-15
+- Pareto P2 completed: operator inbox + triage/resolve APIs merged on 2026-02-15
+- Pareto P3 completed: scheduling exception automation merged on 2026-02-15
+- Pareto P4 completed: no-show/forfeit automation merged on 2026-02-15
+- Pareto P5 completed: replay/dispute triage automation merged on 2026-02-15
+- Pareto P6 completed: optimization guardrails, baseline report, and continuation criteria documented on 2026-02-15
 
 ## Capacity Guardrails
 
@@ -67,6 +73,13 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Plan of record: `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
 - Charter: `/Users/jacbaile/Sprocket-v3/docs/reports/pareto-recovery-charter-2026-02-15.md`
 - Objective: cut operator admin hours by automating exception-heavy workflows first.
+
+## Pareto Track Status
+
+- Execution plan: `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
+- Baseline report: `/Users/jacbaile/Sprocket-v3/docs/reports/pareto-baseline-2026-02-15.md`
+- Onboarding: `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`
+- ADR: `/Users/jacbaile/Sprocket-v3/docs/adr/020-operator-inbox-and-exception-automation-mvp.md`
 
 ## 14-Week Macro Plan
 

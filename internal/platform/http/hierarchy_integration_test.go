@@ -230,12 +230,13 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"scheduledFor": nil,
 	}, http.StatusBadRequest)
 
-	createEntity(t, server, "/v1/matches", map[string]any{
+	matchResp := createEntity(t, server, "/v1/matches", map[string]any{
 		"fixtureId":  fixtureID,
 		"homeTeamId": teamID,
 		"awayTeamId": teamTwoID,
 		"state":      "planned",
 	}, http.StatusCreated)
+	matchID := int64(matchResp["id"].(float64))
 
 	createEntity(t, server, "/v1/matches", map[string]any{
 		"fixtureId":          fixtureID,
@@ -323,6 +324,45 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		},
 	}, http.StatusOK)
 
+	exceptionResp := createEntity(t, server, "/v1/exceptions/report", map[string]any{
+		"category":        "scheduling_conflict",
+		"contextType":     "match",
+		"contextId":       matchID,
+		"reasonCode":      "time_unavailable",
+		"severity":        int32(3),
+		"suggestedAction": "propose_reschedule",
+		"detailsJson": map[string]any{
+			"source": "integration-test",
+		},
+	}, http.StatusCreated)
+	exceptionID := int64(exceptionResp["id"].(float64))
+
+	createEntity(t, server, "/v1/operator-inbox/triage", map[string]any{
+		"ticketId":        exceptionID,
+		"actor":           "ops-user",
+		"reasonCode":      "captains_conflict",
+		"severity":        int32(2),
+		"suggestedAction": "offer_two_slots",
+		"minutesSpent":    int32(5),
+	}, http.StatusOK)
+
+	createEntity(t, server, "/v1/operator-inbox/resolve", map[string]any{
+		"ticketId":       exceptionID,
+		"actor":          "ops-user",
+		"resolutionCode": "rescheduled",
+		"notes":          "captains agreed",
+		"automated":      false,
+		"minutesSpent":   int32(10),
+	}, http.StatusOK)
+
+	createEntity(t, server, "/v1/exception-automations/scheduling", map[string]any{
+		"matchId":       matchID,
+		"conflictCode":  "captain_conflict",
+		"homeConfirmed": true,
+		"awayConfirmed": true,
+		"actor":         "ops-bot",
+	}, http.StatusOK)
+
 	if _, err := conn.ExecContext(
 		ctx,
 		`INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played) VALUES ($1, $2, $3, $4, $5)`,
@@ -377,6 +417,8 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/replay-evidence")
 	assertListNotEmpty(t, server, "/v1/replay-parse-runs")
 	assertListNotEmpty(t, server, "/v1/result-submission-replay-links")
+	assertListNotEmpty(t, server, "/v1/operator-inbox")
+	assertListNotEmpty(t, server, "/v1/exception-actions")
 	assertListNotEmpty(t, server, "/v1/seasons")
 	assertListNotEmpty(t, server, "/v1/schedule-groups")
 	assertListNotEmpty(t, server, "/v1/fixtures")
@@ -485,6 +527,15 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"parserName":         "sprocket-rl-parser",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/exceptions/report", map[string]any{
+		"category":        "bad",
+		"contextType":     "match",
+		"contextId":       int64(1),
+		"reasonCode":      "x",
+		"severity":        int32(3),
+		"suggestedAction": "y",
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/matches", map[string]any{

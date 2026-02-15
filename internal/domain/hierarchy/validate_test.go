@@ -503,3 +503,127 @@ func TestValidateIngestReplayEvidenceInput(t *testing.T) {
 		t.Fatal("expected empty replayBody to fail validation")
 	}
 }
+
+func TestValidateReportExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateReportExceptionInput(ReportExceptionInput{
+		Category:        "scheduling_conflict",
+		ContextType:     "match",
+		ContextID:       1,
+		ReasonCode:      "time_unavailable",
+		Severity:        3,
+		SuggestedAction: "propose_reschedule",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateReportExceptionInput(ReportExceptionInput{
+		Category:        "bad",
+		ContextType:     "match",
+		ContextID:       1,
+		ReasonCode:      "x",
+		Severity:        3,
+		SuggestedAction: "y",
+	})
+	if err == nil {
+		t.Fatal("expected invalid category to fail validation")
+	}
+}
+
+func TestValidateTriageExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateTriageExceptionInput(TriageExceptionInput{
+		TicketID:        1,
+		Actor:           "ops-user",
+		ReasonCode:      "review_needed",
+		Severity:        2,
+		SuggestedAction: "contact_captains",
+		MinutesSpent:    5,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateTriageExceptionInput(TriageExceptionInput{
+		TicketID:        0,
+		Actor:           "ops-user",
+		ReasonCode:      "review_needed",
+		Severity:        2,
+		SuggestedAction: "contact_captains",
+		MinutesSpent:    5,
+	})
+	if err == nil {
+		t.Fatal("expected invalid ticketId to fail validation")
+	}
+}
+
+func TestValidateResolveExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateResolveExceptionInput(ResolveExceptionInput{
+		TicketID:       1,
+		Actor:          "ops-user",
+		ResolutionCode: "resolved_manual",
+		MinutesSpent:   10,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateResolveExceptionInput(ResolveExceptionInput{
+		TicketID:       1,
+		Actor:          "",
+		ResolutionCode: "resolved_manual",
+	})
+	if err == nil {
+		t.Fatal("expected missing actor to fail validation")
+	}
+}
+
+func TestValidateEvaluateSchedulingExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateEvaluateSchedulingExceptionInput(EvaluateSchedulingExceptionInput{
+		MatchID:       1,
+		ConflictCode:  "captain_conflict",
+		HomeConfirmed: false,
+		AwayConfirmed: false,
+		Actor:         "ops-user",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+}
+
+func TestValidateEvaluateNoShowExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateEvaluateNoShowExceptionInput(EvaluateNoShowExceptionInput{
+		MatchID:       1,
+		HomeCheckedIn: true,
+		AwayCheckedIn: false,
+		GraceMinutes:  15,
+		Actor:         "ops-user",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+}
+
+func TestValidateEvaluateReplayDisputeExceptionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateEvaluateReplayDisputeExceptionInput(EvaluateReplayDisputeExceptionInput{
+		ResultSubmissionID: 1,
+		ParseStatus:        "parsed",
+		IdentityStatus:     "resolved",
+		DisputeRaised:      false,
+		Actor:              "ops-user",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+}

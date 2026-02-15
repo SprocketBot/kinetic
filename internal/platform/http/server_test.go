@@ -26,63 +26,74 @@ type adminPingResponse struct {
 }
 
 type fakeHierarchyStore struct {
-	leagueToReturn        hierarchy.League
-	franchiseToReturn     hierarchy.Franchise
-	clubToReturn          hierarchy.Club
-	teamToReturn          hierarchy.Team
-	playerToReturn        hierarchy.Player
-	membershipToReturn    hierarchy.RosterMembership
-	queueToReturn         hierarchy.Queue
-	queueEntryToReturn    hierarchy.QueueEntry
-	scrimToReturn         hierarchy.Scrim
-	submissionToReturn    hierarchy.ResultSubmission
-	ingestionToReturn     hierarchy.ReplayIngestionResult
-	seasonToReturn        hierarchy.Season
-	groupToReturn         hierarchy.ScheduleGroup
-	fixtureToReturn       hierarchy.Fixture
-	matchToReturn         hierarchy.Match
-	leaguesToList         []hierarchy.League
-	franchisesToList      []hierarchy.Franchise
-	clubsToList           []hierarchy.Club
-	teamsToList           []hierarchy.Team
-	playersToList         []hierarchy.Player
-	membershipsToList     []hierarchy.RosterMembership
-	queuesToList          []hierarchy.Queue
-	queueEntriesToList    []hierarchy.QueueEntry
-	scrimsToList          []hierarchy.Scrim
-	runsToList            []hierarchy.PromotionProcessingRun
-	ratingsToList         []hierarchy.PlayerRating
-	decisionsToList       []hierarchy.MatchmakingDecision
-	submissionsToList     []hierarchy.ResultSubmission
-	replayEvidenceToList  []hierarchy.ReplayEvidence
-	replayParseRunsToList []hierarchy.ReplayParseRun
-	replayLinksToList     []hierarchy.ResultSubmissionReplayLink
-	seasonsToList         []hierarchy.Season
-	groupsToList          []hierarchy.ScheduleGroup
-	fixturesToList        []hierarchy.Fixture
-	matchesToList         []hierarchy.Match
-	createLeagueErr       error
-	createFranchiseErr    error
-	createClubErr         error
-	createTeamErr         error
-	createPlayerErr       error
-	createMemberErr       error
-	createQueueErr        error
-	enqueueTeamErr        error
-	leaveQueueErr         error
-	advanceStageErr       error
-	createScrimErr        error
-	updateScrimErr        error
-	promoteQueueErr       error
-	processPromoteErr     error
-	createSubmissionErr   error
-	ratifySubmissionErr   error
-	rejectSubmissionErr   error
-	ingestReplayErr       error
-	createSeasonErr       error
-	createGroupErr        error
-	createFixtureErr      error
-	createMatchErr        error
+	leagueToReturn           hierarchy.League
+	franchiseToReturn        hierarchy.Franchise
+	clubToReturn             hierarchy.Club
+	teamToReturn             hierarchy.Team
+	playerToReturn           hierarchy.Player
+	membershipToReturn       hierarchy.RosterMembership
+	queueToReturn            hierarchy.Queue
+	queueEntryToReturn       hierarchy.QueueEntry
+	scrimToReturn            hierarchy.Scrim
+	submissionToReturn       hierarchy.ResultSubmission
+	ingestionToReturn        hierarchy.ReplayIngestionResult
+	seasonToReturn           hierarchy.Season
+	groupToReturn            hierarchy.ScheduleGroup
+	fixtureToReturn          hierarchy.Fixture
+	matchToReturn            hierarchy.Match
+	leaguesToList            []hierarchy.League
+	franchisesToList         []hierarchy.Franchise
+	clubsToList              []hierarchy.Club
+	teamsToList              []hierarchy.Team
+	playersToList            []hierarchy.Player
+	membershipsToList        []hierarchy.RosterMembership
+	queuesToList             []hierarchy.Queue
+	queueEntriesToList       []hierarchy.QueueEntry
+	scrimsToList             []hierarchy.Scrim
+	runsToList               []hierarchy.PromotionProcessingRun
+	ratingsToList            []hierarchy.PlayerRating
+	decisionsToList          []hierarchy.MatchmakingDecision
+	submissionsToList        []hierarchy.ResultSubmission
+	replayEvidenceToList     []hierarchy.ReplayEvidence
+	replayParseRunsToList    []hierarchy.ReplayParseRun
+	replayLinksToList        []hierarchy.ResultSubmissionReplayLink
+	exceptionToReturn        hierarchy.ExceptionTicket
+	exceptionResultToReturn  hierarchy.ExceptionAutomationResult
+	exceptionActionsToList   []hierarchy.ExceptionAction
+	exceptionMetricsToReturn hierarchy.ExceptionMetrics
+	exceptionsToList         []hierarchy.ExceptionTicket
+	seasonsToList            []hierarchy.Season
+	groupsToList             []hierarchy.ScheduleGroup
+	fixturesToList           []hierarchy.Fixture
+	matchesToList            []hierarchy.Match
+	createLeagueErr          error
+	createFranchiseErr       error
+	createClubErr            error
+	createTeamErr            error
+	createPlayerErr          error
+	createMemberErr          error
+	createQueueErr           error
+	enqueueTeamErr           error
+	leaveQueueErr            error
+	advanceStageErr          error
+	createScrimErr           error
+	updateScrimErr           error
+	promoteQueueErr          error
+	processPromoteErr        error
+	createSubmissionErr      error
+	ratifySubmissionErr      error
+	rejectSubmissionErr      error
+	ingestReplayErr          error
+	reportExceptionErr       error
+	triageExceptionErr       error
+	resolveExceptionErr      error
+	schedulingEvalErr        error
+	noShowEvalErr            error
+	replayDisputeEvalErr     error
+	createSeasonErr          error
+	createGroupErr           error
+	createFixtureErr         error
+	createMatchErr           error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -190,6 +201,33 @@ func (f *fakeHierarchyStore) ListReplayParseRuns(_ context.Context) ([]hierarchy
 }
 func (f *fakeHierarchyStore) ListResultSubmissionReplayLinks(_ context.Context) ([]hierarchy.ResultSubmissionReplayLink, error) {
 	return f.replayLinksToList, nil
+}
+func (f *fakeHierarchyStore) ReportException(_ context.Context, _ hierarchy.ReportExceptionInput) (hierarchy.ExceptionTicket, error) {
+	return f.exceptionToReturn, f.reportExceptionErr
+}
+func (f *fakeHierarchyStore) ListOperatorInbox(_ context.Context) ([]hierarchy.ExceptionTicket, error) {
+	return f.exceptionsToList, nil
+}
+func (f *fakeHierarchyStore) TriageException(_ context.Context, _ hierarchy.TriageExceptionInput) (hierarchy.ExceptionTicket, error) {
+	return f.exceptionToReturn, f.triageExceptionErr
+}
+func (f *fakeHierarchyStore) ResolveException(_ context.Context, _ hierarchy.ResolveExceptionInput) (hierarchy.ExceptionTicket, error) {
+	return f.exceptionToReturn, f.resolveExceptionErr
+}
+func (f *fakeHierarchyStore) ListExceptionActions(_ context.Context) ([]hierarchy.ExceptionAction, error) {
+	return f.exceptionActionsToList, nil
+}
+func (f *fakeHierarchyStore) GetExceptionMetrics(_ context.Context) (hierarchy.ExceptionMetrics, error) {
+	return f.exceptionMetricsToReturn, nil
+}
+func (f *fakeHierarchyStore) EvaluateSchedulingException(_ context.Context, _ hierarchy.EvaluateSchedulingExceptionInput) (hierarchy.ExceptionAutomationResult, error) {
+	return f.exceptionResultToReturn, f.schedulingEvalErr
+}
+func (f *fakeHierarchyStore) EvaluateNoShowException(_ context.Context, _ hierarchy.EvaluateNoShowExceptionInput) (hierarchy.ExceptionAutomationResult, error) {
+	return f.exceptionResultToReturn, f.noShowEvalErr
+}
+func (f *fakeHierarchyStore) EvaluateReplayDisputeException(_ context.Context, _ hierarchy.EvaluateReplayDisputeExceptionInput) (hierarchy.ExceptionAutomationResult, error) {
+	return f.exceptionResultToReturn, f.replayDisputeEvalErr
 }
 func (f *fakeHierarchyStore) CreateSeason(_ context.Context, _ hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
 	return f.seasonToReturn, f.createSeasonErr
@@ -740,6 +778,49 @@ func TestListReplayParseRunsSuccess(t *testing.T) {
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestReportExceptionSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		exceptionToReturn: hierarchy.ExceptionTicket{
+			ID:              1,
+			Category:        "scheduling_conflict",
+			ContextType:     "match",
+			ContextID:       10,
+			State:           "open",
+			ReasonCode:      "time_unavailable",
+			Severity:        3,
+			SuggestedAction: "propose_reschedule",
+			DetailsJSON:     []byte(`{}`),
+			OpenedAt:        now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/exceptions/report", strings.NewReader(`{"category":"scheduling_conflict","contextType":"match","contextId":10,"reasonCode":"time_unavailable","severity":3,"suggestedAction":"propose_reschedule","detailsJson":{}}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListExceptionMetricsSuccess(t *testing.T) {
+	store := &fakeHierarchyStore{
+		exceptionMetricsToReturn: hierarchy.ExceptionMetrics{
+			AdminHoursPerWeek:       3.5,
+			ManualTouchesPerFixture: 1.2,
+			ZeroTouchFixtureRate:    0.65,
+			TimeToCloseHoursP50:     8,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodGet, "/v1/exception-metrics", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}

@@ -1392,3 +1392,165 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		t.Fatal("expected replay links rows")
 	}
 }
+
+func TestHierarchyStoreExceptionAutomationFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League P %d", suffix), Slug: fmt.Sprintf("league-p-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise P %d", suffix), Slug: fmt.Sprintf("franchise-p-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club P A %d", suffix), Slug: fmt.Sprintf("club-p-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club P B %d", suffix), Slug: fmt.Sprintf("club-p-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubA.ID, Name: fmt.Sprintf("Team P A %d", suffix), Slug: fmt.Sprintf("team-p-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubB.ID, Name: fmt.Sprintf("Team P B %d", suffix), Slug: fmt.Sprintf("team-p-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+	season, err := store.CreateSeason(ctx, hierarchy.CreateSeasonInput{Name: fmt.Sprintf("Season P %d", suffix), Slug: fmt.Sprintf("season-p-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create season: %v", err)
+	}
+	group, err := store.CreateScheduleGroup(ctx, hierarchy.CreateScheduleGroupInput{SeasonID: season.ID, Name: "Week 1", Sequence: 1})
+	if err != nil {
+		t.Fatalf("failed to create schedule group: %v", err)
+	}
+	fixture, err := store.CreateFixture(ctx, hierarchy.CreateFixtureInput{ScheduleGroupID: group.ID, HomeClubID: clubA.ID, AwayClubID: clubB.ID})
+	if err != nil {
+		t.Fatalf("failed to create fixture: %v", err)
+	}
+	match, err := store.CreateMatch(ctx, hierarchy.CreateMatchInput{
+		FixtureID:  fixture.ID,
+		HomeTeamID: teamA.ID,
+		AwayTeamID: teamB.ID,
+		State:      "planned",
+	})
+	if err != nil {
+		t.Fatalf("failed to create match: %v", err)
+	}
+
+	reportedByTeamID := teamA.ID
+	ticket, err := store.ReportException(ctx, hierarchy.ReportExceptionInput{
+		Category:         "scheduling_conflict",
+		ContextType:      "match",
+		ContextID:        match.ID,
+		ReportedByTeamID: &reportedByTeamID,
+		ReasonCode:       "time_unavailable",
+		Severity:         3,
+		SuggestedAction:  "propose_reschedule",
+		DetailsJSON:      []byte(`{"source":"integration"}`),
+	})
+	if err != nil {
+		t.Fatalf("failed to report exception: %v", err)
+	}
+
+	if _, err := store.TriageException(ctx, hierarchy.TriageExceptionInput{
+		TicketID:        ticket.ID,
+		Actor:           "ops-user",
+		ReasonCode:      "captain_conflict",
+		Severity:        2,
+		SuggestedAction: "offer_slots",
+		MinutesSpent:    5,
+	}); err != nil {
+		t.Fatalf("failed to triage exception: %v", err)
+	}
+
+	if _, err := store.ResolveException(ctx, hierarchy.ResolveExceptionInput{
+		TicketID:       ticket.ID,
+		Actor:          "ops-user",
+		ResolutionCode: "rescheduled",
+		Notes:          "captains agreed",
+		MinutesSpent:   10,
+	}); err != nil {
+		t.Fatalf("failed to resolve exception: %v", err)
+	}
+
+	scheduling, err := store.EvaluateSchedulingException(ctx, hierarchy.EvaluateSchedulingExceptionInput{
+		MatchID:       match.ID,
+		ConflictCode:  "captain_conflict",
+		HomeConfirmed: false,
+		AwayConfirmed: false,
+		Actor:         "ops-bot",
+	})
+	if err != nil {
+		t.Fatalf("failed scheduling evaluation: %v", err)
+	}
+	if scheduling.AutoResolved {
+		t.Fatal("expected scheduling evaluation to remain open")
+	}
+
+	noShow, err := store.EvaluateNoShowException(ctx, hierarchy.EvaluateNoShowExceptionInput{
+		MatchID:       match.ID,
+		HomeCheckedIn: true,
+		AwayCheckedIn: false,
+		GraceMinutes:  20,
+		Actor:         "ops-bot",
+	})
+	if err != nil {
+		t.Fatalf("failed no-show evaluation: %v", err)
+	}
+	if !noShow.AutoResolved {
+		t.Fatal("expected no-show evaluation to auto-resolve")
+	}
+
+	metrics, err := store.GetExceptionMetrics(ctx)
+	if err != nil {
+		t.Fatalf("failed to get exception metrics: %v", err)
+	}
+	if metrics.ManualTouchesPerFixture < 0 {
+		t.Fatal("expected non-negative manual touches per fixture")
+	}
+
+	actions, err := store.ListExceptionActions(ctx)
+	if err != nil {
+		t.Fatalf("failed to list exception actions: %v", err)
+	}
+	if len(actions) == 0 {
+		t.Fatal("expected exception actions to be present")
+	}
+
+	inbox, err := store.ListOperatorInbox(ctx)
+	if err != nil {
+		t.Fatalf("failed to list operator inbox: %v", err)
+	}
+	if len(inbox) == 0 {
+		t.Fatal("expected operator inbox to contain open/triaged tickets")
+	}
+}

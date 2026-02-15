@@ -73,3 +73,4 @@ Current onboarding guides:
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week12.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week13.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week14.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`

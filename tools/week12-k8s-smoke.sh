@@ -186,6 +186,34 @@ team_b_code=$(curl -s -o /tmp/week12_k8s_create_team_b.json -w '%{http_code}' \
 assert_code 201 "$team_b_code" "create team B"
 team_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_team_b.json)
 
+season_code=$(curl -s -o /tmp/week12_k8s_create_season.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/seasons" \
+  -H 'content-type: application/json' \
+  -d "{\"name\":\"Week12 K8s Season ${suffix}\",\"slug\":\"week12-k8s-season-${suffix}\"}" || true)
+assert_code 201 "$season_code" "create season"
+season_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_season.json)
+
+schedule_group_code=$(curl -s -o /tmp/week12_k8s_create_schedule_group.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/schedule-groups" \
+  -H 'content-type: application/json' \
+  -d "{\"seasonId\":${season_id},\"name\":\"Week 1\",\"sequence\":1}" || true)
+assert_code 201 "$schedule_group_code" "create schedule group"
+schedule_group_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_schedule_group.json)
+
+fixture_code=$(curl -s -o /tmp/week12_k8s_create_fixture.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/fixtures" \
+  -H 'content-type: application/json' \
+  -d "{\"scheduleGroupId\":${schedule_group_id},\"homeClubId\":${club_a_id},\"awayClubId\":${club_b_id}}" || true)
+assert_code 201 "$fixture_code" "create fixture"
+fixture_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_fixture.json)
+
+match_code=$(curl -s -o /tmp/week12_k8s_create_match.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/matches" \
+  -H 'content-type: application/json' \
+  -d "{\"fixtureId\":${fixture_id},\"homeTeamId\":${team_a_id},\"awayTeamId\":${team_b_id},\"state\":\"planned\"}" || true)
+assert_code 201 "$match_code" "create match"
+match_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_match.json)
+
 queue_code=$(curl -s -o /tmp/week12_k8s_create_queue.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queues" \
   -H 'content-type: application/json' \
@@ -332,6 +360,67 @@ assert_code 200 "$list_replay_links_code" "list result submission replay links"
 if ! grep -q '"resultSubmissionId"' /tmp/week12_k8s_list_result_submission_replay_links.json; then
   echo "result submission replay links payload missing resultSubmissionId" >&2
   cat /tmp/week12_k8s_list_result_submission_replay_links.json >&2 || true
+  exit 1
+fi
+
+report_exception_code=$(curl -s -o /tmp/week12_k8s_report_exception.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/exceptions/report" \
+  -H 'content-type: application/json' \
+  -d "{\"category\":\"scheduling_conflict\",\"contextType\":\"match\",\"contextId\":${match_id},\"reasonCode\":\"time_unavailable\",\"severity\":3,\"suggestedAction\":\"propose_reschedule\",\"detailsJson\":{\"source\":\"week12-k8s-smoke\"}}" || true)
+assert_code 201 "$report_exception_code" "report exception"
+exception_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_report_exception.json)
+
+triage_exception_code=$(curl -s -o /tmp/week12_k8s_triage_exception.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/operator-inbox/triage" \
+  -H 'content-type: application/json' \
+  -d "{\"ticketId\":${exception_id},\"actor\":\"ops-user\",\"reasonCode\":\"captain_conflict\",\"severity\":2,\"suggestedAction\":\"offer_slots\",\"minutesSpent\":5}" || true)
+assert_code 200 "$triage_exception_code" "triage exception"
+
+resolve_exception_code=$(curl -s -o /tmp/week12_k8s_resolve_exception.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/operator-inbox/resolve" \
+  -H 'content-type: application/json' \
+  -d "{\"ticketId\":${exception_id},\"actor\":\"ops-user\",\"resolutionCode\":\"rescheduled\",\"notes\":\"captains agreed\",\"automated\":false,\"minutesSpent\":10}" || true)
+assert_code 200 "$resolve_exception_code" "resolve exception"
+
+automation_schedule_code=$(curl -s -o /tmp/week12_k8s_exception_automation_schedule.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/exception-automations/scheduling" \
+  -H 'content-type: application/json' \
+  -d "{\"matchId\":${match_id},\"conflictCode\":\"captain_conflict\",\"homeConfirmed\":false,\"awayConfirmed\":false,\"actor\":\"ops-bot\"}" || true)
+assert_code 200 "$automation_schedule_code" "evaluate scheduling exception"
+
+automation_noshow_code=$(curl -s -o /tmp/week12_k8s_exception_automation_no_show.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/exception-automations/no-show" \
+  -H 'content-type: application/json' \
+  -d "{\"matchId\":${match_id},\"homeCheckedIn\":true,\"awayCheckedIn\":false,\"graceMinutes\":20,\"actor\":\"ops-bot\"}" || true)
+assert_code 200 "$automation_noshow_code" "evaluate no-show exception"
+
+automation_replay_code=$(curl -s -o /tmp/week12_k8s_exception_automation_replay.json -w '%{http_code}' \
+  -X POST "${API_BASE}/v1/exception-automations/replay-dispute" \
+  -H 'content-type: application/json' \
+  -d "{\"resultSubmissionId\":${submission_1_id},\"parseStatus\":\"parsed\",\"identityStatus\":\"resolved\",\"disputeRaised\":false,\"actor\":\"ops-bot\"}" || true)
+assert_code 200 "$automation_replay_code" "evaluate replay dispute exception"
+
+list_inbox_code=$(curl -s -o /tmp/week12_k8s_list_operator_inbox.json -w '%{http_code}' "${API_BASE}/v1/operator-inbox" || true)
+assert_code 200 "$list_inbox_code" "list operator inbox"
+if ! grep -q '"category"' /tmp/week12_k8s_list_operator_inbox.json; then
+  echo "operator inbox payload missing category" >&2
+  cat /tmp/week12_k8s_list_operator_inbox.json >&2 || true
+  exit 1
+fi
+
+list_exception_actions_code=$(curl -s -o /tmp/week12_k8s_list_exception_actions.json -w '%{http_code}' "${API_BASE}/v1/exception-actions" || true)
+assert_code 200 "$list_exception_actions_code" "list exception actions"
+if ! grep -q '"actionType"' /tmp/week12_k8s_list_exception_actions.json; then
+  echo "exception actions payload missing actionType" >&2
+  cat /tmp/week12_k8s_list_exception_actions.json >&2 || true
+  exit 1
+fi
+
+exception_metrics_code=$(curl -s -o /tmp/week12_k8s_exception_metrics.json -w '%{http_code}' "${API_BASE}/v1/exception-metrics" || true)
+assert_code 200 "$exception_metrics_code" "get exception metrics"
+if ! grep -q '"adminHoursPerWeek"' /tmp/week12_k8s_exception_metrics.json; then
+  echo "exception metrics payload missing adminHoursPerWeek" >&2
+  cat /tmp/week12_k8s_exception_metrics.json >&2 || true
   exit 1
 fi
 
