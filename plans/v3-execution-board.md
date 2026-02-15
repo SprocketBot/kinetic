@@ -45,7 +45,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 12 started: `W12-01` completed on 2026-02-15
 - Week 12 in progress: `W12-02` through `W12-09` completed on 2026-02-15
 - Week 12 completed: `W12-10` not consumed (no blockers)
-- Next up: Week 13 planning/execution (`W13-01` onward)
+- Week 13 started: `W13-01` completed on 2026-02-15
+- Week 13 in progress: `W13-02` through `W13-09` completed on 2026-02-15
+- Week 13 completed: `W13-10` not consumed (no blockers)
+- Next up: Week 14 planning/execution (`W14-01` onward)
 
 ## Capacity Guardrails
 
@@ -966,3 +969,76 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 12 implementation commit
+
+---
+
+## Week 13 Execution Board (2026-05-04 to 2026-05-10)
+
+Week objective: complete contributor handoff hardening by codifying runbooks, operational rollback workflow, and a repeatable contributor-quality workflow.
+
+Definition of done for Week 13:
+
+- contributor workflow document exists and is actionable
+- operations + rollback runbook is complete and executable
+- replay-ingestion triage runbook exists for common failure classes
+- quality-gate script is available and used by week smoke flow
+- Week 13 local/minikube smoke scripts are available and passing
+
+### Scope Boundaries
+
+In scope:
+
+- contributor process documentation and expectations
+- operational runbooks for deploy/rollback and replay triage
+- standardized quality gate script for local contributor usage
+- onboarding and execution-board updates
+
+Out of scope:
+
+- CI workflow enforcement changes (Week 14)
+- new product-domain behavior slices
+- production cloud-provider deployment tuning
+- advanced SLO instrumentation/alerting pipeline
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Define handoff hardening contract and artifacts | `docs/adr/018-contributor-handoff-and-operations-hardening.md` |
+| Tue | 2h | Write contributor workflow and baseline verification path | `CONTRIBUTING.md`, `tools/quality-gate.sh` |
+| Wed | 2h | Write operations + rollback + replay triage runbooks | `docs/runbooks/*.md` |
+| Thu | 2h | Add Week 13 smoke wrappers for hardening validation | `tools/week13-smoke.sh`, `tools/week13-k8s-smoke.sh` |
+| Fri | 2h | Onboarding docs + board updates + verification/buffer | `docs/onboarding/week13.md`, board status updates |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W13-01 | Define contributor handoff and ops hardening contract | 0.75h | Done | ADR documents scope, constraints, and intended artifacts |
+| W13-02 | Add contributor workflow guide | 0.75h | Done | branching, verification, and commit discipline are documented |
+| W13-03 | Add baseline quality-gate script for local use | 0.75h | Done | single command verifies fmt/vet/test/build |
+| W13-04 | Add dev setup and verification runbook | 0.75h | Done | new contributor can run local and k8s verification flows |
+| W13-05 | Add deployment and rollback runbook | 0.75h | Done | rollback procedure is explicit and executable |
+| W13-06 | Add replay ingestion triage runbook | 0.75h | Done | common replay-ingestion failures and diagnosis steps documented |
+| W13-07 | Add Week 13 onboarding notes | 0.5h | Done | week objective and contributor run path documented |
+| W13-08 | Add Week 13 smoke wrappers (local + minikube) | 0.75h | Done | hardening smoke entry points exist and are executable |
+| W13-09 | Update README and execution board for handoff readiness | 0.75h | Done | status and quick-start references are current |
+| W13-10 | Risk/overflow buffer | 1.5h | Done | not consumed (no blockers) |
+
+### Week 13 Risks and Mitigations
+
+- Risk: docs drift from actual runtime behavior.
+  - Mitigation: bind docs to executable smoke and quality-gate commands.
+- Risk: rollback guidance is incomplete when incidents occur.
+  - Mitigation: document non-interactive rollback path and required post-rollback checks.
+- Risk: contributor workflow remains ambiguous for new maintainers.
+  - Mitigation: centralize process in `CONTRIBUTING.md` and onboarding notes.
+
+### Week 13 Start Checklist
+
+- Week 12 smoke script passes: `./tools/week12-smoke.sh`
+- Week 12 minikube smoke script passes: `./tools/week12-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 13 implementation commit

@@ -4,13 +4,15 @@ Sprocket v3 is a reimagining of the platform as a statically typed, compiled bac
 
 ## Current Status
 
-Week 1 is in progress. Foundation work is focused on:
+Weeks 1-12 are complete, including:
 
-- modular monolith repository layout
-- architecture decision records (ADRs)
-- service bootstrap (health/readiness, config, logging)
-- PostgreSQL wiring and migrations
-- Kubernetes deployment baseline
+- league hierarchy, roster, queue, scrim, and scheduled match foundations
+- deterministic queue promotion processing with observability
+- result submission + ratification lifecycle
+- replay evidence ingestion MVP with parser provenance + dedupe
+- local and minikube smoke automation for weekly slices
+
+Week 13 is focused on contributor handoff and operations hardening.
 
 Planning source of truth:
 
@@ -36,28 +38,31 @@ Planning source of truth:
 ## Quick Commands
 
 ```bash
-# test
-go test ./...
+# quality gate (fmt + vet + test + build)
+./tools/quality-gate.sh
 
-# run API
-go run ./cmd/api
+# full local behavior smoke (latest slice)
+./tools/week12-smoke.sh
 
-# run migrations
-go run ./cmd/migrate
+# full minikube behavior smoke (latest slice)
+./tools/week12-k8s-smoke.sh
 
-# run week 1 smoke checks
-./tools/week1-smoke.sh
-
-# run week 3 hierarchy smoke checks
-./tools/week3-smoke.sh
-
-# run week 4 team/player smoke checks
-./tools/week4-smoke.sh
+# handoff + hardening smoke
+./tools/week13-smoke.sh
 ```
 
-Week 1 onboarding guide:
+Current onboarding guides:
 
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week1.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week2.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week3.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week4.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week5.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week6.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week7.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week8.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week9.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week10.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week11.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week12.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week13.md`
