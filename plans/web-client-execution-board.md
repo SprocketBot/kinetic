@@ -129,13 +129,13 @@ Definition of done for Week F2:
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| WEB-F2-01 | Build player home/dashboard shell | 1.0h | Todo | key scrim widgets and status cards render |
-| WEB-F2-02 | Implement queue join/leave/status interactions | 2.0h | Todo | queue flow works against `/v1/queue-entries` |
-| WEB-F2-03 | Implement active scrim details and lifecycle display | 1.5h | Todo | scrim detail reflects live state |
-| WEB-F2-04 | Implement replay evidence upload flow | 2.0h | Todo | replay upload and duplicate handling surfaced |
-| WEB-F2-05 | Implement submission ratify/reject views | 1.5h | Todo | result ratification actions available |
-| WEB-F2-06 | Embed Evidence read-only pages | 1.0h | Todo | embedded reports load inside UI frame |
-| WEB-F2-07 | Add F2 e2e coverage | 1.0h | Todo | queue -> scrim -> submit happy path covered |
+| WEB-F2-01 | Build player home/dashboard shell | 1.0h | Done | key scrim widgets and status cards render |
+| WEB-F2-02 | Implement queue join/leave/status interactions | 2.0h | Done | queue flow works against `/v1/queue-entries` |
+| WEB-F2-03 | Implement active scrim details and lifecycle display | 1.5h | Done | scrim detail reflects live state |
+| WEB-F2-04 | Implement replay evidence upload flow | 2.0h | Done | replay upload and duplicate handling surfaced |
+| WEB-F2-05 | Implement submission ratify/reject views | 1.5h | Done | result ratification actions available |
+| WEB-F2-06 | Embed Evidence read-only pages | 1.0h | Done | embedded reports load inside UI frame |
+| WEB-F2-07 | Add F2 e2e coverage | 1.0h | Done | queue -> scrim -> submit happy path covered |
 
 ## Week F3 Execution Board (2026-03-23 to 2026-04-05)
 

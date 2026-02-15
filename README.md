@@ -80,3 +80,4 @@ Current onboarding guides:
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-phase0.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-support-ops.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-player-core.md`

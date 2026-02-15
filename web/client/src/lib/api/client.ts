@@ -31,7 +31,7 @@ async function parseApiError(response: Response): Promise<ApiError> {
 }
 
 async function requestJson<T>(
-  method: "GET" | "POST",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   schema: z.ZodType<T>,
   body?: unknown,
@@ -64,4 +64,20 @@ export async function postJson<TResponse, TRequest>(
   schema: z.ZodType<TResponse>,
 ): Promise<TResponse> {
   return requestJson("POST", path, schema, body);
+}
+
+export async function patchJson<TResponse, TRequest>(
+  path: string,
+  body: TRequest,
+  schema: z.ZodType<TResponse>,
+): Promise<TResponse> {
+  return requestJson("PATCH", path, schema, body);
+}
+
+export async function deleteJson<TResponse, TRequest>(
+  path: string,
+  body: TRequest,
+  schema: z.ZodType<TResponse>,
+): Promise<TResponse> {
+  return requestJson("DELETE", path, schema, body);
 }
