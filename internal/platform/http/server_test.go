@@ -26,58 +26,63 @@ type adminPingResponse struct {
 }
 
 type fakeHierarchyStore struct {
-	leagueToReturn      hierarchy.League
-	franchiseToReturn   hierarchy.Franchise
-	clubToReturn        hierarchy.Club
-	teamToReturn        hierarchy.Team
-	playerToReturn      hierarchy.Player
-	membershipToReturn  hierarchy.RosterMembership
-	queueToReturn       hierarchy.Queue
-	queueEntryToReturn  hierarchy.QueueEntry
-	scrimToReturn       hierarchy.Scrim
-	submissionToReturn  hierarchy.ResultSubmission
-	seasonToReturn      hierarchy.Season
-	groupToReturn       hierarchy.ScheduleGroup
-	fixtureToReturn     hierarchy.Fixture
-	matchToReturn       hierarchy.Match
-	leaguesToList       []hierarchy.League
-	franchisesToList    []hierarchy.Franchise
-	clubsToList         []hierarchy.Club
-	teamsToList         []hierarchy.Team
-	playersToList       []hierarchy.Player
-	membershipsToList   []hierarchy.RosterMembership
-	queuesToList        []hierarchy.Queue
-	queueEntriesToList  []hierarchy.QueueEntry
-	scrimsToList        []hierarchy.Scrim
-	runsToList          []hierarchy.PromotionProcessingRun
-	ratingsToList       []hierarchy.PlayerRating
-	decisionsToList     []hierarchy.MatchmakingDecision
-	submissionsToList   []hierarchy.ResultSubmission
-	seasonsToList       []hierarchy.Season
-	groupsToList        []hierarchy.ScheduleGroup
-	fixturesToList      []hierarchy.Fixture
-	matchesToList       []hierarchy.Match
-	createLeagueErr     error
-	createFranchiseErr  error
-	createClubErr       error
-	createTeamErr       error
-	createPlayerErr     error
-	createMemberErr     error
-	createQueueErr      error
-	enqueueTeamErr      error
-	leaveQueueErr       error
-	advanceStageErr     error
-	createScrimErr      error
-	updateScrimErr      error
-	promoteQueueErr     error
-	processPromoteErr   error
-	createSubmissionErr error
-	ratifySubmissionErr error
-	rejectSubmissionErr error
-	createSeasonErr     error
-	createGroupErr      error
-	createFixtureErr    error
-	createMatchErr      error
+	leagueToReturn        hierarchy.League
+	franchiseToReturn     hierarchy.Franchise
+	clubToReturn          hierarchy.Club
+	teamToReturn          hierarchy.Team
+	playerToReturn        hierarchy.Player
+	membershipToReturn    hierarchy.RosterMembership
+	queueToReturn         hierarchy.Queue
+	queueEntryToReturn    hierarchy.QueueEntry
+	scrimToReturn         hierarchy.Scrim
+	submissionToReturn    hierarchy.ResultSubmission
+	ingestionToReturn     hierarchy.ReplayIngestionResult
+	seasonToReturn        hierarchy.Season
+	groupToReturn         hierarchy.ScheduleGroup
+	fixtureToReturn       hierarchy.Fixture
+	matchToReturn         hierarchy.Match
+	leaguesToList         []hierarchy.League
+	franchisesToList      []hierarchy.Franchise
+	clubsToList           []hierarchy.Club
+	teamsToList           []hierarchy.Team
+	playersToList         []hierarchy.Player
+	membershipsToList     []hierarchy.RosterMembership
+	queuesToList          []hierarchy.Queue
+	queueEntriesToList    []hierarchy.QueueEntry
+	scrimsToList          []hierarchy.Scrim
+	runsToList            []hierarchy.PromotionProcessingRun
+	ratingsToList         []hierarchy.PlayerRating
+	decisionsToList       []hierarchy.MatchmakingDecision
+	submissionsToList     []hierarchy.ResultSubmission
+	replayEvidenceToList  []hierarchy.ReplayEvidence
+	replayParseRunsToList []hierarchy.ReplayParseRun
+	replayLinksToList     []hierarchy.ResultSubmissionReplayLink
+	seasonsToList         []hierarchy.Season
+	groupsToList          []hierarchy.ScheduleGroup
+	fixturesToList        []hierarchy.Fixture
+	matchesToList         []hierarchy.Match
+	createLeagueErr       error
+	createFranchiseErr    error
+	createClubErr         error
+	createTeamErr         error
+	createPlayerErr       error
+	createMemberErr       error
+	createQueueErr        error
+	enqueueTeamErr        error
+	leaveQueueErr         error
+	advanceStageErr       error
+	createScrimErr        error
+	updateScrimErr        error
+	promoteQueueErr       error
+	processPromoteErr     error
+	createSubmissionErr   error
+	ratifySubmissionErr   error
+	rejectSubmissionErr   error
+	ingestReplayErr       error
+	createSeasonErr       error
+	createGroupErr        error
+	createFixtureErr      error
+	createMatchErr        error
 }
 
 func (f *fakeHierarchyStore) CreateLeague(_ context.Context, _ hierarchy.CreateLeagueInput) (hierarchy.League, error) {
@@ -173,6 +178,18 @@ func (f *fakeHierarchyStore) RatifyResultSubmission(_ context.Context, _ hierarc
 }
 func (f *fakeHierarchyStore) RejectResultSubmission(_ context.Context, _ hierarchy.RejectResultSubmissionInput) (hierarchy.ResultSubmission, error) {
 	return f.submissionToReturn, f.rejectSubmissionErr
+}
+func (f *fakeHierarchyStore) IngestReplayEvidence(_ context.Context, _ hierarchy.IngestReplayEvidenceInput) (hierarchy.ReplayIngestionResult, error) {
+	return f.ingestionToReturn, f.ingestReplayErr
+}
+func (f *fakeHierarchyStore) ListReplayEvidence(_ context.Context) ([]hierarchy.ReplayEvidence, error) {
+	return f.replayEvidenceToList, nil
+}
+func (f *fakeHierarchyStore) ListReplayParseRuns(_ context.Context) ([]hierarchy.ReplayParseRun, error) {
+	return f.replayParseRunsToList, nil
+}
+func (f *fakeHierarchyStore) ListResultSubmissionReplayLinks(_ context.Context) ([]hierarchy.ResultSubmissionReplayLink, error) {
+	return f.replayLinksToList, nil
 }
 func (f *fakeHierarchyStore) CreateSeason(_ context.Context, _ hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
 	return f.seasonToReturn, f.createSeasonErr
@@ -648,6 +665,78 @@ func TestRatifyResultSubmissionSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/result-submission-ratifications", strings.NewReader(`{"submissionId":1,"teamId":20}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestIngestReplayEvidenceSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	submissionID := int64(1)
+	store := &fakeHierarchyStore{
+		ingestionToReturn: hierarchy.ReplayIngestionResult{
+			Evidence: hierarchy.ReplayEvidence{
+				ID:                1,
+				ContextType:       "scrim",
+				ContextID:         10,
+				SubmittedByTeamID: 20,
+				ReplaySHA256:      "abc123",
+				ContentSizeBytes:  42,
+				StorageRef:        "inline-sha256:abc123",
+				State:             "parsed",
+				CreatedAt:         now,
+			},
+			ParseRun: hierarchy.ReplayParseRun{
+				ID:                 1,
+				ReplayEvidenceID:   1,
+				ParserName:         "sprocket-rl-parser",
+				ParserVersion:      "v0.1.0",
+				ParserConfigDigest: "cfg-001",
+				Status:             "parsed",
+				OutputJSON:         []byte(`{"goals":4}`),
+				CreatedAt:          now,
+			},
+			Duplicate:          false,
+			LinkedSubmissionID: &submissionID,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/replay-evidence", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"replayBody":"fake-bytes","parserName":"sprocket-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-001","resultSubmissionId":1,"parseOutputJson":{"goals":4}}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListReplayParseRunsSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		replayParseRunsToList: []hierarchy.ReplayParseRun{
+			{
+				ID:                 1,
+				ReplayEvidenceID:   1,
+				ParserName:         "sprocket-rl-parser",
+				ParserVersion:      "v0.1.0",
+				ParserConfigDigest: "cfg-001",
+				Status:             "parsed",
+				OutputJSON:         []byte(`{"goals":4}`),
+				CreatedAt:          now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/replay-parse-runs", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

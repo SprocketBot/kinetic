@@ -471,3 +471,35 @@ func TestValidateRejectResultSubmissionInput(t *testing.T) {
 		t.Fatal("expected missing reason to fail validation")
 	}
 }
+
+func TestValidateIngestReplayEvidenceInput(t *testing.T) {
+	t.Parallel()
+
+	submissionID := int64(1)
+	err := ValidateIngestReplayEvidenceInput(IngestReplayEvidenceInput{
+		ContextType:        "scrim",
+		ContextID:          1,
+		SubmittedByTeamID:  10,
+		ReplayBody:         "fake-replay-bytes",
+		ParserName:         "sprocket-rl-parser",
+		ParserVersion:      "v0.1.0",
+		ParserConfigDigest: "cfg-001",
+		ResultSubmissionID: &submissionID,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateIngestReplayEvidenceInput(IngestReplayEvidenceInput{
+		ContextType:        "scrim",
+		ContextID:          1,
+		SubmittedByTeamID:  10,
+		ReplayBody:         "",
+		ParserName:         "sprocket-rl-parser",
+		ParserVersion:      "v0.1.0",
+		ParserConfigDigest: "cfg-001",
+	})
+	if err == nil {
+		t.Fatal("expected empty replayBody to fail validation")
+	}
+}

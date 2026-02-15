@@ -132,6 +132,37 @@ type ResultSubmission struct {
 	CreatedAt         time.Time       `json:"createdAt"`
 }
 
+type ReplayEvidence struct {
+	ID                int64     `json:"id"`
+	ContextType       string    `json:"contextType"`
+	ContextID         int64     `json:"contextId"`
+	SubmittedByTeamID int64     `json:"submittedByTeamId"`
+	ReplaySHA256      string    `json:"replaySha256"`
+	ContentSizeBytes  int64     `json:"contentSizeBytes"`
+	StorageRef        string    `json:"storageRef"`
+	State             string    `json:"state"`
+	CreatedAt         time.Time `json:"createdAt"`
+}
+
+type ReplayParseRun struct {
+	ID                 int64           `json:"id"`
+	ReplayEvidenceID   int64           `json:"replayEvidenceId"`
+	ParserName         string          `json:"parserName"`
+	ParserVersion      string          `json:"parserVersion"`
+	ParserConfigDigest string          `json:"parserConfigDigest"`
+	Status             string          `json:"status"`
+	OutputJSON         json.RawMessage `json:"outputJson"`
+	CreatedAt          time.Time       `json:"createdAt"`
+}
+
+type ResultSubmissionReplayLink struct {
+	ID                 int64     `json:"id"`
+	ResultSubmissionID int64     `json:"resultSubmissionId"`
+	ReplayEvidenceID   int64     `json:"replayEvidenceId"`
+	LinkedByTeamID     int64     `json:"linkedByTeamId"`
+	CreatedAt          time.Time `json:"createdAt"`
+}
+
 type Season struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -278,6 +309,25 @@ type RejectResultSubmissionInput struct {
 	SubmissionID int64  `json:"submissionId"`
 	TeamID       int64  `json:"teamId"`
 	Reason       string `json:"reason"`
+}
+
+type IngestReplayEvidenceInput struct {
+	ContextType        string          `json:"contextType"`
+	ContextID          int64           `json:"contextId"`
+	SubmittedByTeamID  int64           `json:"submittedByTeamId"`
+	ReplayBody         string          `json:"replayBody"`
+	ParserName         string          `json:"parserName"`
+	ParserVersion      string          `json:"parserVersion"`
+	ParserConfigDigest string          `json:"parserConfigDigest"`
+	ParseOutputJSON    json.RawMessage `json:"parseOutputJson"`
+	ResultSubmissionID *int64          `json:"resultSubmissionId,omitempty"`
+}
+
+type ReplayIngestionResult struct {
+	Evidence           ReplayEvidence `json:"evidence"`
+	ParseRun           ReplayParseRun `json:"parseRun"`
+	Duplicate          bool           `json:"duplicate"`
+	LinkedSubmissionID *int64         `json:"linkedSubmissionId,omitempty"`
 }
 
 type CreateSeasonInput struct {

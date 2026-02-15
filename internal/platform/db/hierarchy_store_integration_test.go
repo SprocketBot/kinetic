@@ -1252,3 +1252,143 @@ func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
 		t.Fatal("expected at least one result submission")
 	}
 }
+
+func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League W12 %d", suffix), Slug: fmt.Sprintf("league-w12-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise W12 %d", suffix), Slug: fmt.Sprintf("franchise-w12-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W12 A %d", suffix), Slug: fmt.Sprintf("club-w12-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W12 B %d", suffix), Slug: fmt.Sprintf("club-w12-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubA.ID, Name: fmt.Sprintf("Team W12 A %d", suffix), Slug: fmt.Sprintf("team-w12-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubB.ID, Name: fmt.Sprintf("Team W12 B %d", suffix), Slug: fmt.Sprintf("team-w12-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+	queue, err := store.CreateQueue(ctx, hierarchy.CreateQueueInput{Name: fmt.Sprintf("Queue W12 %d", suffix), Slug: fmt.Sprintf("queue-w12-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+	scrim, err := store.CreateScrim(ctx, hierarchy.CreateScrimInput{
+		QueueID:    queue.ID,
+		HomeTeamID: teamA.ID,
+		AwayTeamID: teamB.ID,
+		State:      "created",
+	})
+	if err != nil {
+		t.Fatalf("failed to create scrim: %v", err)
+	}
+	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
+		ContextType:       "scrim",
+		ContextID:         scrim.ID,
+		SubmittedByTeamID: teamA.ID,
+		WinningTeamID:     teamA.ID,
+		LosingTeamID:      teamB.ID,
+		PayloadJSON:       []byte(`{"score":"3-1"}`),
+	})
+	if err != nil {
+		t.Fatalf("failed to create result submission: %v", err)
+	}
+
+	firstIngest, err := store.IngestReplayEvidence(ctx, hierarchy.IngestReplayEvidenceInput{
+		ContextType:        "scrim",
+		ContextID:          scrim.ID,
+		SubmittedByTeamID:  teamA.ID,
+		ReplayBody:         "week12-replay-body",
+		ParserName:         "sprocket-rl-parser",
+		ParserVersion:      "v0.1.0",
+		ParserConfigDigest: "cfg-week12",
+		ParseOutputJSON:    []byte(`{"goals":4}`),
+		ResultSubmissionID: &submission.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed first replay ingest: %v", err)
+	}
+	if firstIngest.Duplicate {
+		t.Fatal("expected first ingest to be non-duplicate")
+	}
+
+	secondIngest, err := store.IngestReplayEvidence(ctx, hierarchy.IngestReplayEvidenceInput{
+		ContextType:        "scrim",
+		ContextID:          scrim.ID,
+		SubmittedByTeamID:  teamA.ID,
+		ReplayBody:         "week12-replay-body",
+		ParserName:         "sprocket-rl-parser",
+		ParserVersion:      "v0.1.0",
+		ParserConfigDigest: "cfg-week12",
+		ParseOutputJSON:    []byte(`{"goals":4}`),
+		ResultSubmissionID: &submission.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed second replay ingest: %v", err)
+	}
+	if !secondIngest.Duplicate {
+		t.Fatal("expected second ingest to be duplicate")
+	}
+	if secondIngest.Evidence.ID != firstIngest.Evidence.ID {
+		t.Fatalf("expected duplicate ingest to reuse evidence ID %d, got %d", firstIngest.Evidence.ID, secondIngest.Evidence.ID)
+	}
+
+	evidence, err := store.ListReplayEvidence(ctx)
+	if err != nil {
+		t.Fatalf("failed to list replay evidence: %v", err)
+	}
+	if len(evidence) == 0 {
+		t.Fatal("expected replay evidence rows")
+	}
+
+	parseRuns, err := store.ListReplayParseRuns(ctx)
+	if err != nil {
+		t.Fatalf("failed to list replay parse runs: %v", err)
+	}
+	if len(parseRuns) < 2 {
+		t.Fatalf("expected at least two parse runs, got %d", len(parseRuns))
+	}
+
+	links, err := store.ListResultSubmissionReplayLinks(ctx)
+	if err != nil {
+		t.Fatalf("failed to list result submission replay links: %v", err)
+	}
+	if len(links) == 0 {
+		t.Fatal("expected replay links rows")
+	}
+}

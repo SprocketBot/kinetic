@@ -578,6 +578,79 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/replay-evidence", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			evidence, err := deps.HierarchyStore.ListReplayEvidence(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list replay evidence", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, evidence)
+		case http.MethodPost:
+			var input hierarchy.IngestReplayEvidenceInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			result, err := deps.HierarchyStore.IngestReplayEvidence(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			status := http.StatusCreated
+			if result.Duplicate {
+				status = http.StatusOK
+			}
+			writeJSON(w, status, result)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/replay-parse-runs", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			runs, err := deps.HierarchyStore.ListReplayParseRuns(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list replay parse runs", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, runs)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/result-submission-replay-links", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			links, err := deps.HierarchyStore.ListResultSubmissionReplayLinks(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list result submission replay links", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, links)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/v1/seasons", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
 			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)

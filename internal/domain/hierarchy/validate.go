@@ -216,6 +216,36 @@ func ValidateRejectResultSubmissionInput(input RejectResultSubmissionInput) erro
 	return nil
 }
 
+func ValidateIngestReplayEvidenceInput(input IngestReplayEvidenceInput) error {
+	switch strings.TrimSpace(input.ContextType) {
+	case "scrim", "match":
+	default:
+		return fmt.Errorf("%w: contextType must be scrim or match", ErrInvalidInput)
+	}
+	if input.ContextID <= 0 {
+		return fmt.Errorf("%w: contextId must be greater than zero", ErrInvalidInput)
+	}
+	if input.SubmittedByTeamID <= 0 {
+		return fmt.Errorf("%w: submittedByTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ReplayBody) == "" {
+		return fmt.Errorf("%w: replayBody is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ParserName) == "" {
+		return fmt.Errorf("%w: parserName is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ParserVersion) == "" {
+		return fmt.Errorf("%w: parserVersion is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ParserConfigDigest) == "" {
+		return fmt.Errorf("%w: parserConfigDigest is required", ErrInvalidInput)
+	}
+	if input.ResultSubmissionID != nil && *input.ResultSubmissionID <= 0 {
+		return fmt.Errorf("%w: resultSubmissionId must be greater than zero when provided", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateSeasonInput(input CreateSeasonInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: season name is required", ErrInvalidInput)

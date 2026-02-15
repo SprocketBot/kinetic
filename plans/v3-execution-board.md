@@ -42,7 +42,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 11 started: `W11-01` completed on 2026-02-15
 - Week 11 in progress: `W11-02` through `W11-09` completed on 2026-02-15
 - Week 11 completed: `W11-10` not consumed (no blockers)
-- Next up: Week 12 planning/execution (`W12-01` onward)
+- Week 12 started: `W12-01` completed on 2026-02-15
+- Week 12 in progress: `W12-02` through `W12-09` completed on 2026-02-15
+- Week 12 completed: `W12-10` not consumed (no blockers)
+- Next up: Week 13 planning/execution (`W13-01` onward)
 
 ## Capacity Guardrails
 
@@ -888,3 +891,78 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 11 implementation commit
+
+---
+
+## Week 12 Execution Board (2026-04-27 to 2026-05-03)
+
+Week objective: deliver replay evidence ingestion MVP with parser provenance and idempotent duplicate convergence, linked to the Week 11 result-submission lifecycle.
+
+Definition of done for Week 12:
+
+- Replay evidence schema exists with immutable content-hash identity
+- Parser provenance runs are persisted per ingest attempt
+- Replay ingest endpoint enforces context/team constraints and idempotent duplicate convergence
+- Replay evidence can be linked to result submissions with explicit provenance
+- Integration tests and local/minikube smoke scripts validate duplicate ingest and link/list behavior
+
+### Scope Boundaries
+
+In scope:
+
+- replay evidence entity keyed by content hash
+- parser provenance run recording
+- submission-link association for replay evidence
+- API + DB + integration tests and onboarding/smoke docs
+
+Out of scope:
+
+- external object-storage replay blob persistence
+- full parser failure/review workflow and operator override tooling
+- platform-account identity resolution to player attribution
+- automatic standings/stat application from replay parse outputs
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Define replay evidence/provenance MVP contract | `docs/adr/017-replay-evidence-and-parser-provenance-mvp.md` |
+| Tue | 2h | Implement schema and store path for replay evidence + parse runs + links | `migrations/000013_create_replay_ingestion_slice.up.sql`, store code |
+| Wed | 2h | Implement replay ingestion/list APIs with idempotent duplicate behavior | `/v1/replay-evidence`, `/v1/replay-parse-runs`, `/v1/result-submission-replay-links` |
+| Thu | 2h | Integration tests for duplicate convergence and link constraints | DB/API integration coverage |
+| Fri | 2h | Onboarding docs + local/k8s smoke scripts + cleanup/buffer | `docs/onboarding/week12.md`, `tools/week12-smoke.sh`, `tools/week12-k8s-smoke.sh` |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W12-01 | Define replay evidence and parser-provenance MVP contract | 0.75h | Done | Week 12 replay ingestion invariants and API contract documented |
+| W12-02 | Add replay ingestion persistence schema (evidence, parse runs, links) | 1.0h | Done | additive migration with hash uniqueness and provenance constraints |
+| W12-03 | Implement replay evidence ingest/list store path | 1.0h | Done | ingest creates/reuses evidence and lists evidence rows |
+| W12-04 | Implement parser provenance run recording | 0.75h | Done | parser metadata and output JSON persisted per ingest attempt |
+| W12-05 | Implement replay evidence to result submission linking | 0.75h | Done | link creation enforces submission/context and participant consistency |
+| W12-06 | Wire replay ingestion/list API handlers and validation/error mapping | 1.0h | Done | stable 2xx/4xx behavior for ingest/list endpoints |
+| W12-07 | Write unit tests for replay-ingestion input validation | 0.75h | Done | invalid replay ingest payloads are rejected predictably |
+| W12-08 | Write DB/API integration tests for dedupe/link behavior | 1.25h | Done | duplicate replay ingest converges and links remain queryable |
+| W12-09 | Write Week 12 onboarding notes + local/k8s smoke automations | 0.5h | Done | contributor can execute replay ingest slice locally and on minikube |
+| W12-10 | Risk/overflow buffer | 1.25h | Done | not consumed (no blockers) |
+
+### Week 12 Risks and Mitigations
+
+- Risk: replay dedupe behavior drifts from immutable evidence invariant.
+  - Mitigation: enforce unique replay hash at DB level and verify duplicate convergence in integration + smoke tests.
+- Risk: replay evidence links could attach to mismatched submissions.
+  - Mitigation: require context match and participant ownership checks before link creation.
+- Risk: parser provenance is under-specified for future parser upgrades.
+  - Mitigation: persist parser name/version/config digest now and keep parse run model append-only.
+- Risk: local success misses in-cluster behavior regressions.
+  - Mitigation: require both `week12-smoke.sh` and `week12-k8s-smoke.sh` passing before week completion.
+
+### Week 12 Start Checklist
+
+- Week 11 smoke script passes: `./tools/week11-smoke.sh`
+- Week 11 minikube smoke script passes: `./tools/week11-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 12 implementation commit

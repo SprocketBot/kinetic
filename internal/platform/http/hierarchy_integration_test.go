@@ -292,6 +292,37 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":       teamTwoID,
 	}, http.StatusOK)
 
+	replayEvidenceResp := createEntity(t, server, "/v1/replay-evidence", map[string]any{
+		"contextType":        "scrim",
+		"contextId":          scrimID,
+		"submittedByTeamId":  teamID,
+		"replayBody":         "week12-replay-body",
+		"parserName":         "sprocket-rl-parser",
+		"parserVersion":      "v0.1.0",
+		"parserConfigDigest": "cfg-week12",
+		"resultSubmissionId": submissionID,
+		"parseOutputJson": map[string]any{
+			"goals": 4,
+		},
+	}, http.StatusCreated)
+	if replayEvidenceResp["duplicate"].(bool) {
+		t.Fatal("expected first replay ingest to be non-duplicate")
+	}
+
+	createEntity(t, server, "/v1/replay-evidence", map[string]any{
+		"contextType":        "scrim",
+		"contextId":          scrimID,
+		"submittedByTeamId":  teamID,
+		"replayBody":         "week12-replay-body",
+		"parserName":         "sprocket-rl-parser",
+		"parserVersion":      "v0.1.0",
+		"parserConfigDigest": "cfg-week12",
+		"resultSubmissionId": submissionID,
+		"parseOutputJson": map[string]any{
+			"goals": 4,
+		},
+	}, http.StatusOK)
+
 	if _, err := conn.ExecContext(
 		ctx,
 		`INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played) VALUES ($1, $2, $3, $4, $5)`,
@@ -343,6 +374,9 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/player-ratings")
 	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
 	assertListNotEmpty(t, server, "/v1/result-submissions")
+	assertListNotEmpty(t, server, "/v1/replay-evidence")
+	assertListNotEmpty(t, server, "/v1/replay-parse-runs")
+	assertListNotEmpty(t, server, "/v1/result-submission-replay-links")
 	assertListNotEmpty(t, server, "/v1/seasons")
 	assertListNotEmpty(t, server, "/v1/schedule-groups")
 	assertListNotEmpty(t, server, "/v1/fixtures")
@@ -441,6 +475,16 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"submissionId": int64(1),
 		"teamId":       int64(1),
 		"reason":       "",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/replay-evidence", map[string]any{
+		"contextType":        "scrim",
+		"contextId":          int64(1),
+		"submittedByTeamId":  int64(1),
+		"replayBody":         "",
+		"parserName":         "sprocket-rl-parser",
+		"parserVersion":      "v0.1.0",
+		"parserConfigDigest": "cfg-week12",
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/matches", map[string]any{
