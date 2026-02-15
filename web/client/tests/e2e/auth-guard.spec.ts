@@ -79,6 +79,24 @@ async function mockPlayerEndpoints(page: import("@playwright/test").Page) {
       ]),
     });
   });
+  await page.route("**/v1/player-ratings", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: 1,
+          playerId: 1,
+          contextKey: "default",
+          rating: 1000,
+          uncertainty: 120,
+          matchesPlayed: 25,
+          lastCompetedAt: "2026-02-14T12:00:00Z",
+          isActive: true,
+          updatedAt: "2026-02-15T00:00:00Z",
+        },
+      ]),
+    });
+  });
 
   await page.route("**/v1/result-submission-ratifications", async (route) => {
     await route.fulfill({
@@ -284,6 +302,101 @@ async function mockAdminEndpoints(page: import("@playwright/test").Page) {
       }),
     });
   });
+
+  await page.route("**/v1/teams", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: 1,
+          clubId: 11,
+          name: "Team A",
+          slug: "team-a",
+          isActive: true,
+          createdAt: "2026-02-15T00:00:00Z",
+        },
+      ]),
+    });
+  });
+
+  await page.route("**/v1/players", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: 1,
+          displayName: "Player One",
+          slug: "player-one",
+          isActive: true,
+          createdAt: "2026-02-15T00:00:00Z",
+        },
+      ]),
+    });
+  });
+
+  await page.route("**/v1/roster-memberships", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            playerId: 1,
+            teamId: 1,
+            isActive: true,
+            createdAt: "2026-02-15T00:00:00Z",
+          },
+        ]),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 2,
+        playerId: 1,
+        teamId: 1,
+        isActive: true,
+        createdAt: "2026-02-15T03:00:00Z",
+      }),
+    });
+  });
+
+  await page.route("**/v1/exception-actions", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: 1,
+          ticketId: 1,
+          actionType: "triaged",
+          actor: "support-1",
+          automated: false,
+          notes: "reviewed",
+          minutesSpent: 5,
+          createdAt: "2026-02-15T00:30:00Z",
+        },
+      ]),
+    });
+  });
+  await page.route("**/v1/player-ratings", async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: 1,
+          playerId: 1,
+          contextKey: "default",
+          rating: 1000,
+          uncertainty: 120,
+          matchesPlayed: 25,
+          lastCompetedAt: "2026-02-14T12:00:00Z",
+          isActive: true,
+          updatedAt: "2026-02-15T00:00:00Z",
+        },
+      ]),
+    });
+  });
 }
 
 test("redirects unauthenticated users to login", async ({ page }) => {
@@ -350,6 +463,8 @@ test("renders admin scheduling workspace and creates entities", async ({ page })
 
   await page.getByRole("button", { name: "Create season" }).click();
   await expect(page.getByTestId("admin-season-success")).toBeVisible();
+  await page.getByRole("button", { name: "Assign player to team" }).click();
+  await expect(page.getByTestId("admin-roster-success")).toBeVisible();
 });
 
 test("renders support inbox workspace and submits triage", async ({ page }) => {

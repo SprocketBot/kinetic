@@ -93,6 +93,64 @@ const matches = [
   },
 ];
 
+const teams = [
+  {
+    id: 1,
+    clubId: 11,
+    name: "Team A",
+    slug: "team-a",
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const players = [
+  {
+    id: 1,
+    displayName: "Player One",
+    slug: "player-one",
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const rosterMemberships = [
+  {
+    id: 1,
+    playerId: 1,
+    teamId: 1,
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const exceptionActions = [
+  {
+    id: 1,
+    ticketId: 1,
+    actionType: "triaged",
+    actor: "support-1",
+    automated: false,
+    notes: "reviewed",
+    minutesSpent: 5,
+    createdAt: "2026-02-15T00:30:00Z",
+  },
+];
+
+const playerRatings = [
+  {
+    id: 1,
+    playerId: 1,
+    contextKey: "default",
+    rating: 1000,
+    uncertainty: 120,
+    matchesPlayed: 25,
+    lastCompetedAt: "2026-02-14T12:00:00Z",
+    isActive: true,
+    updatedAt: "2026-02-15T00:00:00Z",
+  },
+];
+
 const baseTicket = {
   id: 1,
   category: "scheduling_conflict",
@@ -141,6 +199,21 @@ export const handlers = [
 
   http.get("http://localhost:8080/v1/scrims", () => HttpResponse.json(scrims)),
   http.get("http://localhost:8080/v1/result-submissions", () => HttpResponse.json(resultSubmissions)),
+  http.get("http://localhost:8080/v1/teams", () => HttpResponse.json(teams)),
+  http.get("http://localhost:8080/v1/players", () => HttpResponse.json(players)),
+  http.get("http://localhost:8080/v1/roster-memberships", () => HttpResponse.json(rosterMemberships)),
+  http.post("http://localhost:8080/v1/roster-memberships", async ({ request }) => {
+    const body = (await request.json()) as { playerId: number; teamId: number };
+    return HttpResponse.json({
+      id: rosterMemberships.length + 1,
+      playerId: body.playerId,
+      teamId: body.teamId,
+      isActive: true,
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+  }),
+  http.get("http://localhost:8080/v1/exception-actions", () => HttpResponse.json(exceptionActions)),
+  http.get("http://localhost:8080/v1/player-ratings", () => HttpResponse.json(playerRatings)),
   http.get("http://localhost:8080/v1/seasons", () => HttpResponse.json(seasons)),
   http.post("http://localhost:8080/v1/seasons", async ({ request }) => {
     const body = (await request.json()) as { name: string; slug: string };

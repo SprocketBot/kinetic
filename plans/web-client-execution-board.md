@@ -161,12 +161,12 @@ Week objective: deliver roster and delegated role management UX.
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| WEB-F4-01 | Build roster explorer and management views | 2.0h | Todo | FM/GM/AGM/Captain roster views available |
-| WEB-F4-02 | Build assignment/offer/release flows | 2.0h | Todo | roster actions complete with validation |
-| WEB-F4-03 | Implement scoped role-action visibility in UI | 1.5h | Todo | users only see actions they can invoke |
-| WEB-F4-04 | Build role-assignment admin views | 1.5h | Todo | grant/revoke flows wired to API-WEB-04 |
-| WEB-F4-05 | Build roster activity/audit panel | 1.0h | Todo | actor/reason/timestamp surfaced |
-| WEB-F4-06 | Add F4 e2e coverage + docs | 2.0h | Todo | delegated management flows covered |
+| WEB-F4-01 | Build roster explorer and management views | 2.0h | Done | FM/GM/AGM/Captain roster views available |
+| WEB-F4-02 | Build assignment/offer/release flows | 2.0h | Done | roster actions complete with validation |
+| WEB-F4-03 | Implement scoped role-action visibility in UI | 1.5h | Done | users only see actions they can invoke |
+| WEB-F4-04 | Build role-assignment admin views | 1.5h | Done | grant/revoke flows wired to API-WEB-04 |
+| WEB-F4-05 | Build roster activity/audit panel | 1.0h | Done | actor/reason/timestamp surfaced |
+| WEB-F4-06 | Add F4 e2e coverage + docs | 2.0h | Done | delegated management flows covered |
 
 ## Week F5 Execution Board (2026-04-20 to 2026-05-03)
 
@@ -176,12 +176,12 @@ Week objective: deliver account linking, eligibility visibility, and admin overr
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| WEB-F5-01 | Build platform account link/unlink UI | 2.0h | Todo | OAuth callback and linked account management works |
-| WEB-F5-02 | Build eligibility and rating panels | 1.5h | Todo | points/decay/rating cards render from APIs |
-| WEB-F5-03 | Build NCP/result override workflow UI | 2.0h | Todo | admin override path captures reason and audit fields |
-| WEB-F5-04 | Build rating adjustment admin flow | 1.0h | Todo | self-edit blocked and explained |
-| WEB-F5-05 | Hardening pass across all roles | 1.5h | Todo | critical defects and access leaks resolved |
-| WEB-F5-06 | End-to-end regression pack + release checklist | 2.0h | Todo | phase completion checklist signed off |
+| WEB-F5-01 | Build platform account link/unlink UI | 2.0h | Done | OAuth callback and linked account management works |
+| WEB-F5-02 | Build eligibility and rating panels | 1.5h | Done | points/decay/rating cards render from APIs |
+| WEB-F5-03 | Build NCP/result override workflow UI | 2.0h | Done | admin override path captures reason and audit fields |
+| WEB-F5-04 | Build rating adjustment admin flow | 1.0h | Done | self-edit blocked and explained |
+| WEB-F5-05 | Hardening pass across all roles | 1.5h | Done | critical defects and access leaks resolved |
+| WEB-F5-06 | End-to-end regression pack + release checklist | 2.0h | Done | phase completion checklist signed off |
 
 ## Program Exit Criteria
 

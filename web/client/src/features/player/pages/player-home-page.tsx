@@ -11,6 +11,7 @@ import {
   enqueueTeamInputSchema,
   ingestReplayEvidenceInputSchema,
   leaveQueueInputSchema,
+  playerRatingListSchema,
   queueEntryListSchema,
   queueEntrySchema,
   ratifyResultSubmissionInputSchema,
@@ -23,6 +24,7 @@ import {
   type QueueEntry,
   type ResultSubmission,
   type Scrim,
+  type PlayerRating,
 } from "../../../lib/api/schemas";
 
 async function listQueueEntries() {
@@ -35,6 +37,10 @@ async function listScrims() {
 
 async function listResultSubmissions() {
   return getJson("/v1/result-submissions", resultSubmissionListSchema);
+}
+
+async function listPlayerRatings() {
+  return getJson("/v1/player-ratings", playerRatingListSchema);
 }
 
 async function enqueueTeam(input: { queueId: number; teamId: number }) {
@@ -87,6 +93,7 @@ export function PlayerHomePage() {
   const queueQuery = useQuery({ queryKey: ["queue-entries"], queryFn: listQueueEntries });
   const scrimsQuery = useQuery({ queryKey: ["scrims"], queryFn: listScrims });
   const submissionsQuery = useQuery({ queryKey: ["result-submissions"], queryFn: listResultSubmissions });
+  const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
 
   const activeQueueEntries = useMemo(() => (queueQuery.data ?? []).filter(activeQueueEntry), [queueQuery.data]);
   const activeScrims = useMemo(() => (scrimsQuery.data ?? []).filter(activeScrim), [scrimsQuery.data]);
@@ -176,9 +183,14 @@ export function PlayerHomePage() {
         />
       </section>
 
+      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
+        <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
+        <AccountAndEligibilityPanel />
+      </section>
+
       <EvidenceSection selected={selectedEvidenceView} setSelected={setSelectedEvidenceView} />
 
-      {[queueQuery.error, scrimsQuery.error, submissionsQuery.error].map((error, index) =>
+      {[queueQuery.error, scrimsQuery.error, submissionsQuery.error, ratingsQuery.error].map((error, index) =>
         error ? <ErrorView error={error} key={`query-error-${index}`} label="Player data request failed" /> : null,
       )}
     </AppShell>
@@ -426,6 +438,57 @@ function EvidenceSection({
           title={`Evidence ${selectedView.title}`}
         />
       </div>
+    </section>
+  );
+}
+
+function RatingsPanel({ ratings, loading }: { ratings: PlayerRating[]; loading: boolean }) {
+  return (
+    <section>
+      <h3>Ratings</h3>
+      {loading && <LoadingState />}
+      {!loading && (
+        <ul style={{ margin: 0, paddingLeft: "1.2rem" }}>
+          {ratings.map((rating) => (
+            <li key={rating.id}>
+              Player {rating.playerId} · {rating.contextKey} · rating {rating.rating} ± {rating.uncertainty} · matches{" "}
+              {rating.matchesPlayed}
+            </li>
+          ))}
+        </ul>
+      )}
+      {!loading && ratings.length === 0 && <p>No ratings available for this account scope.</p>}
+    </section>
+  );
+}
+
+function AccountAndEligibilityPanel() {
+  const [provider, setProvider] = useState("steam");
+  const [providerAccountId, setProviderAccountId] = useState("");
+
+  return (
+    <section>
+      <h3>Accounts and Eligibility</h3>
+      <p>Account linking and eligibility APIs are pending (`API-WEB-02`, `API-WEB-03`).</p>
+      <form>
+        <label>
+          Provider
+          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+            <option value="steam">Steam</option>
+            <option value="xbox">Xbox</option>
+            <option value="psn">PSN</option>
+            <option value="epic">Epic</option>
+          </select>
+        </label>
+        <label>
+          Provider account ID
+          <input value={providerAccountId} onChange={(event) => setProviderAccountId(event.target.value)} />
+        </label>
+        <button disabled type="button">
+          Link account (API pending)
+        </button>
+      </form>
+      <p>Eligibility points and decay schedule will render here once endpoint support is available.</p>
     </section>
   );
 }

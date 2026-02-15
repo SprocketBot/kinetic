@@ -44,6 +44,10 @@ describe("AdminHomePage", () => {
     expect(screen.getByRole("heading", { name: "Schedule Groups" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Fixtures" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Matches" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Roster Memberships" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Role Delegation" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Result Overrides (NCP)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Rating Administration" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Create season" }));
     expect(await screen.findByTestId("admin-season-success")).toBeInTheDocument();
@@ -56,5 +60,8 @@ describe("AdminHomePage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Create match" }));
     expect(await screen.findByTestId("admin-match-success")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Assign player to team" }));
+    expect(await screen.findByTestId("admin-roster-success")).toBeInTheDocument();
   });
 });

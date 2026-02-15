@@ -9,20 +9,32 @@ import { ApiError } from "../../../lib/api/errors";
 import {
   createFixtureInputSchema,
   createMatchInputSchema,
+  createRosterMembershipInputSchema,
   createScheduleGroupInputSchema,
   createSeasonInputSchema,
+  playerRatingListSchema,
+  exceptionActionListSchema,
   fixtureListSchema,
   fixtureSchema,
   matchListSchema,
   matchSchema,
+  playerListSchema,
+  rosterMembershipListSchema,
+  rosterMembershipSchema,
   scheduleGroupListSchema,
   scheduleGroupSchema,
   seasonListSchema,
   seasonSchema,
+  teamListSchema,
+  type ExceptionAction,
   type Fixture,
   type Match,
+  type Player,
+  type RosterMembership,
   type ScheduleGroup,
   type Season,
+  type Team,
+  type PlayerRating,
 } from "../../../lib/api/schemas";
 
 async function listSeasons() {
@@ -67,6 +79,31 @@ async function createMatch(input: {
   return postJson("/v1/matches", payload, matchSchema);
 }
 
+async function listPlayers() {
+  return getJson("/v1/players", playerListSchema);
+}
+
+async function listTeams() {
+  return getJson("/v1/teams", teamListSchema);
+}
+
+async function listRosterMemberships() {
+  return getJson("/v1/roster-memberships", rosterMembershipListSchema);
+}
+
+async function createRosterMembership(input: { playerId: number; teamId: number }) {
+  const payload = createRosterMembershipInputSchema.parse(input);
+  return postJson("/v1/roster-memberships", payload, rosterMembershipSchema);
+}
+
+async function listExceptionActions() {
+  return getJson("/v1/exception-actions", exceptionActionListSchema);
+}
+
+async function listPlayerRatings() {
+  return getJson("/v1/player-ratings", playerRatingListSchema);
+}
+
 export function AdminHomePage() {
   const queryClient = useQueryClient();
 
@@ -74,6 +111,12 @@ export function AdminHomePage() {
   const scheduleGroupsQuery = useQuery({ queryKey: ["schedule-groups"], queryFn: listScheduleGroups });
   const fixturesQuery = useQuery({ queryKey: ["fixtures"], queryFn: listFixtures });
   const matchesQuery = useQuery({ queryKey: ["matches"], queryFn: listMatches });
+
+  const playersQuery = useQuery({ queryKey: ["players"], queryFn: listPlayers });
+  const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
+  const rosterQuery = useQuery({ queryKey: ["roster-memberships"], queryFn: listRosterMemberships });
+  const actionsQuery = useQuery({ queryKey: ["exception-actions"], queryFn: listExceptionActions });
+  const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
 
   const seasonMutation = useMutation({
     mutationFn: createSeason,
@@ -183,13 +226,20 @@ export function AdminHomePage() {
     },
   });
 
+  const rosterMutation = useMutation({
+    mutationFn: createRosterMembership,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["roster-memberships"] });
+    },
+  });
+
   return (
     <AppShell title="Sprocket Web Client">
       <h2>League Admin</h2>
-      <p>Schedule lifecycle management for seasons, groups, fixtures, and matches.</p>
+      <p>Schedule lifecycle management and roster administration.</p>
       <p>
-        Update/delete workflows are disabled until API support is added. Current backend supports create/list for this
-        slice.
+        Update/delete scheduling and delegated role grants are shown with API blockers until support lands in
+        `API-WEB-04` and related endpoints.
       </p>
 
       <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
@@ -224,6 +274,25 @@ export function AdminHomePage() {
           loading={matchesQuery.isLoading}
           matches={matchesQuery.data ?? []}
         />
+      </section>
+
+      <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+        <RosterPanel
+          createError={rosterMutation.error}
+          createMembership={rosterMutation.mutateAsync}
+          createSuccess={rosterMutation.isSuccess}
+          loading={playersQuery.isLoading || teamsQuery.isLoading || rosterQuery.isLoading}
+          memberships={rosterQuery.data ?? []}
+          players={playersQuery.data ?? []}
+          teams={teamsQuery.data ?? []}
+        />
+
+        <RoleDelegationPanel actions={actionsQuery.data ?? []} loading={actionsQuery.isLoading} />
+      </section>
+
+      <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+        <ResultOverridePanel />
+        <RatingAdminPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
       </section>
     </AppShell>
   );
@@ -458,6 +527,158 @@ function MatchPanel({
       {createError && <ErrorView error={createError} label="Match create failed" />}
       <DataList
         items={matches.map((match) => `#${match.id} · fixture ${match.fixtureId} · teams ${match.homeTeamId}/${match.awayTeamId}`)}
+        loading={loading}
+      />
+    </section>
+  );
+}
+
+function RosterPanel({
+  players,
+  teams,
+  memberships,
+  loading,
+  createMembership,
+  createSuccess,
+  createError,
+}: {
+  players: Player[];
+  teams: Team[];
+  memberships: RosterMembership[];
+  loading: boolean;
+  createMembership: (input: { playerId: number; teamId: number }) => Promise<unknown>;
+  createSuccess: boolean;
+  createError: Error | null;
+}) {
+  const [playerId, setPlayerId] = useState(1);
+  const [teamId, setTeamId] = useState(1);
+
+  const playerNameById = new Map(players.map((player) => [player.id, player.displayName]));
+  const teamNameById = new Map(teams.map((team) => [team.id, team.name]));
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await createMembership({ playerId, teamId });
+  }
+
+  return (
+    <section>
+      <h3>Roster Memberships</h3>
+      <form onSubmit={submit}>
+        <label>
+          Player ID
+          <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+        </label>
+        <label>
+          Team ID
+          <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
+        </label>
+        <button type="submit">Assign player to team</button>
+      </form>
+      {createSuccess && <p data-testid="admin-roster-success">Roster membership created.</p>}
+      {createError && <ErrorView error={createError} label="Roster assignment failed" />}
+      <DataList
+        items={memberships.map(
+          (membership) =>
+            `#${membership.id} · ${playerNameById.get(membership.playerId) ?? membership.playerId} -> ${teamNameById.get(membership.teamId) ?? membership.teamId}`,
+        )}
+        loading={loading}
+      />
+    </section>
+  );
+}
+
+function RoleDelegationPanel({ actions, loading }: { actions: ExceptionAction[]; loading: boolean }) {
+  const [scopeRole, setScopeRole] = useState("captain");
+
+  const actionMatrix = {
+    captain: ["offer/release players on assigned team"],
+    agm: ["captain actions across club", "manage captain assignments (pending API)"],
+    gm: ["agm actions across club", "manage AGM assignments (pending API)"],
+    fm: ["gm actions across franchise", "manage GM assignments (pending API)"],
+  } as const;
+
+  return (
+    <section>
+      <h3>Role Delegation</h3>
+      <p>Delegated grant/revoke actions are blocked pending role-assignment APIs (`API-WEB-04`).</p>
+      <label>
+        Scope role
+        <select value={scopeRole} onChange={(event) => setScopeRole(event.target.value)}>
+          <option value="captain">Captain</option>
+          <option value="agm">AGM</option>
+          <option value="gm">GM</option>
+          <option value="fm">FM</option>
+        </select>
+      </label>
+      <ul>
+        {actionMatrix[scopeRole as keyof typeof actionMatrix].map((action) => (
+          <li key={action}>{action}</li>
+        ))}
+      </ul>
+
+      <h4>Recent Operator Actions (Audit Feed)</h4>
+      <DataList
+        items={actions.map((action) => `#${action.id} · ${action.actionType} · ${action.actor} · ${action.createdAt}`)}
+        loading={loading}
+      />
+    </section>
+  );
+}
+
+function ResultOverridePanel() {
+  const [submissionId, setSubmissionId] = useState(1);
+  const [overrideReason, setOverrideReason] = useState("official review correction");
+
+  return (
+    <section>
+      <h3>Result Overrides (NCP)</h3>
+      <p>Override APIs are pending (`API-WEB-06`), so submission is disabled.</p>
+      <form>
+        <label>
+          Submission ID
+          <input
+            min={1}
+            type="number"
+            value={submissionId}
+            onChange={(event) => setSubmissionId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Override reason
+          <input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} />
+        </label>
+        <button disabled type="button">
+          Submit override (API pending)
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function RatingAdminPanel({ ratings, loading }: { ratings: PlayerRating[]; loading: boolean }) {
+  const [playerId, setPlayerId] = useState(1);
+  const [rating, setRating] = useState(1000);
+
+  return (
+    <section>
+      <h3>Rating Administration</h3>
+      <p>Rating edit endpoint is pending (`API-WEB-07`); current view is read-only with guardrail notes.</p>
+      <form>
+        <label>
+          Player ID
+          <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+        </label>
+        <label>
+          New rating
+          <input min={0} type="number" value={rating} onChange={(event) => setRating(Number(event.target.value))} />
+        </label>
+        <button disabled type="button">
+          Apply rating change (API pending)
+        </button>
+      </form>
+      <DataList
+        items={ratings.map((entry) => `Player ${entry.playerId} · ${entry.contextKey} · ${entry.rating}`)}
         loading={loading}
       />
     </section>
