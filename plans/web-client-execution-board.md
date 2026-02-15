@@ -109,11 +109,11 @@ Definition of done for Week F1:
 | WEB-F1-01 | Build support dashboard layout and filters | 1.5h | Done | operator sees prioritized work queues |
 | WEB-F1-02 | Implement operator inbox list/detail UI | 2.0h | Done | list + ticket detail render from `/v1/operator-inbox` |
 | WEB-F1-03 | Implement triage/resolve action forms | 1.5h | Done | mutations hit triage/resolve endpoints with optimistic updates |
-| WEB-F1-04 | Build active scrims panel | 1.5h | Todo | scrim list + state update works |
-| WEB-F1-05 | Build submissions-in-process panel | 1.5h | Todo | submission list and status chips available |
-| WEB-F1-06 | Build platform operations links + metrics card | 1.0h | Todo | ops links and exception metrics surfaced |
-| WEB-F1-07 | Add F1 e2e and unit coverage | 1.5h | Todo | inbox triage path covered in CI |
-| WEB-F1-08 | Update runbook/docs for support/operator usage | 0.5h | Todo | operator guide committed |
+| WEB-F1-04 | Build active scrims panel | 1.5h | Done | scrim list + state update works |
+| WEB-F1-05 | Build submissions-in-process panel | 1.5h | Done | submission list and status chips available |
+| WEB-F1-06 | Build platform operations links + metrics card | 1.0h | Done | ops links and exception metrics surfaced |
+| WEB-F1-07 | Add F1 e2e and unit coverage | 1.5h | Done | inbox triage path covered in CI |
+| WEB-F1-08 | Update runbook/docs for support/operator usage | 0.5h | Done | operator guide committed |
 
 ## Week F2 Execution Board (2026-03-09 to 2026-03-22)
 

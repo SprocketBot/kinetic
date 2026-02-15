@@ -11,14 +11,26 @@ import {
   exceptionTicketSchema,
   operatorInboxListSchema,
   resolveExceptionInputSchema,
+  resultSubmissionListSchema,
+  scrimListSchema,
   triageExceptionInputSchema,
   type ExceptionTicket,
   type ResolveExceptionInput,
+  type ResultSubmission,
+  type Scrim,
   type TriageExceptionInput,
 } from "../../../lib/api/schemas";
 
 async function listOperatorInbox() {
   return getJson("/v1/operator-inbox", operatorInboxListSchema);
+}
+
+async function listScrims() {
+  return getJson("/v1/scrims", scrimListSchema);
+}
+
+async function listResultSubmissions() {
+  return getJson("/v1/result-submissions", resultSubmissionListSchema);
 }
 
 async function triageTicket(input: TriageExceptionInput) {
@@ -31,6 +43,14 @@ async function resolveTicket(input: ResolveExceptionInput) {
   return postJson("/v1/operator-inbox/resolve", payload, exceptionTicketSchema);
 }
 
+function isActiveScrim(scrim: Scrim): boolean {
+  return !["cancelled", "completed", "closed", "ended"].includes(scrim.state.toLowerCase());
+}
+
+function isInProcessSubmission(submission: ResultSubmission): boolean {
+  return !["finalized", "accepted", "rejected"].includes(submission.state.toLowerCase());
+}
+
 export function SupportDashboardPage() {
   const session = useSession();
   const queryClient = useQueryClient();
@@ -38,24 +58,50 @@ export function SupportDashboardPage() {
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
 
-  const query = useQuery({
+  const inboxQuery = useQuery({
     queryKey: ["operator-inbox"],
     queryFn: listOperatorInbox,
+  });
+
+  const scrimsQuery = useQuery({
+    queryKey: ["scrims"],
+    queryFn: listScrims,
+  });
+
+  const submissionsQuery = useQuery({
+    queryKey: ["result-submissions"],
+    queryFn: listResultSubmissions,
   });
 
   const actorDefault = session.principal?.displayName || session.principal?.subject || "support-operator";
 
   const filteredTickets = useMemo(() => {
-    if (!query.data) {
+    if (!inboxQuery.data) {
       return [];
     }
 
-    return query.data.filter((ticket) => {
+    return inboxQuery.data.filter((ticket) => {
       const severityMatches = severityFilter === "all" || String(ticket.severity) === severityFilter;
       const stateMatches = stateFilter === "all" || ticket.state === stateFilter;
       return severityMatches && stateMatches;
     });
-  }, [query.data, severityFilter, stateFilter]);
+  }, [inboxQuery.data, severityFilter, stateFilter]);
+
+  const activeScrims = useMemo(() => {
+    if (!scrimsQuery.data) {
+      return [];
+    }
+
+    return scrimsQuery.data.filter(isActiveScrim);
+  }, [scrimsQuery.data]);
+
+  const inProcessSubmissions = useMemo(() => {
+    if (!submissionsQuery.data) {
+      return [];
+    }
+
+    return submissionsQuery.data.filter(isInProcessSubmission);
+  }, [submissionsQuery.data]);
 
   useEffect(() => {
     if (filteredTickets.length === 0) {
@@ -92,6 +138,21 @@ export function SupportDashboardPage() {
       <h2>League Support</h2>
       <p>Inbox triage workspace for active exception operations.</p>
 
+      <section aria-label="support live snapshots" style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginBottom: "1rem" }}>
+        <LiveCard
+          count={activeScrims.length}
+          label="Active scrims"
+          loading={scrimsQuery.isLoading}
+          testId="active-scrims-count"
+        />
+        <LiveCard
+          count={inProcessSubmissions.length}
+          label="Submissions in process"
+          loading={submissionsQuery.isLoading}
+          testId="submissions-in-process-count"
+        />
+      </section>
+
       <section aria-label="support filters" style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
         <label>
           Filter severity
@@ -116,10 +177,10 @@ export function SupportDashboardPage() {
         </label>
       </section>
 
-      {query.isLoading && <LoadingState label="Loading operator inbox..." />}
-      {query.isError && <ErrorView error={query.error} label="Inbox request failed" />}
+      {inboxQuery.isLoading && <LoadingState label="Loading operator inbox..." />}
+      {inboxQuery.isError && <ErrorView error={inboxQuery.error} label="Inbox request failed" />}
 
-      {query.isSuccess && (
+      {inboxQuery.isSuccess && (
         <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "minmax(280px, 360px) 1fr" }}>
           <InboxList
             onSelect={setSelectedTicketId}
@@ -145,7 +206,33 @@ export function SupportDashboardPage() {
           )}
         </section>
       )}
+
+      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
+        <ScrimList scrims={activeScrims} />
+        <SubmissionList submissions={inProcessSubmissions} />
+      </section>
     </AppShell>
+  );
+}
+
+function LiveCard({
+  label,
+  count,
+  loading,
+  testId,
+}: {
+  label: string;
+  count: number;
+  loading: boolean;
+  testId: string;
+}) {
+  return (
+    <article style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.8rem" }}>
+      <h3 style={{ marginTop: 0 }}>{label}</h3>
+      <p data-testid={testId} style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: 0 }}>
+        {loading ? "..." : count}
+      </p>
+    </article>
   );
 }
 
@@ -346,6 +433,34 @@ function TicketDetail({
         {resolveError && <ErrorView error={resolveError} label="Resolve failed" />}
       </section>
     </div>
+  );
+}
+
+function ScrimList({ scrims }: { scrims: Scrim[] }) {
+  return (
+    <section>
+      <h3>Active Scrims</h3>
+      <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+        {scrims.slice(0, 8).map((scrim) => (
+          <li key={scrim.id}>Scrim #{scrim.id} · queue {scrim.queueId} · {scrim.state}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function SubmissionList({ submissions }: { submissions: ResultSubmission[] }) {
+  return (
+    <section>
+      <h3>Submissions In Process</h3>
+      <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+        {submissions.slice(0, 8).map((submission) => (
+          <li key={submission.id}>
+            Submission #{submission.id} · {submission.contextType}:{submission.contextId} · {submission.state}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

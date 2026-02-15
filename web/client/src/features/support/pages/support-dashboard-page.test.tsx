@@ -98,6 +98,8 @@ describe("SupportDashboardPage", () => {
     renderPage();
 
     expect(await screen.findByTestId("operator-inbox-count")).toHaveTextContent("Visible tickets: 2");
+    expect(screen.getByTestId("active-scrims-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("submissions-in-process-count")).toHaveTextContent("1");
 
     await userEvent.selectOptions(screen.getByLabelText("Filter severity"), "5");
 
@@ -168,6 +170,7 @@ describe("SupportDashboardPage", () => {
     renderPage();
 
     expect(await screen.findByRole("heading", { name: "Ticket #1" })).toBeInTheDocument();
+    expect(screen.getByTestId("active-scrims-count")).toHaveTextContent("1");
 
     await userEvent.click(screen.getByRole("button", { name: "Submit triage" }));
     expect(await screen.findByTestId("triage-success")).toBeInTheDocument();
