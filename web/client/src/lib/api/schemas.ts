@@ -91,6 +91,77 @@ export const exceptionMetricsSchema = z.object({
   timeToCloseHoursP50: z.number(),
 });
 
+export const seasonSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const seasonListSchema = z.array(seasonSchema);
+
+export const createSeasonInputSchema = z.object({
+  name: z.string().min(1),
+  slug: z.string().min(1),
+});
+
+export const scheduleGroupSchema = z.object({
+  id: z.number(),
+  seasonId: z.number(),
+  name: z.string(),
+  sequence: z.number(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const scheduleGroupListSchema = z.array(scheduleGroupSchema);
+
+export const createScheduleGroupInputSchema = z.object({
+  seasonId: z.number().positive(),
+  name: z.string().min(1),
+  sequence: z.number().min(0),
+});
+
+export const fixtureSchema = z.object({
+  id: z.number(),
+  scheduleGroupId: z.number(),
+  homeClubId: z.number(),
+  awayClubId: z.number(),
+  isActive: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const fixtureListSchema = z.array(fixtureSchema);
+
+export const createFixtureInputSchema = z.object({
+  scheduleGroupId: z.number().positive(),
+  homeClubId: z.number().positive(),
+  awayClubId: z.number().positive(),
+});
+
+export const matchSchema = z.object({
+  id: z.number(),
+  fixtureId: z.number(),
+  homeTeamId: z.number(),
+  awayTeamId: z.number(),
+  state: z.string(),
+  scheduledFor: z.string().nullable().optional(),
+  homeTimeRatifiedAt: z.string().nullable().optional(),
+  awayTimeRatifiedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+});
+
+export const matchListSchema = z.array(matchSchema);
+
+export const createMatchInputSchema = z.object({
+  fixtureId: z.number().positive(),
+  homeTeamId: z.number().positive(),
+  awayTeamId: z.number().positive(),
+  state: z.string().min(1),
+  scheduledFor: z.string().optional(),
+});
+
 export const replayEvidenceSchema = z.object({
   id: z.number(),
   contextType: z.string(),
@@ -162,6 +233,10 @@ export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
 export type ExceptionMetrics = z.infer<typeof exceptionMetricsSchema>;
 export type ReplayIngestionResult = z.infer<typeof replayIngestionResultSchema>;
+export type Season = z.infer<typeof seasonSchema>;
+export type ScheduleGroup = z.infer<typeof scheduleGroupSchema>;
+export type Fixture = z.infer<typeof fixtureSchema>;
+export type Match = z.infer<typeof matchSchema>;
 export type EnqueueTeamInput = z.infer<typeof enqueueTeamInputSchema>;
 export type LeaveQueueInput = z.infer<typeof leaveQueueInputSchema>;
 export type RatifyResultSubmissionInput = z.infer<typeof ratifyResultSubmissionInputSchema>;

@@ -145,13 +145,13 @@ Week objective: deliver league scheduling administration UX.
 
 | ID | Task | Estimate | Status | Acceptance Criteria |
 | --- | --- | ---: | --- | --- |
-| WEB-F3-01 | Build seasons CRUD screens | 2.0h | Todo | create/list/edit/delete behaviors validated |
-| WEB-F3-02 | Build schedule groups CRUD screens | 1.5h | Todo | group flows wired and validated |
-| WEB-F3-03 | Build fixtures CRUD screens | 1.5h | Todo | fixture lifecycle managed in UI |
-| WEB-F3-04 | Build matches CRUD screens | 1.5h | Todo | match scheduling updates work |
-| WEB-F3-05 | Add table filtering/pagination patterns | 1.0h | Todo | lists usable at larger dataset sizes |
-| WEB-F3-06 | Add optimistic mutation + rollback handling | 1.0h | Todo | failed writes recover cleanly |
-| WEB-F3-07 | Add F3 e2e coverage + docs | 1.5h | Todo | scheduling admin path covered in CI |
+| WEB-F3-01 | Build seasons CRUD screens | 2.0h | Done | create/list/edit/delete behaviors validated |
+| WEB-F3-02 | Build schedule groups CRUD screens | 1.5h | Done | group flows wired and validated |
+| WEB-F3-03 | Build fixtures CRUD screens | 1.5h | Done | fixture lifecycle managed in UI |
+| WEB-F3-04 | Build matches CRUD screens | 1.5h | Done | match scheduling updates work |
+| WEB-F3-05 | Add table filtering/pagination patterns | 1.0h | Done | lists usable at larger dataset sizes |
+| WEB-F3-06 | Add optimistic mutation + rollback handling | 1.0h | Done | failed writes recover cleanly |
+| WEB-F3-07 | Add F3 e2e coverage + docs | 1.5h | Done | scheduling admin path covered in CI |
 
 ## Week F4 Execution Board (2026-04-06 to 2026-04-19)
 

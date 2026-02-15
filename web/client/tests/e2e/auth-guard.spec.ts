@@ -160,6 +160,132 @@ async function mockPlayerEndpoints(page: import("@playwright/test").Page) {
   });
 }
 
+async function mockAdminEndpoints(page: import("@playwright/test").Page) {
+  await page.route("**/v1/seasons", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            name: "Season 1",
+            slug: "season-1",
+            isActive: true,
+            createdAt: "2026-02-15T00:00:00Z",
+          },
+        ]),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 2,
+        name: "Season 2",
+        slug: "season-2",
+        isActive: true,
+        createdAt: "2026-02-15T03:00:00Z",
+      }),
+    });
+  });
+
+  await page.route("**/v1/schedule-groups", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            seasonId: 1,
+            name: "Week 1",
+            sequence: 1,
+            isActive: true,
+            createdAt: "2026-02-15T00:00:00Z",
+          },
+        ]),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 2,
+        seasonId: 1,
+        name: "Week 2",
+        sequence: 2,
+        isActive: true,
+        createdAt: "2026-02-15T03:00:00Z",
+      }),
+    });
+  });
+
+  await page.route("**/v1/fixtures", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            scheduleGroupId: 1,
+            homeClubId: 11,
+            awayClubId: 12,
+            isActive: true,
+            createdAt: "2026-02-15T00:00:00Z",
+          },
+        ]),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 2,
+        scheduleGroupId: 1,
+        homeClubId: 13,
+        awayClubId: 14,
+        isActive: true,
+        createdAt: "2026-02-15T03:00:00Z",
+      }),
+    });
+  });
+
+  await page.route("**/v1/matches", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: 1,
+            fixtureId: 1,
+            homeTeamId: 101,
+            awayTeamId: 102,
+            state: "scheduled",
+            scheduledFor: "2026-02-16T20:00:00Z",
+            homeTimeRatifiedAt: null,
+            awayTimeRatifiedAt: null,
+            createdAt: "2026-02-15T00:00:00Z",
+          },
+        ]),
+      });
+      return;
+    }
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: 2,
+        fixtureId: 1,
+        homeTeamId: 101,
+        awayTeamId: 102,
+        state: "scheduled",
+        scheduledFor: "2026-02-16T20:00:00Z",
+        homeTimeRatifiedAt: null,
+        awayTimeRatifiedAt: null,
+        createdAt: "2026-02-15T03:00:00Z",
+      }),
+    });
+  });
+}
+
 test("redirects unauthenticated users to login", async ({ page }) => {
   await page.goto("/app/player");
   await expect(page.getByRole("heading", { name: "Sprocket Sign In" })).toBeVisible();
@@ -204,6 +330,26 @@ test("runs player queue and submission actions", async ({ page }) => {
 
   await page.getByRole("button", { name: "Upload replay" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
+});
+
+test("renders admin scheduling workspace and creates entities", async ({ page }) => {
+  await mockAdminEndpoints(page);
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "sprocket.mockSession",
+      JSON.stringify({
+        subject: "admin-1",
+        displayName: "League Admin",
+        roles: ["league_admin"],
+      }),
+    );
+  });
+
+  await page.goto("/app/admin");
+  await expect(page.getByRole("heading", { name: "League Admin" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Create season" }).click();
+  await expect(page.getByTestId("admin-season-success")).toBeVisible();
 });
 
 test("renders support inbox workspace and submits triage", async ({ page }) => {

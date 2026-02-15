@@ -47,6 +47,52 @@ const resultSubmissions = [
   },
 ];
 
+const seasons = [
+  {
+    id: 1,
+    name: "Season 1",
+    slug: "season-1",
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const scheduleGroups = [
+  {
+    id: 1,
+    seasonId: 1,
+    name: "Week 1",
+    sequence: 1,
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const fixtures = [
+  {
+    id: 1,
+    scheduleGroupId: 1,
+    homeClubId: 11,
+    awayClubId: 12,
+    isActive: true,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
+const matches = [
+  {
+    id: 1,
+    fixtureId: 1,
+    homeTeamId: 101,
+    awayTeamId: 102,
+    state: "scheduled",
+    scheduledFor: "2026-02-16T20:00:00Z",
+    homeTimeRatifiedAt: null,
+    awayTimeRatifiedAt: null,
+    createdAt: "2026-02-15T00:00:00Z",
+  },
+];
+
 const baseTicket = {
   id: 1,
   category: "scheduling_conflict",
@@ -95,6 +141,62 @@ export const handlers = [
 
   http.get("http://localhost:8080/v1/scrims", () => HttpResponse.json(scrims)),
   http.get("http://localhost:8080/v1/result-submissions", () => HttpResponse.json(resultSubmissions)),
+  http.get("http://localhost:8080/v1/seasons", () => HttpResponse.json(seasons)),
+  http.post("http://localhost:8080/v1/seasons", async ({ request }) => {
+    const body = (await request.json()) as { name: string; slug: string };
+    return HttpResponse.json({
+      id: seasons.length + 1,
+      name: body.name,
+      slug: body.slug,
+      isActive: true,
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+  }),
+  http.get("http://localhost:8080/v1/schedule-groups", () => HttpResponse.json(scheduleGroups)),
+  http.post("http://localhost:8080/v1/schedule-groups", async ({ request }) => {
+    const body = (await request.json()) as { seasonId: number; name: string; sequence: number };
+    return HttpResponse.json({
+      id: scheduleGroups.length + 1,
+      seasonId: body.seasonId,
+      name: body.name,
+      sequence: body.sequence,
+      isActive: true,
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+  }),
+  http.get("http://localhost:8080/v1/fixtures", () => HttpResponse.json(fixtures)),
+  http.post("http://localhost:8080/v1/fixtures", async ({ request }) => {
+    const body = (await request.json()) as { scheduleGroupId: number; homeClubId: number; awayClubId: number };
+    return HttpResponse.json({
+      id: fixtures.length + 1,
+      scheduleGroupId: body.scheduleGroupId,
+      homeClubId: body.homeClubId,
+      awayClubId: body.awayClubId,
+      isActive: true,
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+  }),
+  http.get("http://localhost:8080/v1/matches", () => HttpResponse.json(matches)),
+  http.post("http://localhost:8080/v1/matches", async ({ request }) => {
+    const body = (await request.json()) as {
+      fixtureId: number;
+      homeTeamId: number;
+      awayTeamId: number;
+      state: string;
+      scheduledFor?: string;
+    };
+    return HttpResponse.json({
+      id: matches.length + 1,
+      fixtureId: body.fixtureId,
+      homeTeamId: body.homeTeamId,
+      awayTeamId: body.awayTeamId,
+      state: body.state,
+      scheduledFor: body.scheduledFor ?? null,
+      homeTimeRatifiedAt: null,
+      awayTimeRatifiedAt: null,
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+  }),
 
   http.post("http://localhost:8080/v1/result-submission-ratifications", async ({ request }) => {
     const body = (await request.json()) as { submissionId: number; teamId: number };
