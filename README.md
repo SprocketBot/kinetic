@@ -12,7 +12,7 @@ Weeks 1-12 are complete, including:
 - replay evidence ingestion MVP with parser provenance + dedupe
 - local and minikube smoke automation for weekly slices
 
-Week 13 is focused on contributor handoff and operations hardening.
+Weeks 13-14 complete handoff hardening and CI quality-gate enforcement.
 
 Planning source of truth:
 
@@ -49,6 +49,9 @@ Planning source of truth:
 
 # handoff + hardening smoke
 ./tools/week13-smoke.sh
+
+# final roadmap verification
+./tools/week14-smoke.sh
 ```
 
 Current onboarding guides:
@@ -66,3 +69,4 @@ Current onboarding guides:
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week11.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week12.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week13.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week14.md`

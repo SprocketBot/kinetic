@@ -19,7 +19,9 @@ echo "[quality] go test"
 go test ./...
 
 echo "[quality] go build"
-go build ./cmd/api
-go build ./cmd/migrate
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+go build -o "$tmpdir/api" ./cmd/api
+go build -o "$tmpdir/migrate" ./cmd/migrate
 
 echo "Quality gate passed."

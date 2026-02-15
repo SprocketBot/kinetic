@@ -48,7 +48,10 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 13 started: `W13-01` completed on 2026-02-15
 - Week 13 in progress: `W13-02` through `W13-09` completed on 2026-02-15
 - Week 13 completed: `W13-10` not consumed (no blockers)
-- Next up: Week 14 planning/execution (`W14-01` onward)
+- Week 14 started: `W14-01` completed on 2026-02-15
+- Week 14 in progress: `W14-02` through `W14-09` completed on 2026-02-15
+- Week 14 completed: `W14-10` not consumed (no blockers)
+- Roadmap status: Weeks 1-14 complete
 
 ## Capacity Guardrails
 
@@ -1042,3 +1045,74 @@ Out of scope:
 - Postgres test port available (`55432` default)
 - Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
 - Working tree clean before first Week 13 implementation commit
+
+---
+
+## Week 14 Execution Board (2026-05-11 to 2026-05-17)
+
+Week objective: finalize roadmap hardening with CI-enforced quality gates and release-readiness workflow so handoff owners can operate with minimal tribal knowledge.
+
+Definition of done for Week 14:
+
+- CI enforces quality gate, static analysis, race tests, and local smoke
+- scripted CI verification command exists for local parity
+- release-readiness checklist and roadmap summary docs are published
+- Week 14 local and minikube smoke scripts are available and passing
+- execution board marks roadmap completion through Week 14
+
+### Scope Boundaries
+
+In scope:
+
+- CI workflow strengthening and scripted verification parity
+- release-readiness and handoff summary documentation
+- final roadmap completion bookkeeping
+
+Out of scope:
+
+- new product-domain features
+- cloud-provider production automation beyond current local/minikube path
+- large-scale performance tuning campaigns
+
+### Day Plan (5 x 2h sessions)
+
+| Day | Time Budget | Work Items | Deliverables |
+| --- | ---: | --- | --- |
+| Mon | 2h | Define CI hardening and release-readiness contract | `docs/adr/019-ci-quality-gates-and-release-hardening.md` |
+| Tue | 2h | Add scripted CI parity verification | `tools/ci-verify.sh`, updated `tools/quality-gate.sh` |
+| Wed | 2h | Harden GitHub Actions quality gates | `.github/workflows/ci.yml` |
+| Thu | 2h | Add Week 14 smoke wrappers + release checklist docs | `tools/week14*.sh`, `docs/runbooks/release-readiness-checklist.md` |
+| Fri | 2h | Publish roadmap summary + board closeout + verification/buffer | `docs/reports/roadmap-week14-summary.md`, board updates |
+
+### Ticket Board
+
+| ID | Task | Estimate | Status | Acceptance Criteria |
+| --- | --- | ---: | --- | --- |
+| W14-01 | Define CI hardening and release-readiness contract | 0.75h | Done | ADR defines required gates and rationale |
+| W14-02 | Add CI parity script for local verification | 0.75h | Done | single script runs quality, staticcheck, and race checks |
+| W14-03 | Improve quality-gate script to avoid build artifact pollution | 0.5h | Done | quality script leaves clean working tree artifacts |
+| W14-04 | Update CI workflow with staticcheck + race tests | 1.0h | Done | CI enforces additional gates before merge |
+| W14-05 | Add CI local smoke job | 0.75h | Done | CI runs Week 14 local smoke after quality gates |
+| W14-06 | Add release-readiness checklist runbook | 0.75h | Done | release verification gates are explicit and executable |
+| W14-07 | Add roadmap summary report | 0.5h | Done | delivered scope and remaining backlog themes summarized |
+| W14-08 | Add Week 14 onboarding and smoke scripts | 0.75h | Done | contributors can run final hardening checks locally/k8s |
+| W14-09 | Mark roadmap closure in execution board | 0.5h | Done | Weeks 1-14 completion state is explicit |
+| W14-10 | Risk/overflow buffer | 1.75h | Done | not consumed (no blockers) |
+
+### Week 14 Risks and Mitigations
+
+- Risk: CI runtime increases significantly with added gates.
+  - Mitigation: keep jobs focused and script-backed; optimize further only if runtime becomes blocking.
+- Risk: local and CI verification diverge.
+  - Mitigation: CI calls repository scripts used by contributors (`quality-gate`, `week14-smoke`).
+- Risk: final handoff misses clear release procedure.
+  - Mitigation: release-readiness checklist and roadmap summary are explicit deliverables.
+
+### Week 14 Start Checklist
+
+- Week 13 smoke script passes: `./tools/week13-smoke.sh`
+- Week 13 minikube smoke script passes: `./tools/week13-k8s-smoke.sh`
+- Full test suite passes: `go test ./...`
+- Postgres test port available (`55432` default)
+- Minikube context selected and cluster reachable (`kubectl config use-context minikube`, `minikube status`)
+- Working tree clean before first Week 14 implementation commit
