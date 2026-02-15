@@ -13,6 +13,9 @@ Weeks 1-12 are complete, including:
 - local and minikube smoke automation for weekly slices
 
 Weeks 13-14 complete handoff hardening and CI quality-gate enforcement.
+Current active strategy is Pareto Recovery focused on exception automation:
+
+- `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
 
 Planning source of truth:
 

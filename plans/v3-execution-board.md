@@ -52,6 +52,7 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Week 14 in progress: `W14-02` through `W14-09` completed on 2026-02-15
 - Week 14 completed: `W14-10` not consumed (no blockers)
 - Roadmap status: Weeks 1-14 complete
+- Active priority: Pareto Recovery Track (exception automation + operator time reduction)
 
 ## Capacity Guardrails
 
@@ -60,6 +61,12 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 - Reserve: 2h (planning, CI/debug, context switching)
 - Hard rule: no week is complete unless code + tests + docs are all done
 - Verification rule: each week must include both local smoke (`tools/weekX-smoke.sh`) and minikube smoke (`tools/weekX-k8s-smoke.sh` once introduced) for that slice.
+
+## Post-Roadmap Priority (Pareto Recovery)
+
+- Plan of record: `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
+- Charter: `/Users/jacbaile/Sprocket-v3/docs/reports/pareto-recovery-charter-2026-02-15.md`
+- Objective: cut operator admin hours by automating exception-heavy workflows first.
 
 ## 14-Week Macro Plan
 
