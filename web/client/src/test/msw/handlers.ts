@@ -1,0 +1,50 @@
+import { http, HttpResponse } from "msw";
+
+const baseTicket = {
+  id: 1,
+  category: "scheduling_conflict",
+  contextType: "match",
+  contextId: 100,
+  reportedByTeamId: 10,
+  state: "open",
+  reasonCode: "availability_conflict",
+  severity: 3,
+  suggestedAction: "request_reschedule",
+  detailsJson: {},
+  resolutionCode: null,
+  openedAt: "2026-02-15T00:00:00Z",
+  triagedAt: null,
+  resolvedAt: null,
+};
+
+export const handlers = [
+  http.get("http://localhost:8080/v1/operator-inbox", () => {
+    return HttpResponse.json([baseTicket]);
+  }),
+  http.post("http://localhost:8080/v1/operator-inbox/triage", async ({ request }) => {
+    const body = (await request.json()) as {
+      reasonCode: string;
+      severity: number;
+      suggestedAction: string;
+    };
+
+    return HttpResponse.json({
+      ...baseTicket,
+      reasonCode: body.reasonCode,
+      severity: body.severity,
+      suggestedAction: body.suggestedAction,
+      state: "triaged",
+      triagedAt: "2026-02-15T01:00:00Z",
+    });
+  }),
+  http.post("http://localhost:8080/v1/operator-inbox/resolve", async ({ request }) => {
+    const body = (await request.json()) as { resolutionCode: string };
+
+    return HttpResponse.json({
+      ...baseTicket,
+      state: "resolved",
+      resolutionCode: body.resolutionCode,
+      resolvedAt: "2026-02-15T02:00:00Z",
+    });
+  }),
+];

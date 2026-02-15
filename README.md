@@ -26,6 +26,7 @@ Planning source of truth:
 - `cmd/`: entrypoints (binaries)
 - `internal/`: app-private code (domain + platform)
 - `pkg/`: optional reusable packages intended for external use
+- `web/`: web client workspace (React/TypeScript)
 - `migrations/`: database migration files
 - `deploy/`: Kubernetes manifests/charts and deployment scripts
 - `docs/`: ADRs, runbooks, onboarding
@@ -43,6 +44,9 @@ Planning source of truth:
 ```bash
 # quality gate (fmt + vet + test + build)
 ./tools/quality-gate.sh
+
+# web quality gate (lint + typecheck + test + build)
+./tools/web-quality-gate.sh
 
 # full local behavior smoke (latest slice)
 ./tools/week12-smoke.sh
@@ -74,3 +78,4 @@ Current onboarding guides:
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week13.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/week14.md`
 - `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`
+- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-phase0.md`
