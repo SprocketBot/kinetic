@@ -52,6 +52,7 @@ type fakeHierarchyStore struct {
 	scrimsToList             []hierarchy.Scrim
 	runsToList               []hierarchy.PromotionProcessingRun
 	ratingsToList            []hierarchy.PlayerRating
+	ratingAdjustmentsToList  []hierarchy.RatingAdjustment
 	decisionsToList          []hierarchy.MatchmakingDecision
 	submissionsToList        []hierarchy.ResultSubmission
 	replayEvidenceToList     []hierarchy.ReplayEvidence
@@ -83,6 +84,7 @@ type fakeHierarchyStore struct {
 	createSubmissionErr      error
 	ratifySubmissionErr      error
 	rejectSubmissionErr      error
+	adjustRatingErr          error
 	ingestReplayErr          error
 	reportExceptionErr       error
 	triageExceptionErr       error
@@ -174,6 +176,15 @@ func (f *fakeHierarchyStore) ListPromotionProcessingRuns(_ context.Context) ([]h
 }
 func (f *fakeHierarchyStore) ListPlayerRatings(_ context.Context) ([]hierarchy.PlayerRating, error) {
 	return f.ratingsToList, nil
+}
+func (f *fakeHierarchyStore) AdjustPlayerRating(_ context.Context, _ hierarchy.AdjustPlayerRatingInput) (hierarchy.PlayerRating, error) {
+	if len(f.ratingsToList) > 0 {
+		return f.ratingsToList[len(f.ratingsToList)-1], f.adjustRatingErr
+	}
+	return hierarchy.PlayerRating{}, f.adjustRatingErr
+}
+func (f *fakeHierarchyStore) ListRatingAdjustments(_ context.Context) ([]hierarchy.RatingAdjustment, error) {
+	return f.ratingAdjustmentsToList, nil
 }
 func (f *fakeHierarchyStore) ListMatchmakingDecisions(_ context.Context) ([]hierarchy.MatchmakingDecision, error) {
 	return f.decisionsToList, nil
@@ -647,6 +658,79 @@ func TestListPromotionProcessingRunsSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/promotion-processing-runs", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestAdjustPlayerRatingSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		ratingsToList: []hierarchy.PlayerRating{
+			{
+				ID:            1,
+				PlayerID:      20,
+				ContextKey:    "scrim-3v3",
+				Rating:        1110,
+				Uncertainty:   200,
+				MatchesPlayed: 25,
+				IsActive:      true,
+				UpdatedAt:     now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/player-ratings/adjust", strings.NewReader(`{"actorPlayerId":10,"targetPlayerId":20,"contextKey":"scrim-3v3","rating":1110,"uncertainty":200,"matchesPlayed":25,"reason":"manual review"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestAdjustPlayerRatingConflict(t *testing.T) {
+	store := &fakeHierarchyStore{
+		adjustRatingErr: hierarchy.ErrConflict,
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/player-ratings/adjust", strings.NewReader(`{"actorPlayerId":10,"targetPlayerId":10,"contextKey":"scrim-3v3","rating":1110,"uncertainty":200,"matchesPlayed":25,"reason":"manual review"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusConflict, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListRatingAdjustmentsSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		ratingAdjustmentsToList: []hierarchy.RatingAdjustment{
+			{
+				ID:                    1,
+				ActorPlayerID:         10,
+				TargetPlayerID:        20,
+				ContextKey:            "scrim-3v3",
+				PreviousRating:        1000,
+				NewRating:             1110,
+				PreviousUncertainty:   300,
+				NewUncertainty:        200,
+				PreviousMatchesPlayed: 20,
+				NewMatchesPlayed:      25,
+				Reason:                "manual review",
+				CreatedAt:             now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/rating-adjustments", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

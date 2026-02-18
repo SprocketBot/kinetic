@@ -7,11 +7,13 @@ import { LoadingState } from "../../../components/feedback/loading-state";
 import { getJson, postJson } from "../../../lib/api/client";
 import { ApiError } from "../../../lib/api/errors";
 import {
+  adjustPlayerRatingInputSchema,
   createFixtureInputSchema,
   createMatchInputSchema,
   createRosterMembershipInputSchema,
   createScheduleGroupInputSchema,
   createSeasonInputSchema,
+  ratingAdjustmentListSchema,
   playerRatingListSchema,
   exceptionActionListSchema,
   fixtureListSchema,
@@ -35,6 +37,7 @@ import {
   type Season,
   type Team,
   type PlayerRating,
+  type RatingAdjustment,
 } from "../../../lib/api/schemas";
 
 async function listSeasons() {
@@ -104,6 +107,23 @@ async function listPlayerRatings() {
   return getJson("/v1/player-ratings", playerRatingListSchema);
 }
 
+async function listRatingAdjustments() {
+  return getJson("/v1/rating-adjustments", ratingAdjustmentListSchema);
+}
+
+async function adjustPlayerRating(input: {
+  actorPlayerId: number;
+  targetPlayerId: number;
+  contextKey: string;
+  rating: number;
+  uncertainty: number;
+  matchesPlayed: number;
+  reason: string;
+}) {
+  const payload = adjustPlayerRatingInputSchema.parse(input);
+  return postJson("/v1/player-ratings/adjust", payload, playerRatingListSchema.element);
+}
+
 export function AdminHomePage() {
   const queryClient = useQueryClient();
 
@@ -117,6 +137,7 @@ export function AdminHomePage() {
   const rosterQuery = useQuery({ queryKey: ["roster-memberships"], queryFn: listRosterMemberships });
   const actionsQuery = useQuery({ queryKey: ["exception-actions"], queryFn: listExceptionActions });
   const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
+  const ratingAdjustmentsQuery = useQuery({ queryKey: ["rating-adjustments"], queryFn: listRatingAdjustments });
 
   const seasonMutation = useMutation({
     mutationFn: createSeason,
@@ -233,6 +254,16 @@ export function AdminHomePage() {
     },
   });
 
+  const ratingAdjustmentMutation = useMutation({
+    mutationFn: adjustPlayerRating,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["player-ratings"] }),
+        queryClient.invalidateQueries({ queryKey: ["rating-adjustments"] }),
+      ]);
+    },
+  });
+
   return (
     <AppShell title="Sprocket Web Client">
       <h2>League Admin</h2>
@@ -292,7 +323,14 @@ export function AdminHomePage() {
 
       <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
         <ResultOverridePanel />
-        <RatingAdminPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
+        <RatingAdminPanel
+          adjustError={ratingAdjustmentMutation.error}
+          adjustRating={ratingAdjustmentMutation.mutateAsync}
+          adjustSuccess={ratingAdjustmentMutation.isSuccess}
+          adjustments={ratingAdjustmentsQuery.data ?? []}
+          loading={ratingsQuery.isLoading || ratingAdjustmentsQuery.isLoading}
+          ratings={ratingsQuery.data ?? []}
+        />
       </section>
     </AppShell>
   );
@@ -656,29 +694,115 @@ function ResultOverridePanel() {
   );
 }
 
-function RatingAdminPanel({ ratings, loading }: { ratings: PlayerRating[]; loading: boolean }) {
-  const [playerId, setPlayerId] = useState(1);
+function RatingAdminPanel({
+  ratings,
+  adjustments,
+  loading,
+  adjustRating,
+  adjustSuccess,
+  adjustError,
+}: {
+  ratings: PlayerRating[];
+  adjustments: RatingAdjustment[];
+  loading: boolean;
+  adjustRating: (input: {
+    actorPlayerId: number;
+    targetPlayerId: number;
+    contextKey: string;
+    rating: number;
+    uncertainty: number;
+    matchesPlayed: number;
+    reason: string;
+  }) => Promise<unknown>;
+  adjustSuccess: boolean;
+  adjustError: Error | null;
+}) {
+  const [actorPlayerId, setActorPlayerId] = useState(1);
+  const [targetPlayerId, setTargetPlayerId] = useState(2);
+  const [contextKey, setContextKey] = useState("scrim-3v3");
   const [rating, setRating] = useState(1000);
+  const [uncertainty, setUncertainty] = useState(250);
+  const [matchesPlayed, setMatchesPlayed] = useState(10);
+  const [reason, setReason] = useState("admin correction");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await adjustRating({
+      actorPlayerId,
+      targetPlayerId,
+      contextKey,
+      rating,
+      uncertainty,
+      matchesPlayed,
+      reason,
+    });
+  }
 
   return (
     <section>
       <h3>Rating Administration</h3>
-      <p>Rating edit endpoint is pending (`API-WEB-07`); current view is read-only with guardrail notes.</p>
-      <form>
+      <p>Admins can adjust other players&apos; ratings. Self-edits are blocked server-side.</p>
+      <form onSubmit={submit}>
         <label>
-          Player ID
-          <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+          Actor player ID
+          <input
+            min={1}
+            type="number"
+            value={actorPlayerId}
+            onChange={(event) => setActorPlayerId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Target player ID
+          <input
+            min={1}
+            type="number"
+            value={targetPlayerId}
+            onChange={(event) => setTargetPlayerId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Context key
+          <input value={contextKey} onChange={(event) => setContextKey(event.target.value)} />
         </label>
         <label>
           New rating
           <input min={0} type="number" value={rating} onChange={(event) => setRating(Number(event.target.value))} />
         </label>
-        <button disabled type="button">
-          Apply rating change (API pending)
-        </button>
+        <label>
+          Uncertainty
+          <input
+            min={0}
+            type="number"
+            value={uncertainty}
+            onChange={(event) => setUncertainty(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Matches played
+          <input
+            min={0}
+            type="number"
+            value={matchesPlayed}
+            onChange={(event) => setMatchesPlayed(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Reason
+          <input value={reason} onChange={(event) => setReason(event.target.value)} />
+        </label>
+        <button type="submit">Apply rating change</button>
       </form>
+      {adjustSuccess && <p data-testid="admin-rating-success">Rating adjusted.</p>}
+      {adjustError && <ErrorView error={adjustError} label="Rating adjustment failed" />}
       <DataList
-        items={ratings.map((entry) => `Player ${entry.playerId} · ${entry.contextKey} · ${entry.rating}`)}
+        items={[
+          ...ratings.map((entry) => `Player ${entry.playerId} · ${entry.contextKey} · ${entry.rating}`),
+          ...adjustments.map(
+            (entry) =>
+              `Audit #${entry.id} · actor ${entry.actorPlayerId} -> player ${entry.targetPlayerId} · ${entry.previousRating} -> ${entry.newRating}`,
+          ),
+        ]}
         loading={loading}
       />
     </section>

@@ -151,6 +151,23 @@ const playerRatings = [
   },
 ];
 
+const ratingAdjustments = [
+  {
+    id: 1,
+    actorPlayerId: 2,
+    targetPlayerId: 1,
+    contextKey: "default",
+    previousRating: 980,
+    newRating: 1000,
+    previousUncertainty: 130,
+    newUncertainty: 120,
+    previousMatchesPlayed: 24,
+    newMatchesPlayed: 25,
+    reason: "manual review",
+    createdAt: "2026-02-15T00:10:00Z",
+  },
+];
+
 const baseTicket = {
   id: 1,
   category: "scheduling_conflict",
@@ -214,6 +231,64 @@ export const handlers = [
   }),
   http.get("http://localhost:8080/v1/exception-actions", () => HttpResponse.json(exceptionActions)),
   http.get("http://localhost:8080/v1/player-ratings", () => HttpResponse.json(playerRatings)),
+  http.get("http://localhost:8080/v1/rating-adjustments", () => HttpResponse.json(ratingAdjustments)),
+  http.post("http://localhost:8080/v1/player-ratings/adjust", async ({ request }) => {
+    const body = (await request.json()) as {
+      actorPlayerId: number;
+      targetPlayerId: number;
+      contextKey: string;
+      rating: number;
+      uncertainty: number;
+      matchesPlayed: number;
+      reason: string;
+    };
+
+    if (body.actorPlayerId === body.targetPlayerId) {
+      return HttpResponse.text("actorPlayerId cannot adjust own rating", { status: 409 });
+    }
+
+    const existing = playerRatings.find(
+      (rating) => rating.playerId === body.targetPlayerId && rating.contextKey === body.contextKey,
+    );
+    const previousRating = existing?.rating ?? 1000;
+    const previousUncertainty = existing?.uncertainty ?? 350;
+    const previousMatchesPlayed = existing?.matchesPlayed ?? 0;
+
+    const updated = {
+      id: existing?.id ?? playerRatings.length + 1,
+      playerId: body.targetPlayerId,
+      contextKey: body.contextKey,
+      rating: body.rating,
+      uncertainty: body.uncertainty,
+      matchesPlayed: body.matchesPlayed,
+      lastCompetedAt: existing?.lastCompetedAt ?? null,
+      isActive: true,
+      updatedAt: "2026-02-15T03:30:00Z",
+    };
+
+    if (existing) {
+      Object.assign(existing, updated);
+    } else {
+      playerRatings.push(updated);
+    }
+
+    ratingAdjustments.unshift({
+      id: ratingAdjustments.length + 1,
+      actorPlayerId: body.actorPlayerId,
+      targetPlayerId: body.targetPlayerId,
+      contextKey: body.contextKey,
+      previousRating,
+      newRating: body.rating,
+      previousUncertainty,
+      newUncertainty: body.uncertainty,
+      previousMatchesPlayed,
+      newMatchesPlayed: body.matchesPlayed,
+      reason: body.reason,
+      createdAt: "2026-02-15T03:30:00Z",
+    });
+
+    return HttpResponse.json(updated);
+  }),
   http.get("http://localhost:8080/v1/seasons", () => HttpResponse.json(seasons)),
   http.post("http://localhost:8080/v1/seasons", async ({ request }) => {
     const body = (await request.json()) as { name: string; slug: string };

@@ -117,10 +117,11 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	}, http.StatusCreated)
 	teamTwoID := int64(teamTwoResp["id"].(float64))
 
-	createEntity(t, server, "/v1/players", map[string]any{
+	playerResp := createEntity(t, server, "/v1/players", map[string]any{
 		"displayName": fmt.Sprintf("Player %d", suffix),
 		"slug":        fmt.Sprintf("player-%d", suffix),
 	}, http.StatusCreated)
+	playerID := int64(playerResp["id"].(float64))
 
 	playerTwoResp := createEntity(t, server, "/v1/players", map[string]any{
 		"displayName": fmt.Sprintf("Player Two %d", suffix),
@@ -375,6 +376,26 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		t.Fatalf("failed to insert player rating baseline row: %v", err)
 	}
 
+	createEntity(t, server, "/v1/player-ratings/adjust", map[string]any{
+		"actorPlayerId":  playerID,
+		"targetPlayerId": playerTwoID,
+		"contextKey":     "scrim-3v3",
+		"rating":         int32(1100),
+		"uncertainty":    int32(250),
+		"matchesPlayed":  int32(9),
+		"reason":         "manual correction",
+	}, http.StatusOK)
+
+	createEntity(t, server, "/v1/player-ratings/adjust", map[string]any{
+		"actorPlayerId":  playerID,
+		"targetPlayerId": playerID,
+		"contextKey":     "scrim-3v3",
+		"rating":         int32(1200),
+		"uncertainty":    int32(220),
+		"matchesPlayed":  int32(10),
+		"reason":         "self edit should fail",
+	}, http.StatusConflict)
+
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": queueID,
 		"teamId":  teamID,
@@ -412,6 +433,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/scrims")
 	assertListNotEmpty(t, server, "/v1/promotion-processing-runs")
 	assertListNotEmpty(t, server, "/v1/player-ratings")
+	assertListNotEmpty(t, server, "/v1/rating-adjustments")
 	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
 	assertListNotEmpty(t, server, "/v1/result-submissions")
 	assertListNotEmpty(t, server, "/v1/replay-evidence")
@@ -543,6 +565,16 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"homeTeamId": int64(1),
 		"awayTeamId": int64(1),
 		"state":      "planned",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/player-ratings/adjust", map[string]any{
+		"actorPlayerId":  int64(1),
+		"targetPlayerId": int64(2),
+		"contextKey":     "scrim-3v3",
+		"rating":         int32(1200),
+		"uncertainty":    int32(200),
+		"matchesPlayed":  int32(10),
+		"reason":         "",
 	}, http.StatusBadRequest)
 }
 

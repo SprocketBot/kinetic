@@ -1554,3 +1554,99 @@ func TestHierarchyStoreExceptionAutomationFlow(t *testing.T) {
 		t.Fatal("expected operator inbox to contain open/triaged tickets")
 	}
 }
+
+func TestHierarchyStoreAdjustPlayerRatingAuditAndGuardrail(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	actor, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		DisplayName: fmt.Sprintf("Rating Actor %d", suffix),
+		Slug:        fmt.Sprintf("rating-actor-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create actor player: %v", err)
+	}
+	target, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		DisplayName: fmt.Sprintf("Rating Target %d", suffix),
+		Slug:        fmt.Sprintf("rating-target-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create target player: %v", err)
+	}
+
+	updated, err := store.AdjustPlayerRating(ctx, hierarchy.AdjustPlayerRatingInput{
+		ActorPlayerID:  actor.ID,
+		TargetPlayerID: target.ID,
+		ContextKey:     "scrim-3v3",
+		Rating:         1115,
+		Uncertainty:    210,
+		MatchesPlayed:  18,
+		Reason:         "manual correction after replay review",
+	})
+	if err != nil {
+		t.Fatalf("failed to adjust player rating: %v", err)
+	}
+	if updated.PlayerID != target.ID {
+		t.Fatalf("expected updated rating player_id %d, got %d", target.ID, updated.PlayerID)
+	}
+	if updated.Rating != 1115 {
+		t.Fatalf("expected updated rating 1115, got %d", updated.Rating)
+	}
+
+	adjustments, err := store.ListRatingAdjustments(ctx)
+	if err != nil {
+		t.Fatalf("failed to list rating adjustments: %v", err)
+	}
+	if len(adjustments) == 0 {
+		t.Fatal("expected at least one rating adjustment audit row")
+	}
+	latest := adjustments[0]
+	if latest.ActorPlayerID != actor.ID {
+		t.Fatalf("expected actor_player_id %d, got %d", actor.ID, latest.ActorPlayerID)
+	}
+	if latest.TargetPlayerID != target.ID {
+		t.Fatalf("expected target_player_id %d, got %d", target.ID, latest.TargetPlayerID)
+	}
+	if latest.NewRating != 1115 {
+		t.Fatalf("expected new rating 1115, got %d", latest.NewRating)
+	}
+
+	_, err = store.AdjustPlayerRating(ctx, hierarchy.AdjustPlayerRatingInput{
+		ActorPlayerID:  actor.ID,
+		TargetPlayerID: actor.ID,
+		ContextKey:     "scrim-3v3",
+		Rating:         1200,
+		Uncertainty:    180,
+		MatchesPlayed:  19,
+		Reason:         "self edit should fail",
+	})
+	if err == nil {
+		t.Fatal("expected self-edit guardrail conflict")
+	}
+	if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict for self-edit guardrail, got: %v", err)
+	}
+}

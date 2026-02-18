@@ -28,6 +28,8 @@ type Store interface {
 	ProcessQueuePromotions(ctx context.Context, input ProcessQueuePromotionsInput) (ProcessQueuePromotionsResult, error)
 	ListPromotionProcessingRuns(ctx context.Context) ([]PromotionProcessingRun, error)
 	ListPlayerRatings(ctx context.Context) ([]PlayerRating, error)
+	AdjustPlayerRating(ctx context.Context, input AdjustPlayerRatingInput) (PlayerRating, error)
+	ListRatingAdjustments(ctx context.Context) ([]RatingAdjustment, error)
 	ListMatchmakingDecisions(ctx context.Context) ([]MatchmakingDecision, error)
 	CreateResultSubmission(ctx context.Context, input CreateResultSubmissionInput) (ResultSubmission, error)
 	ListResultSubmissions(ctx context.Context) ([]ResultSubmission, error)

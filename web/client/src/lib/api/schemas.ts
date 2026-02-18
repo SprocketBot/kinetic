@@ -255,6 +255,33 @@ export const playerRatingSchema = z.object({
 
 export const playerRatingListSchema = z.array(playerRatingSchema);
 
+export const adjustPlayerRatingInputSchema = z.object({
+  actorPlayerId: z.number().positive(),
+  targetPlayerId: z.number().positive(),
+  contextKey: z.string().min(1),
+  rating: z.number().min(0),
+  uncertainty: z.number().min(0),
+  matchesPlayed: z.number().min(0),
+  reason: z.string().min(1),
+});
+
+export const ratingAdjustmentSchema = z.object({
+  id: z.number(),
+  actorPlayerId: z.number(),
+  targetPlayerId: z.number(),
+  contextKey: z.string(),
+  previousRating: z.number(),
+  newRating: z.number(),
+  previousUncertainty: z.number(),
+  newUncertainty: z.number(),
+  previousMatchesPlayed: z.number(),
+  newMatchesPlayed: z.number(),
+  reason: z.string(),
+  createdAt: z.string(),
+});
+
+export const ratingAdjustmentListSchema = z.array(ratingAdjustmentSchema);
+
 export const enqueueTeamInputSchema = z.object({
   queueId: z.number().positive(),
   teamId: z.number().positive(),
@@ -310,3 +337,5 @@ export type RatifyResultSubmissionInput = z.infer<typeof ratifyResultSubmissionI
 export type RejectResultSubmissionInput = z.infer<typeof rejectResultSubmissionInputSchema>;
 export type IngestReplayEvidenceInput = z.infer<typeof ingestReplayEvidenceInputSchema>;
 export type PlayerRating = z.infer<typeof playerRatingSchema>;
+export type AdjustPlayerRatingInput = z.infer<typeof adjustPlayerRatingInputSchema>;
+export type RatingAdjustment = z.infer<typeof ratingAdjustmentSchema>;

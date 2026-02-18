@@ -172,6 +172,31 @@ func ValidateProcessQueuePromotionsInput(input ProcessQueuePromotionsInput) erro
 	return nil
 }
 
+func ValidateAdjustPlayerRatingInput(input AdjustPlayerRatingInput) error {
+	if input.ActorPlayerID <= 0 {
+		return fmt.Errorf("%w: actorPlayerId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TargetPlayerID <= 0 {
+		return fmt.Errorf("%w: targetPlayerId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ContextKey) == "" {
+		return fmt.Errorf("%w: contextKey is required", ErrInvalidInput)
+	}
+	if input.Rating < 0 {
+		return fmt.Errorf("%w: rating must be greater than or equal to zero", ErrInvalidInput)
+	}
+	if input.Uncertainty < 0 {
+		return fmt.Errorf("%w: uncertainty must be greater than or equal to zero", ErrInvalidInput)
+	}
+	if input.MatchesPlayed < 0 {
+		return fmt.Errorf("%w: matchesPlayed must be greater than or equal to zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateResultSubmissionInput(input CreateResultSubmissionInput) error {
 	switch strings.TrimSpace(input.ContextType) {
 	case "scrim", "match":

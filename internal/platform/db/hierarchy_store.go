@@ -894,6 +894,167 @@ ORDER BY id ASC;`
 	return ratings, nil
 }
 
+func (s *HierarchyStore) AdjustPlayerRating(ctx context.Context, input hierarchy.AdjustPlayerRatingInput) (hierarchy.PlayerRating, error) {
+	if err := hierarchy.ValidateAdjustPlayerRatingInput(input); err != nil {
+		return hierarchy.PlayerRating{}, err
+	}
+	if input.ActorPlayerID == input.TargetPlayerID {
+		return hierarchy.PlayerRating{}, fmt.Errorf("%w: actorPlayerId cannot adjust own rating", hierarchy.ErrConflict)
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return hierarchy.PlayerRating{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	previousRating := defaultTeamRating
+	previousUncertainty := int32(350)
+	previousMatchesPlayed := int32(0)
+
+	const selectPreviousStmt = `
+SELECT rating, uncertainty, matches_played
+FROM player_ratings
+WHERE player_id = $1
+  AND context_key = $2
+  AND is_active = TRUE
+FOR UPDATE;`
+	err = tx.QueryRowContext(ctx, selectPreviousStmt, input.TargetPlayerID, input.ContextKey).Scan(
+		&previousRating,
+		&previousUncertainty,
+		&previousMatchesPlayed,
+	)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return hierarchy.PlayerRating{}, err
+	}
+	if errors.Is(err, sql.ErrNoRows) {
+		previousRating = defaultTeamRating
+		previousUncertainty = 350
+		previousMatchesPlayed = 0
+	}
+
+	const upsertStmt = `
+INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (player_id, context_key) WHERE is_active = TRUE
+DO UPDATE SET
+	rating = EXCLUDED.rating,
+	uncertainty = EXCLUDED.uncertainty,
+	matches_played = EXCLUDED.matches_played,
+	updated_at = NOW()
+RETURNING id, player_id, context_key, rating, uncertainty, matches_played, last_competed_at, is_active, updated_at;`
+	var updated hierarchy.PlayerRating
+	if err := tx.QueryRowContext(
+		ctx,
+		upsertStmt,
+		input.TargetPlayerID,
+		input.ContextKey,
+		input.Rating,
+		input.Uncertainty,
+		input.MatchesPlayed,
+	).Scan(
+		&updated.ID,
+		&updated.PlayerID,
+		&updated.ContextKey,
+		&updated.Rating,
+		&updated.Uncertainty,
+		&updated.MatchesPlayed,
+		&updated.LastCompetedAt,
+		&updated.IsActive,
+		&updated.UpdatedAt,
+	); err != nil {
+		return hierarchy.PlayerRating{}, mapSQLError(err)
+	}
+
+	const auditStmt = `
+INSERT INTO rating_adjustments(
+	actor_player_id,
+	target_player_id,
+	context_key,
+	previous_rating,
+	new_rating,
+	previous_uncertainty,
+	new_uncertainty,
+	previous_matches_played,
+	new_matches_played,
+	reason
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
+	if _, err := tx.ExecContext(
+		ctx,
+		auditStmt,
+		input.ActorPlayerID,
+		input.TargetPlayerID,
+		input.ContextKey,
+		previousRating,
+		input.Rating,
+		previousUncertainty,
+		input.Uncertainty,
+		previousMatchesPlayed,
+		input.MatchesPlayed,
+		input.Reason,
+	); err != nil {
+		return hierarchy.PlayerRating{}, mapSQLError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return hierarchy.PlayerRating{}, err
+	}
+	return updated, nil
+}
+
+func (s *HierarchyStore) ListRatingAdjustments(ctx context.Context) ([]hierarchy.RatingAdjustment, error) {
+	const stmt = `
+SELECT
+	id,
+	actor_player_id,
+	target_player_id,
+	context_key,
+	previous_rating,
+	new_rating,
+	previous_uncertainty,
+	new_uncertainty,
+	previous_matches_played,
+	new_matches_played,
+	reason,
+	created_at
+FROM rating_adjustments
+ORDER BY id DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	adjustments := make([]hierarchy.RatingAdjustment, 0)
+	for rows.Next() {
+		var adjustment hierarchy.RatingAdjustment
+		if err := rows.Scan(
+			&adjustment.ID,
+			&adjustment.ActorPlayerID,
+			&adjustment.TargetPlayerID,
+			&adjustment.ContextKey,
+			&adjustment.PreviousRating,
+			&adjustment.NewRating,
+			&adjustment.PreviousUncertainty,
+			&adjustment.NewUncertainty,
+			&adjustment.PreviousMatchesPlayed,
+			&adjustment.NewMatchesPlayed,
+			&adjustment.Reason,
+			&adjustment.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		adjustments = append(adjustments, adjustment)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return adjustments, nil
+}
+
 func (s *HierarchyStore) ListMatchmakingDecisions(ctx context.Context) ([]hierarchy.MatchmakingDecision, error) {
 	const stmt = `
 SELECT

@@ -404,6 +404,36 @@ func TestValidateProcessQueuePromotionsInput(t *testing.T) {
 	}
 }
 
+func TestValidateAdjustPlayerRatingInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateAdjustPlayerRatingInput(AdjustPlayerRatingInput{
+		ActorPlayerID:  1,
+		TargetPlayerID: 2,
+		ContextKey:     "scrim-3v3",
+		Rating:         1080,
+		Uncertainty:    220,
+		MatchesPlayed:  32,
+		Reason:         "manual correction",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateAdjustPlayerRatingInput(AdjustPlayerRatingInput{
+		ActorPlayerID:  0,
+		TargetPlayerID: 2,
+		ContextKey:     "scrim-3v3",
+		Rating:         1080,
+		Uncertainty:    220,
+		MatchesPlayed:  32,
+		Reason:         "manual correction",
+	})
+	if err == nil {
+		t.Fatal("expected missing actorPlayerId to fail validation")
+	}
+}
+
 func TestValidateCreateResultSubmissionInput(t *testing.T) {
 	t.Parallel()
 

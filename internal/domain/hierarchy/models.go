@@ -98,6 +98,21 @@ type PlayerRating struct {
 	UpdatedAt      time.Time  `json:"updatedAt"`
 }
 
+type RatingAdjustment struct {
+	ID                    int64     `json:"id"`
+	ActorPlayerID         int64     `json:"actorPlayerId"`
+	TargetPlayerID        int64     `json:"targetPlayerId"`
+	ContextKey            string    `json:"contextKey"`
+	PreviousRating        int32     `json:"previousRating"`
+	NewRating             int32     `json:"newRating"`
+	PreviousUncertainty   int32     `json:"previousUncertainty"`
+	NewUncertainty        int32     `json:"newUncertainty"`
+	PreviousMatchesPlayed int32     `json:"previousMatchesPlayed"`
+	NewMatchesPlayed      int32     `json:"newMatchesPlayed"`
+	Reason                string    `json:"reason"`
+	CreatedAt             time.Time `json:"createdAt"`
+}
+
 type MatchmakingDecision struct {
 	ID               int64     `json:"id"`
 	ScrimID          int64     `json:"scrimId"`
@@ -319,6 +334,16 @@ type ProcessQueuePromotionsResult struct {
 	ProcessedQueues   int32 `json:"processedQueues"`
 	PromotionsCreated int32 `json:"promotionsCreated"`
 	Conflicts         int32 `json:"conflicts"`
+}
+
+type AdjustPlayerRatingInput struct {
+	ActorPlayerID  int64  `json:"actorPlayerId"`
+	TargetPlayerID int64  `json:"targetPlayerId"`
+	ContextKey     string `json:"contextKey"`
+	Rating         int32  `json:"rating"`
+	Uncertainty    int32  `json:"uncertainty"`
+	MatchesPlayed  int32  `json:"matchesPlayed"`
+	Reason         string `json:"reason"`
 }
 
 type PromotionProcessingRun struct {
