@@ -218,6 +218,25 @@ func ValidateCreateResultSubmissionInput(input CreateResultSubmissionInput) erro
 	return nil
 }
 
+func ValidateOverrideResultSubmissionInput(input OverrideResultSubmissionInput) error {
+	if input.SubmissionID <= 0 {
+		return fmt.Errorf("%w: submissionId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	if input.WinningTeamID <= 0 || input.LosingTeamID <= 0 {
+		return fmt.Errorf("%w: winningTeamId and losingTeamId must be greater than zero", ErrInvalidInput)
+	}
+	if input.WinningTeamID == input.LosingTeamID {
+		return fmt.Errorf("%w: winningTeamId and losingTeamId must differ", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateRatifyResultSubmissionInput(input RatifyResultSubmissionInput) error {
 	if input.SubmissionID <= 0 {
 		return fmt.Errorf("%w: submissionId must be greater than zero", ErrInvalidInput)

@@ -55,6 +55,7 @@ type fakeHierarchyStore struct {
 	ratingAdjustmentsToList  []hierarchy.RatingAdjustment
 	decisionsToList          []hierarchy.MatchmakingDecision
 	submissionsToList        []hierarchy.ResultSubmission
+	resultOverridesToList    []hierarchy.ResultOverride
 	replayEvidenceToList     []hierarchy.ReplayEvidence
 	replayParseRunsToList    []hierarchy.ReplayParseRun
 	replayLinksToList        []hierarchy.ResultSubmissionReplayLink
@@ -82,6 +83,7 @@ type fakeHierarchyStore struct {
 	promoteQueueErr          error
 	processPromoteErr        error
 	createSubmissionErr      error
+	overrideSubmissionErr    error
 	ratifySubmissionErr      error
 	rejectSubmissionErr      error
 	adjustRatingErr          error
@@ -194,6 +196,12 @@ func (f *fakeHierarchyStore) CreateResultSubmission(_ context.Context, _ hierarc
 }
 func (f *fakeHierarchyStore) ListResultSubmissions(_ context.Context) ([]hierarchy.ResultSubmission, error) {
 	return f.submissionsToList, nil
+}
+func (f *fakeHierarchyStore) OverrideResultSubmission(_ context.Context, _ hierarchy.OverrideResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	return f.submissionToReturn, f.overrideSubmissionErr
+}
+func (f *fakeHierarchyStore) ListResultOverrides(_ context.Context) ([]hierarchy.ResultOverride, error) {
+	return f.resultOverridesToList, nil
 }
 func (f *fakeHierarchyStore) RatifyResultSubmission(_ context.Context, _ hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
 	return f.submissionToReturn, f.ratifySubmissionErr
@@ -766,6 +774,68 @@ func TestCreateResultSubmissionSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestOverrideResultSubmissionSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		submissionToReturn: hierarchy.ResultSubmission{
+			ID:                1,
+			ContextType:       "scrim",
+			ContextID:         10,
+			SubmittedByTeamID: 20,
+			HomeTeamID:        20,
+			AwayTeamID:        30,
+			WinningTeamID:     30,
+			LosingTeamID:      20,
+			State:             "ratified",
+			PayloadJSON:       []byte(`{"score":"2-3"}`),
+			CreatedAt:         now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"league-admin","reason":"manual correction","winningTeamId":30,"losingTeamId":20}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListResultOverridesSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		resultOverridesToList: []hierarchy.ResultOverride{
+			{
+				ID:                    1,
+				SubmissionID:          10,
+				Actor:                 "league-admin",
+				Reason:                "manual correction",
+				PreviousWinningTeamID: 20,
+				PreviousLosingTeamID:  30,
+				NewWinningTeamID:      30,
+				NewLosingTeamID:       20,
+				PreviousState:         "pending",
+				NewState:              "ratified",
+				CreatedAt:             now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/result-overrides", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 }
 

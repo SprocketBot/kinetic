@@ -294,6 +294,14 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":       teamTwoID,
 	}, http.StatusOK)
 
+	createEntity(t, server, "/v1/result-overrides", map[string]any{
+		"submissionId":  submissionID,
+		"actor":         "league-admin",
+		"reason":        "manual correction after review",
+		"winningTeamId": teamTwoID,
+		"losingTeamId":  teamID,
+	}, http.StatusOK)
+
 	replayEvidenceResp := createEntity(t, server, "/v1/replay-evidence", map[string]any{
 		"contextType":        "scrim",
 		"contextId":          scrimID,
@@ -436,6 +444,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/rating-adjustments")
 	assertListNotEmpty(t, server, "/v1/matchmaking-decisions")
 	assertListNotEmpty(t, server, "/v1/result-submissions")
+	assertListNotEmpty(t, server, "/v1/result-overrides")
 	assertListNotEmpty(t, server, "/v1/replay-evidence")
 	assertListNotEmpty(t, server, "/v1/replay-parse-runs")
 	assertListNotEmpty(t, server, "/v1/result-submission-replay-links")
@@ -539,6 +548,14 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"submissionId": int64(1),
 		"teamId":       int64(1),
 		"reason":       "",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/result-overrides", map[string]any{
+		"submissionId":  int64(1),
+		"actor":         "league-admin",
+		"reason":        "",
+		"winningTeamId": int64(1),
+		"losingTeamId":  int64(2),
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/replay-evidence", map[string]any{

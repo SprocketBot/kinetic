@@ -1253,6 +1253,117 @@ func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
 	}
 }
 
+func TestHierarchyStoreResultOverrideAuditFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League W11 Override %d", suffix), Slug: fmt.Sprintf("league-w11-override-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise W11 Override %d", suffix), Slug: fmt.Sprintf("franchise-w11-override-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	clubA, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W11 Override A %d", suffix), Slug: fmt.Sprintf("club-w11-override-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club A: %v", err)
+	}
+	clubB, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club W11 Override B %d", suffix), Slug: fmt.Sprintf("club-w11-override-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club B: %v", err)
+	}
+	teamA, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubA.ID, Name: fmt.Sprintf("Team W11 Override A %d", suffix), Slug: fmt.Sprintf("team-w11-override-a-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team A: %v", err)
+	}
+	teamB, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: clubB.ID, Name: fmt.Sprintf("Team W11 Override B %d", suffix), Slug: fmt.Sprintf("team-w11-override-b-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team B: %v", err)
+	}
+
+	queue, err := store.CreateQueue(ctx, hierarchy.CreateQueueInput{Name: fmt.Sprintf("Queue W11 Override %d", suffix), Slug: fmt.Sprintf("queue-w11-override-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+	scrim, err := store.CreateScrim(ctx, hierarchy.CreateScrimInput{
+		QueueID:    queue.ID,
+		HomeTeamID: teamA.ID,
+		AwayTeamID: teamB.ID,
+		State:      "created",
+	})
+	if err != nil {
+		t.Fatalf("failed to create scrim: %v", err)
+	}
+
+	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
+		ContextType:       "scrim",
+		ContextID:         scrim.ID,
+		SubmittedByTeamID: teamA.ID,
+		WinningTeamID:     teamA.ID,
+		LosingTeamID:      teamB.ID,
+		PayloadJSON:       []byte(`{"score":"3-1"}`),
+	})
+	if err != nil {
+		t.Fatalf("failed to create submission: %v", err)
+	}
+
+	overridden, err := store.OverrideResultSubmission(ctx, hierarchy.OverrideResultSubmissionInput{
+		SubmissionID:  submission.ID,
+		Actor:         "league-admin",
+		Reason:        "manual correction",
+		WinningTeamID: teamB.ID,
+		LosingTeamID:  teamA.ID,
+	})
+	if err != nil {
+		t.Fatalf("failed to override submission: %v", err)
+	}
+	if overridden.WinningTeamID != teamB.ID {
+		t.Fatalf("expected winning team %d after override, got %d", teamB.ID, overridden.WinningTeamID)
+	}
+	if overridden.State != "ratified" {
+		t.Fatalf("expected submission state ratified after override, got %s", overridden.State)
+	}
+
+	overrides, err := store.ListResultOverrides(ctx)
+	if err != nil {
+		t.Fatalf("failed to list result overrides: %v", err)
+	}
+	if len(overrides) == 0 {
+		t.Fatal("expected at least one result override audit row")
+	}
+	latest := overrides[0]
+	if latest.SubmissionID != submission.ID {
+		t.Fatalf("expected override submission_id %d, got %d", submission.ID, latest.SubmissionID)
+	}
+	if latest.PreviousWinningTeamID != teamA.ID || latest.NewWinningTeamID != teamB.ID {
+		t.Fatalf("expected audit winner transition %d->%d, got %d->%d", teamA.ID, teamB.ID, latest.PreviousWinningTeamID, latest.NewWinningTeamID)
+	}
+}
+
 func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.T) {
 	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
 	if testDatabaseURL == "" {

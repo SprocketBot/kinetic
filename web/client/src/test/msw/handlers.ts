@@ -47,6 +47,22 @@ const resultSubmissions = [
   },
 ];
 
+const resultOverrides = [
+  {
+    id: 1,
+    submissionId: 1,
+    actor: "league-admin",
+    reason: "video review correction",
+    previousWinningTeamId: 102,
+    previousLosingTeamId: 101,
+    newWinningTeamId: 101,
+    newLosingTeamId: 102,
+    previousState: "pending_ratification",
+    newState: "ratified",
+    createdAt: "2026-02-15T00:20:00Z",
+  },
+];
+
 const seasons = [
   {
     id: 1,
@@ -216,6 +232,54 @@ export const handlers = [
 
   http.get("http://localhost:8080/v1/scrims", () => HttpResponse.json(scrims)),
   http.get("http://localhost:8080/v1/result-submissions", () => HttpResponse.json(resultSubmissions)),
+  http.get("http://localhost:8080/v1/result-overrides", () => HttpResponse.json(resultOverrides)),
+  http.post("http://localhost:8080/v1/result-overrides", async ({ request }) => {
+    const body = (await request.json()) as {
+      submissionId: number;
+      actor: string;
+      reason: string;
+      winningTeamId: number;
+      losingTeamId: number;
+    };
+
+    const submission = resultSubmissions.find((item) => item.id === body.submissionId);
+    if (!submission) {
+      return HttpResponse.text("submission not found", { status: 409 });
+    }
+    if (
+      ![submission.homeTeamId, submission.awayTeamId].includes(body.winningTeamId) ||
+      ![submission.homeTeamId, submission.awayTeamId].includes(body.losingTeamId)
+    ) {
+      return HttpResponse.text("winning and losing teams must match submission participants", { status: 409 });
+    }
+
+    resultOverrides.unshift({
+      id: resultOverrides.length + 1,
+      submissionId: submission.id,
+      actor: body.actor,
+      reason: body.reason,
+      previousWinningTeamId: submission.winningTeamId,
+      previousLosingTeamId: submission.losingTeamId,
+      newWinningTeamId: body.winningTeamId,
+      newLosingTeamId: body.losingTeamId,
+      previousState: submission.state,
+      newState: "ratified",
+      createdAt: "2026-02-15T03:00:00Z",
+    });
+
+    Object.assign(submission, {
+      winningTeamId: body.winningTeamId,
+      losingTeamId: body.losingTeamId,
+      state: "ratified",
+      homeRatifiedAt: submission.homeRatifiedAt ?? "2026-02-15T03:00:00Z",
+      awayRatifiedAt: submission.awayRatifiedAt ?? "2026-02-15T03:00:00Z",
+      rejectedByTeamId: null,
+      rejectionReason: null,
+      rejectedAt: null,
+    });
+
+    return HttpResponse.json(submission);
+  }),
   http.get("http://localhost:8080/v1/teams", () => HttpResponse.json(teams)),
   http.get("http://localhost:8080/v1/players", () => HttpResponse.json(players)),
   http.get("http://localhost:8080/v1/roster-memberships", () => HttpResponse.json(rosterMemberships)),

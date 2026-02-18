@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -13,6 +13,9 @@ import {
   createRosterMembershipInputSchema,
   createScheduleGroupInputSchema,
   createSeasonInputSchema,
+  overrideResultSubmissionInputSchema,
+  resultOverrideListSchema,
+  resultSubmissionListSchema,
   ratingAdjustmentListSchema,
   playerRatingListSchema,
   exceptionActionListSchema,
@@ -33,6 +36,8 @@ import {
   type Match,
   type Player,
   type RosterMembership,
+  type ResultSubmission,
+  type ResultOverride,
   type ScheduleGroup,
   type Season,
   type Team,
@@ -107,6 +112,14 @@ async function listPlayerRatings() {
   return getJson("/v1/player-ratings", playerRatingListSchema);
 }
 
+async function listResultSubmissions() {
+  return getJson("/v1/result-submissions", resultSubmissionListSchema);
+}
+
+async function listResultOverrides() {
+  return getJson("/v1/result-overrides", resultOverrideListSchema);
+}
+
 async function listRatingAdjustments() {
   return getJson("/v1/rating-adjustments", ratingAdjustmentListSchema);
 }
@@ -124,6 +137,17 @@ async function adjustPlayerRating(input: {
   return postJson("/v1/player-ratings/adjust", payload, playerRatingListSchema.element);
 }
 
+async function overrideResultSubmission(input: {
+  submissionId: number;
+  actor: string;
+  reason: string;
+  winningTeamId: number;
+  losingTeamId: number;
+}) {
+  const payload = overrideResultSubmissionInputSchema.parse(input);
+  return postJson("/v1/result-overrides", payload, resultSubmissionListSchema.element);
+}
+
 export function AdminHomePage() {
   const queryClient = useQueryClient();
 
@@ -137,6 +161,8 @@ export function AdminHomePage() {
   const rosterQuery = useQuery({ queryKey: ["roster-memberships"], queryFn: listRosterMemberships });
   const actionsQuery = useQuery({ queryKey: ["exception-actions"], queryFn: listExceptionActions });
   const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
+  const resultSubmissionsQuery = useQuery({ queryKey: ["result-submissions"], queryFn: listResultSubmissions });
+  const resultOverridesQuery = useQuery({ queryKey: ["result-overrides"], queryFn: listResultOverrides });
   const ratingAdjustmentsQuery = useQuery({ queryKey: ["rating-adjustments"], queryFn: listRatingAdjustments });
 
   const seasonMutation = useMutation({
@@ -264,6 +290,16 @@ export function AdminHomePage() {
     },
   });
 
+  const overrideMutation = useMutation({
+    mutationFn: overrideResultSubmission,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["result-submissions"] }),
+        queryClient.invalidateQueries({ queryKey: ["result-overrides"] }),
+      ]);
+    },
+  });
+
   return (
     <AppShell title="Sprocket Web Client">
       <h2>League Admin</h2>
@@ -322,7 +358,14 @@ export function AdminHomePage() {
       </section>
 
       <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
-        <ResultOverridePanel />
+        <ResultOverridePanel
+          loading={resultSubmissionsQuery.isLoading || resultOverridesQuery.isLoading}
+          overrideError={overrideMutation.error}
+          overrideResult={overrideMutation.mutateAsync}
+          overrideSuccess={overrideMutation.isSuccess}
+          overrides={resultOverridesQuery.data ?? []}
+          submissions={resultSubmissionsQuery.data ?? []}
+        />
         <RatingAdminPanel
           adjustError={ratingAdjustmentMutation.error}
           adjustRating={ratingAdjustmentMutation.mutateAsync}
@@ -664,15 +707,56 @@ function RoleDelegationPanel({ actions, loading }: { actions: ExceptionAction[];
   );
 }
 
-function ResultOverridePanel() {
+function ResultOverridePanel({
+  submissions,
+  overrides,
+  loading,
+  overrideResult,
+  overrideSuccess,
+  overrideError,
+}: {
+  submissions: ResultSubmission[];
+  overrides: ResultOverride[];
+  loading: boolean;
+  overrideResult: (input: {
+    submissionId: number;
+    actor: string;
+    reason: string;
+    winningTeamId: number;
+    losingTeamId: number;
+  }) => Promise<unknown>;
+  overrideSuccess: boolean;
+  overrideError: Error | null;
+}) {
   const [submissionId, setSubmissionId] = useState(1);
+  const [actor, setActor] = useState("league-admin");
   const [overrideReason, setOverrideReason] = useState("official review correction");
+  const [winningTeamId, setWinningTeamId] = useState(1);
+  const [losingTeamId, setLosingTeamId] = useState(2);
+  const selectedSubmission = submissions.find((entry) => entry.id === submissionId) ?? submissions[0] ?? null;
+  const selectedSubmissionId = selectedSubmission?.id ?? null;
+  const selectedWinningTeamId = selectedSubmission?.winningTeamId ?? null;
+  const selectedLosingTeamId = selectedSubmission?.losingTeamId ?? null;
+
+  useEffect(() => {
+    if (selectedSubmissionId === null || selectedWinningTeamId === null || selectedLosingTeamId === null) {
+      return;
+    }
+    setSubmissionId(selectedSubmissionId);
+    setWinningTeamId(selectedWinningTeamId);
+    setLosingTeamId(selectedLosingTeamId);
+  }, [selectedSubmissionId, selectedWinningTeamId, selectedLosingTeamId]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await overrideResult({ submissionId, actor, reason: overrideReason, winningTeamId, losingTeamId });
+  }
 
   return (
     <section>
       <h3>Result Overrides (NCP)</h3>
-      <p>Override APIs are pending (`API-WEB-06`), so submission is disabled.</p>
-      <form>
+      <p>Use this to apply an audited admin override for an existing submission.</p>
+      <form onSubmit={submit}>
         <label>
           Submission ID
           <input
@@ -683,13 +767,48 @@ function ResultOverridePanel() {
           />
         </label>
         <label>
+          Actor
+          <input value={actor} onChange={(event) => setActor(event.target.value)} />
+        </label>
+        <label>
           Override reason
           <input value={overrideReason} onChange={(event) => setOverrideReason(event.target.value)} />
         </label>
-        <button disabled type="button">
-          Submit override (API pending)
-        </button>
+        <label>
+          Winning team ID
+          <input
+            min={1}
+            type="number"
+            value={winningTeamId}
+            onChange={(event) => setWinningTeamId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Losing team ID
+          <input
+            min={1}
+            type="number"
+            value={losingTeamId}
+            onChange={(event) => setLosingTeamId(Number(event.target.value))}
+          />
+        </label>
+        <button type="submit">Submit override</button>
       </form>
+      {overrideSuccess && <p data-testid="admin-override-success">Override submitted.</p>}
+      {overrideError && <ErrorView error={overrideError} label="Result override failed" />}
+      <DataList
+        items={[
+          ...submissions.map(
+            (submission) =>
+              `Submission #${submission.id} · ${submission.homeTeamId}/${submission.awayTeamId} · winner ${submission.winningTeamId}`,
+          ),
+          ...overrides.map(
+            (override) =>
+              `Override #${override.id} · submission ${override.submissionId} · ${override.previousWinningTeamId} -> ${override.newWinningTeamId}`,
+          ),
+        ]}
+        loading={loading}
+      />
     </section>
   );
 }

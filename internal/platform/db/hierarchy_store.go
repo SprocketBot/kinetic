@@ -1251,6 +1251,184 @@ ORDER BY id ASC;`
 	return submissions, nil
 }
 
+func (s *HierarchyStore) OverrideResultSubmission(ctx context.Context, input hierarchy.OverrideResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	if err := hierarchy.ValidateOverrideResultSubmissionInput(input); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const lockStmt = `
+SELECT
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state
+FROM result_submissions
+WHERE id = $1
+FOR UPDATE;`
+	var homeTeamID, awayTeamID int64
+	var previousWinningTeamID, previousLosingTeamID int64
+	var previousState string
+	if err := tx.QueryRowContext(ctx, lockStmt, input.SubmissionID).Scan(
+		&homeTeamID,
+		&awayTeamID,
+		&previousWinningTeamID,
+		&previousLosingTeamID,
+		&previousState,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.ResultSubmission{}, err
+	}
+
+	if (input.WinningTeamID != homeTeamID && input.WinningTeamID != awayTeamID) ||
+		(input.LosingTeamID != homeTeamID && input.LosingTeamID != awayTeamID) {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: winning and losing teams must match submission participants", hierarchy.ErrConflict)
+	}
+
+	const overrideStmt = `
+UPDATE result_submissions
+SET
+	winning_team_id = $2,
+	losing_team_id = $3,
+	state = 'ratified',
+	home_ratified_at = COALESCE(home_ratified_at, NOW()),
+	away_ratified_at = COALESCE(away_ratified_at, NOW()),
+	rejected_by_team_id = NULL,
+	rejection_reason = NULL,
+	rejected_at = NULL
+WHERE id = $1
+RETURNING
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at;`
+	var submission hierarchy.ResultSubmission
+	if err := tx.QueryRowContext(ctx, overrideStmt, input.SubmissionID, input.WinningTeamID, input.LosingTeamID).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	); err != nil {
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+
+	const auditStmt = `
+INSERT INTO result_overrides(
+	submission_id,
+	actor,
+	reason,
+	previous_winning_team_id,
+	previous_losing_team_id,
+	new_winning_team_id,
+	new_losing_team_id,
+	previous_state,
+	new_state
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
+	if _, err := tx.ExecContext(
+		ctx,
+		auditStmt,
+		input.SubmissionID,
+		input.Actor,
+		input.Reason,
+		previousWinningTeamID,
+		previousLosingTeamID,
+		input.WinningTeamID,
+		input.LosingTeamID,
+		previousState,
+		"ratified",
+	); err != nil {
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	}
+	return submission, nil
+}
+
+func (s *HierarchyStore) ListResultOverrides(ctx context.Context) ([]hierarchy.ResultOverride, error) {
+	const stmt = `
+SELECT
+	id,
+	submission_id,
+	actor,
+	reason,
+	previous_winning_team_id,
+	previous_losing_team_id,
+	new_winning_team_id,
+	new_losing_team_id,
+	previous_state,
+	new_state,
+	created_at
+FROM result_overrides
+ORDER BY id DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	overrides := make([]hierarchy.ResultOverride, 0)
+	for rows.Next() {
+		var override hierarchy.ResultOverride
+		if err := rows.Scan(
+			&override.ID,
+			&override.SubmissionID,
+			&override.Actor,
+			&override.Reason,
+			&override.PreviousWinningTeamID,
+			&override.PreviousLosingTeamID,
+			&override.NewWinningTeamID,
+			&override.NewLosingTeamID,
+			&override.PreviousState,
+			&override.NewState,
+			&override.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		overrides = append(overrides, override)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return overrides, nil
+}
+
 func (s *HierarchyStore) RatifyResultSubmission(ctx context.Context, input hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
 	if err := hierarchy.ValidateRatifyResultSubmissionInput(input); err != nil {
 		return hierarchy.ResultSubmission{}, err

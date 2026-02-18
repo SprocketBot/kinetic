@@ -147,6 +147,20 @@ type ResultSubmission struct {
 	CreatedAt         time.Time       `json:"createdAt"`
 }
 
+type ResultOverride struct {
+	ID                    int64     `json:"id"`
+	SubmissionID          int64     `json:"submissionId"`
+	Actor                 string    `json:"actor"`
+	Reason                string    `json:"reason"`
+	PreviousWinningTeamID int64     `json:"previousWinningTeamId"`
+	PreviousLosingTeamID  int64     `json:"previousLosingTeamId"`
+	NewWinningTeamID      int64     `json:"newWinningTeamId"`
+	NewLosingTeamID       int64     `json:"newLosingTeamId"`
+	PreviousState         string    `json:"previousState"`
+	NewState              string    `json:"newState"`
+	CreatedAt             time.Time `json:"createdAt"`
+}
+
 type ReplayEvidence struct {
 	ID                int64     `json:"id"`
 	ContextType       string    `json:"contextType"`
@@ -363,6 +377,14 @@ type CreateResultSubmissionInput struct {
 	WinningTeamID     int64           `json:"winningTeamId"`
 	LosingTeamID      int64           `json:"losingTeamId"`
 	PayloadJSON       json.RawMessage `json:"payloadJson"`
+}
+
+type OverrideResultSubmissionInput struct {
+	SubmissionID  int64  `json:"submissionId"`
+	Actor         string `json:"actor"`
+	Reason        string `json:"reason"`
+	WinningTeamID int64  `json:"winningTeamId"`
+	LosingTeamID  int64  `json:"losingTeamId"`
 }
 
 type RatifyResultSubmissionInput struct {

@@ -460,6 +460,32 @@ func TestValidateCreateResultSubmissionInput(t *testing.T) {
 	}
 }
 
+func TestValidateOverrideResultSubmissionInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateOverrideResultSubmissionInput(OverrideResultSubmissionInput{
+		SubmissionID:  1,
+		Actor:         "league-admin",
+		Reason:        "manual correction",
+		WinningTeamID: 10,
+		LosingTeamID:  20,
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateOverrideResultSubmissionInput(OverrideResultSubmissionInput{
+		SubmissionID:  1,
+		Actor:         "league-admin",
+		Reason:        "",
+		WinningTeamID: 10,
+		LosingTeamID:  20,
+	})
+	if err == nil {
+		t.Fatal("expected missing reason to fail validation")
+	}
+}
+
 func TestValidateRatifyResultSubmissionInput(t *testing.T) {
 	t.Parallel()
 

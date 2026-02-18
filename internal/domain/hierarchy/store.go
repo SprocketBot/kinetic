@@ -33,6 +33,8 @@ type Store interface {
 	ListMatchmakingDecisions(ctx context.Context) ([]MatchmakingDecision, error)
 	CreateResultSubmission(ctx context.Context, input CreateResultSubmissionInput) (ResultSubmission, error)
 	ListResultSubmissions(ctx context.Context) ([]ResultSubmission, error)
+	OverrideResultSubmission(ctx context.Context, input OverrideResultSubmissionInput) (ResultSubmission, error)
+	ListResultOverrides(ctx context.Context) ([]ResultOverride, error)
 	RatifyResultSubmission(ctx context.Context, input RatifyResultSubmissionInput) (ResultSubmission, error)
 	RejectResultSubmission(ctx context.Context, input RejectResultSubmissionInput) (ResultSubmission, error)
 	IngestReplayEvidence(ctx context.Context, input IngestReplayEvidenceInput) (ReplayIngestionResult, error)

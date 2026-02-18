@@ -84,6 +84,30 @@ export const resultSubmissionSchema = z.object({
 
 export const resultSubmissionListSchema = z.array(resultSubmissionSchema);
 
+export const overrideResultSubmissionInputSchema = z.object({
+  submissionId: z.number().positive(),
+  actor: z.string().min(1),
+  reason: z.string().min(1),
+  winningTeamId: z.number().positive(),
+  losingTeamId: z.number().positive(),
+});
+
+export const resultOverrideSchema = z.object({
+  id: z.number(),
+  submissionId: z.number(),
+  actor: z.string(),
+  reason: z.string(),
+  previousWinningTeamId: z.number(),
+  previousLosingTeamId: z.number(),
+  newWinningTeamId: z.number(),
+  newLosingTeamId: z.number(),
+  previousState: z.string(),
+  newState: z.string(),
+  createdAt: z.string(),
+});
+
+export const resultOverrideListSchema = z.array(resultOverrideSchema);
+
 export const exceptionMetricsSchema = z.object({
   adminHoursPerWeek: z.number(),
   manualTouchesPerFixture: z.number(),
@@ -321,6 +345,7 @@ export type ResolveExceptionInput = z.infer<typeof resolveExceptionInputSchema>;
 export type QueueEntry = z.infer<typeof queueEntrySchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
+export type ResultOverride = z.infer<typeof resultOverrideSchema>;
 export type ExceptionMetrics = z.infer<typeof exceptionMetricsSchema>;
 export type ReplayIngestionResult = z.infer<typeof replayIngestionResultSchema>;
 export type Season = z.infer<typeof seasonSchema>;
@@ -339,3 +364,4 @@ export type IngestReplayEvidenceInput = z.infer<typeof ingestReplayEvidenceInput
 export type PlayerRating = z.infer<typeof playerRatingSchema>;
 export type AdjustPlayerRatingInput = z.infer<typeof adjustPlayerRatingInputSchema>;
 export type RatingAdjustment = z.infer<typeof ratingAdjustmentSchema>;
+export type OverrideResultSubmissionInput = z.infer<typeof overrideResultSubmissionInputSchema>;

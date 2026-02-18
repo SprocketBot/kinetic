@@ -64,6 +64,9 @@ describe("AdminHomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Assign player to team" }));
     expect(await screen.findByTestId("admin-roster-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Submit override" }));
+    expect(await screen.findByTestId("admin-override-success")).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Apply rating change" }));
     expect(await screen.findByTestId("admin-rating-success")).toBeInTheDocument();
   });
