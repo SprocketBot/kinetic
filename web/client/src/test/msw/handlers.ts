@@ -387,7 +387,7 @@ export const handlers = [
       rating: body.rating,
       uncertainty: body.uncertainty,
       matchesPlayed: body.matchesPlayed,
-      lastCompetedAt: existing?.lastCompetedAt ?? null,
+      lastCompetedAt: existing?.lastCompetedAt ?? "2026-02-14T12:00:00Z",
       isActive: true,
       updatedAt: "2026-02-15T03:30:00Z",
     };
