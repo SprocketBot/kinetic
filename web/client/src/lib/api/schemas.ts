@@ -50,6 +50,35 @@ export const queueEntrySchema = z.object({
 
 export const queueEntryListSchema = z.array(queueEntrySchema);
 
+export const queueBanSchema = z.object({
+  id: z.number(),
+  queueId: z.number(),
+  playerId: z.number(),
+  bannedByActor: z.string(),
+  banReason: z.string(),
+  isActive: z.boolean(),
+  bannedAt: z.string(),
+  unbannedByActor: z.string().nullable().optional(),
+  unbanReason: z.string().nullable().optional(),
+  unbannedAt: z.string().nullable().optional(),
+});
+
+export const queueBanListSchema = z.array(queueBanSchema);
+
+export const banPlayerFromQueueInputSchema = z.object({
+  queueId: z.number().positive(),
+  playerId: z.number().positive(),
+  actor: z.string().min(1),
+  reason: z.string().min(1),
+});
+
+export const unbanPlayerFromQueueInputSchema = z.object({
+  queueId: z.number().positive(),
+  playerId: z.number().positive(),
+  actor: z.string().min(1),
+  reason: z.string().min(1),
+});
+
 export const scrimSchema = z.object({
   id: z.number(),
   queueId: z.number(),
@@ -343,6 +372,7 @@ export type ExceptionTicket = z.infer<typeof exceptionTicketSchema>;
 export type TriageExceptionInput = z.infer<typeof triageExceptionInputSchema>;
 export type ResolveExceptionInput = z.infer<typeof resolveExceptionInputSchema>;
 export type QueueEntry = z.infer<typeof queueEntrySchema>;
+export type QueueBan = z.infer<typeof queueBanSchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
 export type ResultOverride = z.infer<typeof resultOverrideSchema>;
@@ -365,3 +395,5 @@ export type PlayerRating = z.infer<typeof playerRatingSchema>;
 export type AdjustPlayerRatingInput = z.infer<typeof adjustPlayerRatingInputSchema>;
 export type RatingAdjustment = z.infer<typeof ratingAdjustmentSchema>;
 export type OverrideResultSubmissionInput = z.infer<typeof overrideResultSubmissionInputSchema>;
+export type BanPlayerFromQueueInput = z.infer<typeof banPlayerFromQueueInputSchema>;
+export type UnbanPlayerFromQueueInput = z.infer<typeof unbanPlayerFromQueueInputSchema>;

@@ -197,6 +197,25 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":  teamID,
 	}, http.StatusConflict)
 
+	createEntity(t, server, "/v1/queue-bans", map[string]any{
+		"queueId":  queueID,
+		"playerId": playerTwoID,
+		"actor":    "support-operator",
+		"reason":   "toxicity",
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/queue-entries", map[string]any{
+		"queueId": queueID,
+		"teamId":  teamID,
+	}, http.StatusConflict)
+
+	createEntity(t, server, "/v1/queue-bans/lift", map[string]any{
+		"queueId":  queueID,
+		"playerId": playerTwoID,
+		"actor":    "support-operator",
+		"reason":   "appeal accepted",
+	}, http.StatusOK)
+
 	seasonResp := createEntity(t, server, "/v1/seasons", map[string]any{
 		"name": fmt.Sprintf("Season %d", suffix),
 		"slug": fmt.Sprintf("season-%d", suffix),
@@ -437,6 +456,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/players")
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
 	assertListNotEmpty(t, server, "/v1/queues")
+	assertListNotEmpty(t, server, "/v1/queue-bans")
 	assertListNotEmpty(t, server, "/v1/queue-entries")
 	assertListNotEmpty(t, server, "/v1/scrims")
 	assertListNotEmpty(t, server, "/v1/promotion-processing-runs")
@@ -503,6 +523,13 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": int64(0),
 		"teamId":  int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/queue-bans", map[string]any{
+		"queueId":  int64(1),
+		"playerId": int64(1),
+		"actor":    "support-operator",
+		"reason":   "",
 	}, http.StatusBadRequest)
 
 	patchEntity(t, server, "/v1/queue-entries", map[string]any{

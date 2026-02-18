@@ -179,5 +179,11 @@ describe("SupportDashboardPage", () => {
     await userEvent.click(within(screen.getByTestId("ticket-detail")).getByRole("button", { name: "Submit resolution" }));
     expect(await screen.findByTestId("resolve-success")).toBeInTheDocument();
     expect(await screen.findByText("Current state: resolved")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Ban player from queue" }));
+    expect(await screen.findByTestId("queue-ban-success")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Lift queue ban" }));
+    expect(await screen.findByTestId("queue-unban-success")).toBeInTheDocument();
   });
 });

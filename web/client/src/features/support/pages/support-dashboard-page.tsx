@@ -8,17 +8,24 @@ import { LoadingState } from "../../../components/feedback/loading-state";
 import { getJson, postJson } from "../../../lib/api/client";
 import { ApiError } from "../../../lib/api/errors";
 import {
+  banPlayerFromQueueInputSchema,
   exceptionTicketSchema,
   operatorInboxListSchema,
+  queueBanListSchema,
+  queueBanSchema,
   resolveExceptionInputSchema,
   resultSubmissionListSchema,
   scrimListSchema,
   triageExceptionInputSchema,
+  unbanPlayerFromQueueInputSchema,
+  type QueueBan,
   type ExceptionTicket,
+  type BanPlayerFromQueueInput,
   type ResolveExceptionInput,
   type ResultSubmission,
   type Scrim,
   type TriageExceptionInput,
+  type UnbanPlayerFromQueueInput,
 } from "../../../lib/api/schemas";
 
 async function listOperatorInbox() {
@@ -33,6 +40,10 @@ async function listResultSubmissions() {
   return getJson("/v1/result-submissions", resultSubmissionListSchema);
 }
 
+async function listQueueBans() {
+  return getJson("/v1/queue-bans", queueBanListSchema);
+}
+
 async function triageTicket(input: TriageExceptionInput) {
   const payload = triageExceptionInputSchema.parse(input);
   return postJson("/v1/operator-inbox/triage", payload, exceptionTicketSchema);
@@ -41,6 +52,16 @@ async function triageTicket(input: TriageExceptionInput) {
 async function resolveTicket(input: ResolveExceptionInput) {
   const payload = resolveExceptionInputSchema.parse(input);
   return postJson("/v1/operator-inbox/resolve", payload, exceptionTicketSchema);
+}
+
+async function banPlayerFromQueue(input: BanPlayerFromQueueInput) {
+  const payload = banPlayerFromQueueInputSchema.parse(input);
+  return postJson("/v1/queue-bans", payload, queueBanSchema);
+}
+
+async function unbanPlayerFromQueue(input: UnbanPlayerFromQueueInput) {
+  const payload = unbanPlayerFromQueueInputSchema.parse(input);
+  return postJson("/v1/queue-bans/lift", payload, queueBanSchema);
 }
 
 function isActiveScrim(scrim: Scrim): boolean {
@@ -71,6 +92,11 @@ export function SupportDashboardPage() {
   const submissionsQuery = useQuery({
     queryKey: ["result-submissions"],
     queryFn: listResultSubmissions,
+  });
+
+  const queueBansQuery = useQuery({
+    queryKey: ["queue-bans"],
+    queryFn: listQueueBans,
   });
 
   const actorDefault = session.principal?.displayName || session.principal?.subject || "support-operator";
@@ -130,6 +156,20 @@ export function SupportDashboardPage() {
     onSuccess: async (ticket) => {
       setSelectedTicketId(ticket.id);
       await queryClient.invalidateQueries({ queryKey: ["operator-inbox"] });
+    },
+  });
+
+  const banMutation = useMutation({
+    mutationFn: banPlayerFromQueue,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["queue-bans"] });
+    },
+  });
+
+  const unbanMutation = useMutation({
+    mutationFn: unbanPlayerFromQueue,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["queue-bans"] });
     },
   });
 
@@ -210,6 +250,20 @@ export function SupportDashboardPage() {
       <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
         <ScrimList scrims={activeScrims} />
         <SubmissionList submissions={inProcessSubmissions} />
+      </section>
+
+      <section style={{ marginTop: "1rem" }}>
+        <QueueModerationPanel
+          actorDefault={actorDefault}
+          banError={banMutation.error}
+          banPlayer={banMutation.mutateAsync}
+          banSuccess={banMutation.isSuccess}
+          bans={queueBansQuery.data ?? []}
+          loading={queueBansQuery.isLoading}
+          unbanError={unbanMutation.error}
+          unbanPlayer={unbanMutation.mutateAsync}
+          unbanSuccess={unbanMutation.isSuccess}
+        />
       </section>
     </AppShell>
   );
@@ -460,6 +514,109 @@ function SubmissionList({ submissions }: { submissions: ResultSubmission[] }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function QueueModerationPanel({
+  actorDefault,
+  bans,
+  loading,
+  banPlayer,
+  unbanPlayer,
+  banSuccess,
+  unbanSuccess,
+  banError,
+  unbanError,
+}: {
+  actorDefault: string;
+  bans: QueueBan[];
+  loading: boolean;
+  banPlayer: (input: BanPlayerFromQueueInput) => Promise<unknown>;
+  unbanPlayer: (input: UnbanPlayerFromQueueInput) => Promise<unknown>;
+  banSuccess: boolean;
+  unbanSuccess: boolean;
+  banError: Error | null;
+  unbanError: Error | null;
+}) {
+  const [queueId, setQueueId] = useState(1);
+  const [playerId, setPlayerId] = useState(1);
+  const [actor, setActor] = useState(actorDefault);
+  const [banReason, setBanReason] = useState("support moderation action");
+  const [unbanReason, setUnbanReason] = useState("appeal accepted");
+
+  async function submitBan(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await banPlayer({ queueId, playerId, actor, reason: banReason });
+  }
+
+  async function submitUnban(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await unbanPlayer({ queueId, playerId, actor, reason: unbanReason });
+  }
+
+  return (
+    <section>
+      <h3>Queue Moderation</h3>
+      <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+        <form onSubmit={submitBan}>
+          <h4>Ban Player</h4>
+          <label>
+            Queue ID
+            <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
+          </label>
+          <label>
+            Player ID
+            <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+          </label>
+          <label>
+            Actor
+            <input value={actor} onChange={(event) => setActor(event.target.value)} />
+          </label>
+          <label>
+            Reason
+            <input value={banReason} onChange={(event) => setBanReason(event.target.value)} />
+          </label>
+          <button type="submit">Ban player from queue</button>
+          {banSuccess && <p data-testid="queue-ban-success">Queue ban submitted.</p>}
+          {banError && <ErrorView error={banError} label="Queue ban failed" />}
+        </form>
+
+        <form onSubmit={submitUnban}>
+          <h4>Lift Queue Ban</h4>
+          <label>
+            Queue ID
+            <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
+          </label>
+          <label>
+            Player ID
+            <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+          </label>
+          <label>
+            Actor
+            <input value={actor} onChange={(event) => setActor(event.target.value)} />
+          </label>
+          <label>
+            Reason
+            <input value={unbanReason} onChange={(event) => setUnbanReason(event.target.value)} />
+          </label>
+          <button type="submit">Lift queue ban</button>
+          {unbanSuccess && <p data-testid="queue-unban-success">Queue ban lifted.</p>}
+          {unbanError && <ErrorView error={unbanError} label="Queue unban failed" />}
+        </form>
+      </div>
+
+      {loading ? (
+        <LoadingState label="Loading queue bans..." />
+      ) : (
+        <ul style={{ marginTop: "1rem", marginBottom: 0, paddingLeft: "1.25rem" }}>
+          {bans.map((ban) => (
+            <li key={ban.id}>
+              Queue {ban.queueId} · player {ban.playerId} · {ban.isActive ? "active" : "lifted"} · {ban.banReason}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

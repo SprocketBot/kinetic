@@ -13,6 +13,19 @@ const queueEntries = [
   },
 ];
 
+const queueBans: Array<{
+  id: number;
+  queueId: number;
+  playerId: number;
+  bannedByActor: string;
+  banReason: string;
+  isActive: boolean;
+  bannedAt: string;
+  unbannedByActor: string | null;
+  unbanReason: string | null;
+  unbannedAt: string | null;
+}> = [];
+
 const scrims = [
   {
     id: 1,
@@ -202,9 +215,58 @@ const baseTicket = {
 };
 
 export const handlers = [
+  http.get("http://localhost:8080/v1/queue-bans", () => HttpResponse.json(queueBans)),
+  http.post("http://localhost:8080/v1/queue-bans", async ({ request }) => {
+    const body = (await request.json()) as { queueId: number; playerId: number; actor: string; reason: string };
+    const existing = queueBans.find((ban) => ban.queueId === body.queueId && ban.playerId === body.playerId && ban.isActive);
+    if (existing) {
+      return HttpResponse.text("player already banned for queue", { status: 409 });
+    }
+
+    const ban = {
+      id: queueBans.length + 1,
+      queueId: body.queueId,
+      playerId: body.playerId,
+      bannedByActor: body.actor,
+      banReason: body.reason,
+      isActive: true,
+      bannedAt: "2026-02-15T04:00:00Z",
+      unbannedByActor: null,
+      unbanReason: null,
+      unbannedAt: null,
+    };
+    queueBans.unshift(ban);
+    return HttpResponse.json(ban, { status: 201 });
+  }),
+  http.post("http://localhost:8080/v1/queue-bans/lift", async ({ request }) => {
+    const body = (await request.json()) as { queueId: number; playerId: number; actor: string; reason: string };
+    const existing = queueBans.find((ban) => ban.queueId === body.queueId && ban.playerId === body.playerId && ban.isActive);
+    if (!existing) {
+      return HttpResponse.text("active queue ban not found", { status: 409 });
+    }
+
+    Object.assign(existing, {
+      isActive: false,
+      unbannedByActor: body.actor,
+      unbanReason: body.reason,
+      unbannedAt: "2026-02-15T04:30:00Z",
+    });
+    return HttpResponse.json(existing);
+  }),
   http.get("http://localhost:8080/v1/queue-entries", () => HttpResponse.json(queueEntries)),
   http.post("http://localhost:8080/v1/queue-entries", async ({ request }) => {
     const body = (await request.json()) as { queueId: number; teamId: number };
+
+    const rosterPlayers = rosterMemberships
+      .filter((membership) => membership.teamId === body.teamId && membership.isActive)
+      .map((membership) => membership.playerId);
+    const blockedBan = queueBans.find(
+      (ban) => ban.queueId === body.queueId && ban.isActive && rosterPlayers.includes(ban.playerId),
+    );
+    if (blockedBan) {
+      return HttpResponse.text(`team has player ${blockedBan.playerId} actively banned from this queue`, { status: 409 });
+    }
+
     return HttpResponse.json({
       id: queueEntries.length + 1,
       queueId: body.queueId,

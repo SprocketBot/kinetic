@@ -75,6 +75,19 @@ type QueueEntry struct {
 	LeftAt    *time.Time `json:"leftAt,omitempty"`
 }
 
+type QueueBan struct {
+	ID              int64      `json:"id"`
+	QueueID         int64      `json:"queueId"`
+	PlayerID        int64      `json:"playerId"`
+	BannedByActor   string     `json:"bannedByActor"`
+	BanReason       string     `json:"banReason"`
+	IsActive        bool       `json:"isActive"`
+	BannedAt        time.Time  `json:"bannedAt"`
+	UnbannedByActor *string    `json:"unbannedByActor,omitempty"`
+	UnbanReason     *string    `json:"unbanReason,omitempty"`
+	UnbannedAt      *time.Time `json:"unbannedAt,omitempty"`
+}
+
 type Scrim struct {
 	ID         int64      `json:"id"`
 	QueueID    int64      `json:"queueId"`
@@ -316,6 +329,20 @@ type EnqueueTeamInput struct {
 type LeaveQueueInput struct {
 	QueueID int64 `json:"queueId"`
 	TeamID  int64 `json:"teamId"`
+}
+
+type BanPlayerFromQueueInput struct {
+	QueueID  int64  `json:"queueId"`
+	PlayerID int64  `json:"playerId"`
+	Actor    string `json:"actor"`
+	Reason   string `json:"reason"`
+}
+
+type UnbanPlayerFromQueueInput struct {
+	QueueID  int64  `json:"queueId"`
+	PlayerID int64  `json:"playerId"`
+	Actor    string `json:"actor"`
+	Reason   string `json:"reason"`
 }
 
 type AdvanceQueueEntryStageInput struct {

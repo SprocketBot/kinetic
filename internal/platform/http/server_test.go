@@ -49,6 +49,7 @@ type fakeHierarchyStore struct {
 	membershipsToList        []hierarchy.RosterMembership
 	queuesToList             []hierarchy.Queue
 	queueEntriesToList       []hierarchy.QueueEntry
+	queueBansToList          []hierarchy.QueueBan
 	scrimsToList             []hierarchy.Scrim
 	runsToList               []hierarchy.PromotionProcessingRun
 	ratingsToList            []hierarchy.PlayerRating
@@ -77,6 +78,8 @@ type fakeHierarchyStore struct {
 	createQueueErr           error
 	enqueueTeamErr           error
 	leaveQueueErr            error
+	banQueuePlayerErr        error
+	unbanQueuePlayerErr      error
 	advanceStageErr          error
 	createScrimErr           error
 	updateScrimErr           error
@@ -147,6 +150,21 @@ func (f *fakeHierarchyStore) EnqueueTeam(_ context.Context, _ hierarchy.EnqueueT
 }
 func (f *fakeHierarchyStore) LeaveQueue(_ context.Context, _ hierarchy.LeaveQueueInput) (hierarchy.QueueEntry, error) {
 	return f.queueEntryToReturn, f.leaveQueueErr
+}
+func (f *fakeHierarchyStore) BanPlayerFromQueue(_ context.Context, _ hierarchy.BanPlayerFromQueueInput) (hierarchy.QueueBan, error) {
+	if len(f.queueBansToList) > 0 {
+		return f.queueBansToList[0], f.banQueuePlayerErr
+	}
+	return hierarchy.QueueBan{}, f.banQueuePlayerErr
+}
+func (f *fakeHierarchyStore) UnbanPlayerFromQueue(_ context.Context, _ hierarchy.UnbanPlayerFromQueueInput) (hierarchy.QueueBan, error) {
+	if len(f.queueBansToList) > 0 {
+		return f.queueBansToList[0], f.unbanQueuePlayerErr
+	}
+	return hierarchy.QueueBan{}, f.unbanQueuePlayerErr
+}
+func (f *fakeHierarchyStore) ListQueueBans(_ context.Context) ([]hierarchy.QueueBan, error) {
+	return f.queueBansToList, nil
 }
 func (f *fakeHierarchyStore) AdvanceQueueEntryStage(_ context.Context, _ hierarchy.AdvanceQueueEntryStageInput) (hierarchy.QueueEntry, error) {
 	return f.queueEntryToReturn, f.advanceStageErr
@@ -519,6 +537,67 @@ func TestJoinQueueSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestBanPlayerFromQueueSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		queueBansToList: []hierarchy.QueueBan{
+			{
+				ID:            1,
+				QueueID:       10,
+				PlayerID:      20,
+				BannedByActor: "support-operator",
+				BanReason:     "toxicity",
+				IsActive:      true,
+				BannedAt:      now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/queue-bans", strings.NewReader(`{"queueId":10,"playerId":20,"actor":"support-operator","reason":"toxicity"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestUnbanPlayerFromQueueSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	reason := "appeal accepted"
+	actor := "support-operator"
+	store := &fakeHierarchyStore{
+		queueBansToList: []hierarchy.QueueBan{
+			{
+				ID:              1,
+				QueueID:         10,
+				PlayerID:        20,
+				BannedByActor:   "support-operator",
+				BanReason:       "toxicity",
+				IsActive:        false,
+				BannedAt:        now.Add(-time.Hour),
+				UnbannedByActor: &actor,
+				UnbanReason:     &reason,
+				UnbannedAt:      &now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/queue-bans/lift", strings.NewReader(`{"queueId":10,"playerId":20,"actor":"support-operator","reason":"appeal accepted"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 }
 

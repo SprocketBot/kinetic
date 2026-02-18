@@ -108,6 +108,38 @@ func ValidateLeaveQueueInput(input LeaveQueueInput) error {
 	return nil
 }
 
+func ValidateBanPlayerFromQueueInput(input BanPlayerFromQueueInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.PlayerID <= 0 {
+		return fmt.Errorf("%w: playerId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateUnbanPlayerFromQueueInput(input UnbanPlayerFromQueueInput) error {
+	if input.QueueID <= 0 {
+		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)
+	}
+	if input.PlayerID <= 0 {
+		return fmt.Errorf("%w: playerId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Actor) == "" {
+		return fmt.Errorf("%w: actor is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateAdvanceQueueEntryStageInput(input AdvanceQueueEntryStageInput) error {
 	if input.QueueID <= 0 {
 		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)

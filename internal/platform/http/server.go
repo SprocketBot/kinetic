@@ -344,6 +344,61 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/queue-bans", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			bans, err := deps.HierarchyStore.ListQueueBans(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list queue bans", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, bans)
+		case http.MethodPost:
+			var input hierarchy.BanPlayerFromQueueInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			ban, err := deps.HierarchyStore.BanPlayerFromQueue(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, ban)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/queue-bans/lift", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var input hierarchy.UnbanPlayerFromQueueInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			ban, err := deps.HierarchyStore.UnbanPlayerFromQueue(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, ban)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/v1/scrims", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
 			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)

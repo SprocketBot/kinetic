@@ -199,6 +199,54 @@ func TestValidateLeaveQueueInput(t *testing.T) {
 	}
 }
 
+func TestValidateBanPlayerFromQueueInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateBanPlayerFromQueueInput(BanPlayerFromQueueInput{
+		QueueID:  1,
+		PlayerID: 2,
+		Actor:    "support-operator",
+		Reason:   "toxicity",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateBanPlayerFromQueueInput(BanPlayerFromQueueInput{
+		QueueID:  1,
+		PlayerID: 2,
+		Actor:    "support-operator",
+		Reason:   "",
+	})
+	if err == nil {
+		t.Fatal("expected missing reason to fail validation")
+	}
+}
+
+func TestValidateUnbanPlayerFromQueueInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateUnbanPlayerFromQueueInput(UnbanPlayerFromQueueInput{
+		QueueID:  1,
+		PlayerID: 2,
+		Actor:    "support-operator",
+		Reason:   "appeal accepted",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateUnbanPlayerFromQueueInput(UnbanPlayerFromQueueInput{
+		QueueID:  0,
+		PlayerID: 2,
+		Actor:    "support-operator",
+		Reason:   "appeal accepted",
+	})
+	if err == nil {
+		t.Fatal("expected missing queueId to fail validation")
+	}
+}
+
 func TestValidateCreateSeasonInput(t *testing.T) {
 	t.Parallel()
 

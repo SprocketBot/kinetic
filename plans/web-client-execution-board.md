@@ -34,7 +34,7 @@ Deliver a role-aware web client that covers support/operator workflows first, th
 | API-WEB-02 | Platform account link/unlink endpoints | P0 | Todo | User can link/unlink Steam/Xbox/PSN/Epic with audited ownership |
 | API-WEB-03 | Eligibility points + decay endpoint | P1 | Todo | User can fetch points + eligible-until projection |
 | API-WEB-04 | Role-assignment and delegation APIs (FM/GM/AGM/Captain) | P1 | Todo | Scoped assign/revoke checks enforced server-side |
-| API-WEB-05 | Queue ban/unban endpoints | P1 | Todo | Support can ban/unban queue participation with reason trail |
+| API-WEB-05 | Queue ban/unban endpoints | P1 | Done | Support can ban/unban queue participation with reason trail |
 | API-WEB-06 | Result override/NCP endpoints | P1 | Done | Admin can override result with actor + reason audit |
 | API-WEB-07 | Admin rating adjustment endpoint + self-edit guardrail | P2 | Done | Admin can edit others, cannot edit own rating |
 

@@ -649,6 +649,114 @@ func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
 	}
 }
 
+func TestHierarchyStoreQueueBanFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League Ban %d", suffix), Slug: fmt.Sprintf("league-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{LeagueID: league.ID, Name: fmt.Sprintf("Franchise Ban %d", suffix), Slug: fmt.Sprintf("franchise-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	club, err := store.CreateClub(ctx, hierarchy.CreateClubInput{FranchiseID: franchise.ID, Name: fmt.Sprintf("Club Ban %d", suffix), Slug: fmt.Sprintf("club-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create club: %v", err)
+	}
+	team, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{ClubID: club.ID, Name: fmt.Sprintf("Team Ban %d", suffix), Slug: fmt.Sprintf("team-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+	player, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{DisplayName: fmt.Sprintf("Player Ban %d", suffix), Slug: fmt.Sprintf("player-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create player: %v", err)
+	}
+	if _, err := store.CreateRosterMembership(ctx, hierarchy.CreateRosterMembershipInput{PlayerID: player.ID, TeamID: team.ID}); err != nil {
+		t.Fatalf("failed to create roster membership: %v", err)
+	}
+	queue, err := store.CreateQueue(ctx, hierarchy.CreateQueueInput{Name: fmt.Sprintf("Queue Ban %d", suffix), Slug: fmt.Sprintf("queue-ban-%d", suffix)})
+	if err != nil {
+		t.Fatalf("failed to create queue: %v", err)
+	}
+
+	ban, err := store.BanPlayerFromQueue(ctx, hierarchy.BanPlayerFromQueueInput{
+		QueueID:  queue.ID,
+		PlayerID: player.ID,
+		Actor:    "support-operator",
+		Reason:   "toxicity",
+	})
+	if err != nil {
+		t.Fatalf("failed to ban player from queue: %v", err)
+	}
+	if !ban.IsActive {
+		t.Fatal("expected ban to be active on creation")
+	}
+
+	_, err = store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+	})
+	if err == nil {
+		t.Fatal("expected queue enqueue to be blocked for banned player")
+	}
+	if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict for banned queue enqueue, got: %v", err)
+	}
+
+	unbanned, err := store.UnbanPlayerFromQueue(ctx, hierarchy.UnbanPlayerFromQueueInput{
+		QueueID:  queue.ID,
+		PlayerID: player.ID,
+		Actor:    "support-operator",
+		Reason:   "appeal accepted",
+	})
+	if err != nil {
+		t.Fatalf("failed to unban player from queue: %v", err)
+	}
+	if unbanned.IsActive {
+		t.Fatal("expected ban to be inactive after unban")
+	}
+
+	if _, err := store.EnqueueTeam(ctx, hierarchy.EnqueueTeamInput{
+		QueueID: queue.ID,
+		TeamID:  team.ID,
+	}); err != nil {
+		t.Fatalf("expected queue enqueue to succeed after unban, got: %v", err)
+	}
+
+	bans, err := store.ListQueueBans(ctx)
+	if err != nil {
+		t.Fatalf("failed to list queue bans: %v", err)
+	}
+	if len(bans) == 0 {
+		t.Fatal("expected queue ban history to contain at least one row")
+	}
+}
+
 func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
 	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
 	if testDatabaseURL == "" {
