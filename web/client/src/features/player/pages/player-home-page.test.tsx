@@ -66,5 +66,14 @@ describe("PlayerHomePage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Upload replay" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Provider account ID"));
+    await userEvent.type(screen.getByLabelText("Provider account ID"), "epic-222");
+    await userEvent.type(screen.getByLabelText("Provider display name"), "Player One Epic");
+    await userEvent.click(screen.getByRole("button", { name: "Link account" }));
+    expect(await screen.findByTestId("player-platform-link-success")).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Unlink" })[0]);
+    expect(await screen.findByTestId("player-platform-link-success")).toBeInTheDocument();
   });
 });

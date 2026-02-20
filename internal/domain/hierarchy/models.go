@@ -88,6 +88,17 @@ type QueueBan struct {
 	UnbannedAt      *time.Time `json:"unbannedAt,omitempty"`
 }
 
+type PlatformAccountLink struct {
+	ID                  int64      `json:"id"`
+	Subject             string     `json:"subject"`
+	Provider            string     `json:"provider"`
+	ProviderAccountID   string     `json:"providerAccountId"`
+	ProviderAccountName string     `json:"providerAccountName"`
+	IsActive            bool       `json:"isActive"`
+	LinkedAt            time.Time  `json:"linkedAt"`
+	UnlinkedAt          *time.Time `json:"unlinkedAt,omitempty"`
+}
+
 type Scrim struct {
 	ID         int64      `json:"id"`
 	QueueID    int64      `json:"queueId"`
@@ -343,6 +354,19 @@ type UnbanPlayerFromQueueInput struct {
 	PlayerID int64  `json:"playerId"`
 	Actor    string `json:"actor"`
 	Reason   string `json:"reason"`
+}
+
+type LinkPlatformAccountInput struct {
+	Subject             string `json:"subject"`
+	Provider            string `json:"provider"`
+	ProviderAccountID   string `json:"providerAccountId"`
+	ProviderAccountName string `json:"providerAccountName"`
+}
+
+type UnlinkPlatformAccountInput struct {
+	Subject           string `json:"subject"`
+	Provider          string `json:"provider"`
+	ProviderAccountID string `json:"providerAccountId"`
 }
 
 type AdvanceQueueEntryStageInput struct {

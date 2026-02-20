@@ -374,6 +374,100 @@ ORDER BY id ASC;`
 	return queues, nil
 }
 
+func (s *HierarchyStore) LinkPlatformAccount(ctx context.Context, input hierarchy.LinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+	if err := hierarchy.ValidateLinkPlatformAccountInput(input); err != nil {
+		return hierarchy.PlatformAccountLink{}, err
+	}
+
+	const stmt = `
+INSERT INTO platform_account_links(subject, provider, provider_account_id, provider_account_name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
+	var link hierarchy.PlatformAccountLink
+	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID, input.ProviderAccountName).Scan(
+		&link.ID,
+		&link.Subject,
+		&link.Provider,
+		&link.ProviderAccountID,
+		&link.ProviderAccountName,
+		&link.IsActive,
+		&link.LinkedAt,
+		&link.UnlinkedAt,
+	)
+	if err != nil {
+		return hierarchy.PlatformAccountLink{}, mapSQLError(err)
+	}
+	return link, nil
+}
+
+func (s *HierarchyStore) UnlinkPlatformAccount(ctx context.Context, input hierarchy.UnlinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+	if err := hierarchy.ValidateUnlinkPlatformAccountInput(input); err != nil {
+		return hierarchy.PlatformAccountLink{}, err
+	}
+
+	const stmt = `
+UPDATE platform_account_links
+SET is_active = FALSE, unlinked_at = NOW()
+WHERE subject = $1
+  AND provider = $2
+  AND provider_account_id = $3
+  AND is_active = TRUE
+RETURNING id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
+	var link hierarchy.PlatformAccountLink
+	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID).Scan(
+		&link.ID,
+		&link.Subject,
+		&link.Provider,
+		&link.ProviderAccountID,
+		&link.ProviderAccountName,
+		&link.IsActive,
+		&link.LinkedAt,
+		&link.UnlinkedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.PlatformAccountLink{}, fmt.Errorf("%w: active platform account link not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.PlatformAccountLink{}, mapSQLError(err)
+	}
+	return link, nil
+}
+
+func (s *HierarchyStore) ListPlatformAccountLinks(ctx context.Context, subject string) ([]hierarchy.PlatformAccountLink, error) {
+	const stmt = `
+SELECT id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at
+FROM platform_account_links
+WHERE subject = $1
+ORDER BY id DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt, subject)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	links := make([]hierarchy.PlatformAccountLink, 0)
+	for rows.Next() {
+		var link hierarchy.PlatformAccountLink
+		if err := rows.Scan(
+			&link.ID,
+			&link.Subject,
+			&link.Provider,
+			&link.ProviderAccountID,
+			&link.ProviderAccountName,
+			&link.IsActive,
+			&link.LinkedAt,
+			&link.UnlinkedAt,
+		); err != nil {
+			return nil, err
+		}
+		links = append(links, link)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return links, nil
+}
+
 func (s *HierarchyStore) EnqueueTeam(ctx context.Context, input hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
 	if err := hierarchy.ValidateEnqueueTeamInput(input); err != nil {
 		return hierarchy.QueueEntry{}, err

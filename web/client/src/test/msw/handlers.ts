@@ -26,6 +26,28 @@ const queueBans: Array<{
   unbannedAt: string | null;
 }> = [];
 
+const platformAccountLinks: Array<{
+  id: number;
+  subject: string;
+  provider: string;
+  providerAccountId: string;
+  providerAccountName: string;
+  isActive: boolean;
+  linkedAt: string;
+  unlinkedAt: string | null;
+}> = [
+  {
+    id: 1,
+    subject: "player-1",
+    provider: "steam",
+    providerAccountId: "steam-123",
+    providerAccountName: "Player One",
+    isActive: true,
+    linkedAt: "2026-02-15T00:00:00Z",
+    unlinkedAt: null,
+  },
+];
+
 const scrims = [
   {
     id: 1,
@@ -215,6 +237,69 @@ const baseTicket = {
 };
 
 export const handlers = [
+  http.get("http://localhost:8080/v1/platform-accounts", ({ request }) => {
+    const url = new URL(request.url);
+    const subject = url.searchParams.get("subject");
+    if (!subject) {
+      return HttpResponse.text("subject is required", { status: 400 });
+    }
+
+    return HttpResponse.json(platformAccountLinks.filter((link) => link.subject === subject));
+  }),
+  http.post("http://localhost:8080/v1/platform-accounts/link", async ({ request }) => {
+    const body = (await request.json()) as {
+      subject: string;
+      provider: string;
+      providerAccountId: string;
+      providerAccountName?: string;
+    };
+    if (!["steam", "xbox", "psn", "epic"].includes(body.provider)) {
+      return HttpResponse.text("provider must be steam, xbox, psn, or epic", { status: 400 });
+    }
+
+    const existing = platformAccountLinks.find(
+      (link) => link.provider === body.provider && link.providerAccountId === body.providerAccountId && link.isActive,
+    );
+    if (existing) {
+      return HttpResponse.text("provider account already linked", { status: 409 });
+    }
+
+    const link = {
+      id: platformAccountLinks.length + 1,
+      subject: body.subject,
+      provider: body.provider,
+      providerAccountId: body.providerAccountId,
+      providerAccountName: body.providerAccountName ?? "",
+      isActive: true,
+      linkedAt: "2026-02-15T04:10:00Z",
+      unlinkedAt: null,
+    };
+    platformAccountLinks.unshift(link);
+    return HttpResponse.json(link, { status: 201 });
+  }),
+  http.post("http://localhost:8080/v1/platform-accounts/unlink", async ({ request }) => {
+    const body = (await request.json()) as {
+      subject: string;
+      provider: string;
+      providerAccountId: string;
+    };
+    const existing = platformAccountLinks.find(
+      (link) =>
+        link.subject === body.subject &&
+        link.provider === body.provider &&
+        link.providerAccountId === body.providerAccountId &&
+        link.isActive,
+    );
+    if (!existing) {
+      return HttpResponse.text("active platform account link not found", { status: 409 });
+    }
+
+    Object.assign(existing, {
+      isActive: false,
+      unlinkedAt: "2026-02-15T04:20:00Z",
+    });
+    return HttpResponse.json(existing);
+  }),
   http.get("http://localhost:8080/v1/queue-bans", () => HttpResponse.json(queueBans)),
   http.post("http://localhost:8080/v1/queue-bans", async ({ request }) => {
     const body = (await request.json()) as { queueId: number; playerId: number; actor: string; reason: string };

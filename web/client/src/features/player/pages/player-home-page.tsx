@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { useSession } from "../../../auth/session-context";
 import { AppShell } from "../../../components/layout/app-shell";
 import { LoadingState } from "../../../components/feedback/loading-state";
 import { deleteJson, getJson, postJson } from "../../../lib/api/client";
@@ -10,7 +11,10 @@ import { env } from "../../../lib/config/env";
 import {
   enqueueTeamInputSchema,
   ingestReplayEvidenceInputSchema,
+  linkPlatformAccountInputSchema,
   leaveQueueInputSchema,
+  platformAccountLinkListSchema,
+  platformAccountLinkSchema,
   playerRatingListSchema,
   queueEntryListSchema,
   queueEntrySchema,
@@ -20,7 +24,9 @@ import {
   resultSubmissionListSchema,
   resultSubmissionSchema,
   scrimListSchema,
+  unlinkPlatformAccountInputSchema,
   type IngestReplayEvidenceInput,
+  type PlatformAccountLink,
   type QueueEntry,
   type ResultSubmission,
   type Scrim,
@@ -41,6 +47,10 @@ async function listResultSubmissions() {
 
 async function listPlayerRatings() {
   return getJson("/v1/player-ratings", playerRatingListSchema);
+}
+
+async function listPlatformAccounts(subject: string) {
+  return getJson(`/v1/platform-accounts?subject=${encodeURIComponent(subject)}`, platformAccountLinkListSchema);
 }
 
 async function enqueueTeam(input: { queueId: number; teamId: number }) {
@@ -68,6 +78,25 @@ async function ingestReplay(input: IngestReplayEvidenceInput) {
   return postJson("/v1/replay-evidence", payload, replayIngestionResultSchema);
 }
 
+async function linkPlatformAccount(input: {
+  subject: string;
+  provider: "steam" | "xbox" | "psn" | "epic";
+  providerAccountId: string;
+  providerAccountName: string;
+}) {
+  const payload = linkPlatformAccountInputSchema.parse(input);
+  return postJson("/v1/platform-accounts/link", payload, platformAccountLinkSchema);
+}
+
+async function unlinkPlatformAccount(input: {
+  subject: string;
+  provider: "steam" | "xbox" | "psn" | "epic";
+  providerAccountId: string;
+}) {
+  const payload = unlinkPlatformAccountInputSchema.parse(input);
+  return postJson("/v1/platform-accounts/unlink", payload, platformAccountLinkSchema);
+}
+
 function activeScrim(scrim: Scrim): boolean {
   return !["cancelled", "completed", "closed", "ended"].includes(scrim.state.toLowerCase());
 }
@@ -87,13 +116,20 @@ const evidenceViews = [
 ];
 
 export function PlayerHomePage() {
+  const session = useSession();
   const queryClient = useQueryClient();
   const [selectedEvidenceView, setSelectedEvidenceView] = useState(evidenceViews[0].id);
+  const sessionSubject = session.principal?.subject ?? "";
 
   const queueQuery = useQuery({ queryKey: ["queue-entries"], queryFn: listQueueEntries });
   const scrimsQuery = useQuery({ queryKey: ["scrims"], queryFn: listScrims });
   const submissionsQuery = useQuery({ queryKey: ["result-submissions"], queryFn: listResultSubmissions });
   const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
+  const platformAccountsQuery = useQuery({
+    queryKey: ["platform-accounts", sessionSubject],
+    queryFn: () => listPlatformAccounts(sessionSubject),
+    enabled: sessionSubject.length > 0,
+  });
 
   const activeQueueEntries = useMemo(() => (queueQuery.data ?? []).filter(activeQueueEntry), [queueQuery.data]);
   const activeScrims = useMemo(() => (scrimsQuery.data ?? []).filter(activeScrim), [scrimsQuery.data]);
@@ -134,6 +170,20 @@ export function PlayerHomePage() {
     mutationFn: ingestReplay,
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["result-submissions"] });
+    },
+  });
+
+  const linkPlatformMutation = useMutation({
+    mutationFn: linkPlatformAccount,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", sessionSubject] });
+    },
+  });
+
+  const unlinkPlatformMutation = useMutation({
+    mutationFn: unlinkPlatformAccount,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", sessionSubject] });
     },
   });
 
@@ -185,7 +235,15 @@ export function PlayerHomePage() {
 
       <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
         <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
-        <AccountAndEligibilityPanel />
+        <AccountAndEligibilityPanel
+          links={platformAccountsQuery.data ?? []}
+          loading={session.status === "loading" || platformAccountsQuery.isLoading}
+          onLink={linkPlatformMutation.mutateAsync}
+          onUnlink={unlinkPlatformMutation.mutateAsync}
+          queryError={platformAccountsQuery.error}
+          status={[linkPlatformMutation, unlinkPlatformMutation]}
+          subject={sessionSubject}
+        />
       </section>
 
       <EvidenceSection selected={selectedEvidenceView} setSelected={setSelectedEvidenceView} />
@@ -462,18 +520,60 @@ function RatingsPanel({ ratings, loading }: { ratings: PlayerRating[]; loading: 
   );
 }
 
-function AccountAndEligibilityPanel() {
-  const [provider, setProvider] = useState("steam");
+function AccountAndEligibilityPanel({
+  subject,
+  links,
+  loading,
+  queryError,
+  onLink,
+  onUnlink,
+  status,
+}: {
+  subject: string;
+  links: PlatformAccountLink[];
+  loading: boolean;
+  queryError: Error | null;
+  onLink: (input: {
+    subject: string;
+    provider: "steam" | "xbox" | "psn" | "epic";
+    providerAccountId: string;
+    providerAccountName: string;
+  }) => Promise<unknown>;
+  onUnlink: (input: { subject: string; provider: "steam" | "xbox" | "psn" | "epic"; providerAccountId: string }) => Promise<unknown>;
+  status: Array<{ isPending: boolean; isSuccess: boolean; error: Error | null }>;
+}) {
+  const [provider, setProvider] = useState<"steam" | "xbox" | "psn" | "epic">("steam");
   const [providerAccountId, setProviderAccountId] = useState("");
+  const [providerAccountName, setProviderAccountName] = useState("");
+
+  const activeLinks = links.filter((link) => link.isActive);
+
+  async function submitLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await onLink({
+      subject,
+      provider,
+      providerAccountId,
+      providerAccountName,
+    });
+  }
+
+  async function submitUnlink(link: PlatformAccountLink) {
+    await onUnlink({
+      subject: link.subject,
+      provider: link.provider as "steam" | "xbox" | "psn" | "epic",
+      providerAccountId: link.providerAccountId,
+    });
+  }
 
   return (
     <section>
       <h3>Accounts and Eligibility</h3>
-      <p>Account linking and eligibility APIs are pending (`API-WEB-02`, `API-WEB-03`).</p>
-      <form>
+      <p>Link and unlink verified platform identities for replay attribution and player ownership checks.</p>
+      <form onSubmit={submitLink}>
         <label>
           Provider
-          <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+          <select value={provider} onChange={(event) => setProvider(event.target.value as "steam" | "xbox" | "psn" | "epic")}>
             <option value="steam">Steam</option>
             <option value="xbox">Xbox</option>
             <option value="psn">PSN</option>
@@ -484,11 +584,39 @@ function AccountAndEligibilityPanel() {
           Provider account ID
           <input value={providerAccountId} onChange={(event) => setProviderAccountId(event.target.value)} />
         </label>
-        <button disabled type="button">
-          Link account (API pending)
+        <label>
+          Provider display name
+          <input value={providerAccountName} onChange={(event) => setProviderAccountName(event.target.value)} />
+        </label>
+        <button disabled={subject.length === 0} type="submit">
+          Link account
         </button>
       </form>
-      <p>Eligibility points and decay schedule will render here once endpoint support is available.</p>
+      {loading && <LoadingState label="Loading linked accounts..." />}
+      {subject.length === 0 && <p>Session subject unavailable; refresh the page after login.</p>}
+      {!loading && activeLinks.length === 0 && <p>No active platform accounts linked.</p>}
+      {!loading && activeLinks.length > 0 && (
+        <ul style={{ margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
+          {activeLinks.map((link) => (
+            <li key={link.id}>
+              {link.provider} · {link.providerAccountId}
+              {link.providerAccountName ? ` (${link.providerAccountName})` : ""}
+              <button onClick={() => void submitUnlink(link)} style={{ marginLeft: "0.5rem" }} type="button">
+                Unlink
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {status.some((item) => item.isPending) && <LoadingState label="Saving account link..." />}
+      {status.some((item) => item.isSuccess) && <p data-testid="player-platform-link-success">Platform account updated.</p>}
+      {status.map((item, index) =>
+        item.error ? (
+          <ErrorView error={item.error} key={`platform-account-error-${index}`} label="Platform account action failed" />
+        ) : null,
+      )}
+      {queryError && <ErrorView error={queryError} label="Failed to load linked platform accounts" />}
+      <p>Eligibility points and decay schedule will render here once endpoint support is available (`API-WEB-03`).</p>
     </section>
   );
 }

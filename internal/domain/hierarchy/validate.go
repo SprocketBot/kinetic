@@ -88,6 +88,36 @@ func ValidateCreateQueueInput(input CreateQueueInput) error {
 	return nil
 }
 
+func ValidateLinkPlatformAccountInput(input LinkPlatformAccountInput) error {
+	if strings.TrimSpace(input.Subject) == "" {
+		return fmt.Errorf("%w: subject is required", ErrInvalidInput)
+	}
+	switch strings.TrimSpace(input.Provider) {
+	case "steam", "xbox", "psn", "epic":
+	default:
+		return fmt.Errorf("%w: provider must be steam, xbox, psn, or epic", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ProviderAccountID) == "" {
+		return fmt.Errorf("%w: providerAccountId is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateUnlinkPlatformAccountInput(input UnlinkPlatformAccountInput) error {
+	if strings.TrimSpace(input.Subject) == "" {
+		return fmt.Errorf("%w: subject is required", ErrInvalidInput)
+	}
+	switch strings.TrimSpace(input.Provider) {
+	case "steam", "xbox", "psn", "epic":
+	default:
+		return fmt.Errorf("%w: provider must be steam, xbox, psn, or epic", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.ProviderAccountID) == "" {
+		return fmt.Errorf("%w: providerAccountId is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateEnqueueTeamInput(input EnqueueTeamInput) error {
 	if input.QueueID <= 0 {
 		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)

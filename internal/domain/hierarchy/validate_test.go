@@ -159,6 +159,50 @@ func TestValidateCreateQueueInput(t *testing.T) {
 	}
 }
 
+func TestValidateLinkPlatformAccountInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateLinkPlatformAccountInput(LinkPlatformAccountInput{
+		Subject:           "player-1",
+		Provider:          "steam",
+		ProviderAccountID: "steam-123",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateLinkPlatformAccountInput(LinkPlatformAccountInput{
+		Subject:           "player-1",
+		Provider:          "unknown",
+		ProviderAccountID: "steam-123",
+	})
+	if err == nil {
+		t.Fatal("expected invalid provider to fail validation")
+	}
+}
+
+func TestValidateUnlinkPlatformAccountInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateUnlinkPlatformAccountInput(UnlinkPlatformAccountInput{
+		Subject:           "player-1",
+		Provider:          "steam",
+		ProviderAccountID: "steam-123",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateUnlinkPlatformAccountInput(UnlinkPlatformAccountInput{
+		Subject:           "",
+		Provider:          "steam",
+		ProviderAccountID: "steam-123",
+	})
+	if err == nil {
+		t.Fatal("expected missing subject to fail validation")
+	}
+}
+
 func TestValidateEnqueueTeamInput(t *testing.T) {
 	t.Parallel()
 

@@ -48,6 +48,7 @@ type fakeHierarchyStore struct {
 	playersToList            []hierarchy.Player
 	membershipsToList        []hierarchy.RosterMembership
 	queuesToList             []hierarchy.Queue
+	platformLinksToList      []hierarchy.PlatformAccountLink
 	queueEntriesToList       []hierarchy.QueueEntry
 	queueBansToList          []hierarchy.QueueBan
 	scrimsToList             []hierarchy.Scrim
@@ -76,6 +77,8 @@ type fakeHierarchyStore struct {
 	createPlayerErr          error
 	createMemberErr          error
 	createQueueErr           error
+	linkPlatformErr          error
+	unlinkPlatformErr        error
 	enqueueTeamErr           error
 	leaveQueueErr            error
 	banQueuePlayerErr        error
@@ -144,6 +147,21 @@ func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQu
 }
 func (f *fakeHierarchyStore) ListQueues(_ context.Context) ([]hierarchy.Queue, error) {
 	return f.queuesToList, nil
+}
+func (f *fakeHierarchyStore) LinkPlatformAccount(_ context.Context, _ hierarchy.LinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+	if len(f.platformLinksToList) > 0 {
+		return f.platformLinksToList[0], f.linkPlatformErr
+	}
+	return hierarchy.PlatformAccountLink{}, f.linkPlatformErr
+}
+func (f *fakeHierarchyStore) UnlinkPlatformAccount(_ context.Context, _ hierarchy.UnlinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+	if len(f.platformLinksToList) > 0 {
+		return f.platformLinksToList[0], f.unlinkPlatformErr
+	}
+	return hierarchy.PlatformAccountLink{}, f.unlinkPlatformErr
+}
+func (f *fakeHierarchyStore) ListPlatformAccountLinks(_ context.Context, _ string) ([]hierarchy.PlatformAccountLink, error) {
+	return f.platformLinksToList, nil
 }
 func (f *fakeHierarchyStore) EnqueueTeam(_ context.Context, _ hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
 	return f.queueEntryToReturn, f.enqueueTeamErr
@@ -602,6 +620,60 @@ func TestCreateQueueSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestLinkPlatformAccountSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		platformLinksToList: []hierarchy.PlatformAccountLink{
+			{
+				ID:                1,
+				Subject:           "player-1",
+				Provider:          "steam",
+				ProviderAccountID: "steam-123",
+				IsActive:          true,
+				LinkedAt:          now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/platform-accounts/link", strings.NewReader(`{"subject":"player-1","provider":"steam","providerAccountId":"steam-123","providerAccountName":"Player One"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListPlatformAccountsSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		platformLinksToList: []hierarchy.PlatformAccountLink{
+			{
+				ID:                1,
+				Subject:           "player-1",
+				Provider:          "steam",
+				ProviderAccountID: "steam-123",
+				IsActive:          true,
+				LinkedAt:          now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/platform-accounts?subject=player-1", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 }
 

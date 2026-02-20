@@ -65,6 +65,19 @@ export const queueBanSchema = z.object({
 
 export const queueBanListSchema = z.array(queueBanSchema);
 
+export const platformAccountLinkSchema = z.object({
+  id: z.number(),
+  subject: z.string(),
+  provider: z.string(),
+  providerAccountId: z.string(),
+  providerAccountName: z.string(),
+  isActive: z.boolean(),
+  linkedAt: z.string(),
+  unlinkedAt: z.string().nullable().optional(),
+});
+
+export const platformAccountLinkListSchema = z.array(platformAccountLinkSchema);
+
 export const banPlayerFromQueueInputSchema = z.object({
   queueId: z.number().positive(),
   playerId: z.number().positive(),
@@ -77,6 +90,19 @@ export const unbanPlayerFromQueueInputSchema = z.object({
   playerId: z.number().positive(),
   actor: z.string().min(1),
   reason: z.string().min(1),
+});
+
+export const linkPlatformAccountInputSchema = z.object({
+  subject: z.string().min(1),
+  provider: z.enum(["steam", "xbox", "psn", "epic"]),
+  providerAccountId: z.string().min(1),
+  providerAccountName: z.string().default(""),
+});
+
+export const unlinkPlatformAccountInputSchema = z.object({
+  subject: z.string().min(1),
+  provider: z.enum(["steam", "xbox", "psn", "epic"]),
+  providerAccountId: z.string().min(1),
 });
 
 export const scrimSchema = z.object({
@@ -373,6 +399,7 @@ export type TriageExceptionInput = z.infer<typeof triageExceptionInputSchema>;
 export type ResolveExceptionInput = z.infer<typeof resolveExceptionInputSchema>;
 export type QueueEntry = z.infer<typeof queueEntrySchema>;
 export type QueueBan = z.infer<typeof queueBanSchema>;
+export type PlatformAccountLink = z.infer<typeof platformAccountLinkSchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
 export type ResultOverride = z.infer<typeof resultOverrideSchema>;
@@ -397,3 +424,5 @@ export type RatingAdjustment = z.infer<typeof ratingAdjustmentSchema>;
 export type OverrideResultSubmissionInput = z.infer<typeof overrideResultSubmissionInputSchema>;
 export type BanPlayerFromQueueInput = z.infer<typeof banPlayerFromQueueInputSchema>;
 export type UnbanPlayerFromQueueInput = z.infer<typeof unbanPlayerFromQueueInputSchema>;
+export type LinkPlatformAccountInput = z.infer<typeof linkPlatformAccountInputSchema>;
+export type UnlinkPlatformAccountInput = z.infer<typeof unlinkPlatformAccountInputSchema>;

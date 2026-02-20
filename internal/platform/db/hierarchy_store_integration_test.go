@@ -757,6 +757,67 @@ func TestHierarchyStoreQueueBanFlow(t *testing.T) {
 	}
 }
 
+func TestHierarchyStorePlatformAccountLinkFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	subject := fmt.Sprintf("player-subject-%d", time.Now().UnixNano())
+
+	link, err := store.LinkPlatformAccount(ctx, hierarchy.LinkPlatformAccountInput{
+		Subject:             subject,
+		Provider:            "steam",
+		ProviderAccountID:   "steam-account-123",
+		ProviderAccountName: "Steam User",
+	})
+	if err != nil {
+		t.Fatalf("failed to link platform account: %v", err)
+	}
+	if !link.IsActive {
+		t.Fatal("expected linked platform account to be active")
+	}
+
+	links, err := store.ListPlatformAccountLinks(ctx, subject)
+	if err != nil {
+		t.Fatalf("failed to list platform account links: %v", err)
+	}
+	if len(links) == 0 {
+		t.Fatal("expected at least one platform account link")
+	}
+
+	unlinked, err := store.UnlinkPlatformAccount(ctx, hierarchy.UnlinkPlatformAccountInput{
+		Subject:           subject,
+		Provider:          "steam",
+		ProviderAccountID: "steam-account-123",
+	})
+	if err != nil {
+		t.Fatalf("failed to unlink platform account: %v", err)
+	}
+	if unlinked.IsActive {
+		t.Fatal("expected platform account to be inactive after unlink")
+	}
+}
+
 func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
 	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
 	if testDatabaseURL == "" {

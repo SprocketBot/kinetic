@@ -385,6 +385,93 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/platform-accounts", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			subject := strings.TrimSpace(r.URL.Query().Get("subject"))
+			if subject == "" {
+				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+					subject = sessionPrincipal.Subject
+				}
+			}
+			if subject == "" {
+				http.Error(w, "subject is required", http.StatusBadRequest)
+				return
+			}
+			links, err := deps.HierarchyStore.ListPlatformAccountLinks(r.Context(), subject)
+			if err != nil {
+				http.Error(w, "failed to list platform account links", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, links)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/platform-accounts/link", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var input hierarchy.LinkPlatformAccountInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			if strings.TrimSpace(input.Subject) == "" {
+				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+					input.Subject = sessionPrincipal.Subject
+				}
+			}
+			link, err := deps.HierarchyStore.LinkPlatformAccount(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, link)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/platform-accounts/unlink", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var input hierarchy.UnlinkPlatformAccountInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			if strings.TrimSpace(input.Subject) == "" {
+				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+					input.Subject = sessionPrincipal.Subject
+				}
+			}
+			link, err := deps.HierarchyStore.UnlinkPlatformAccount(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, link)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/v1/queue-entries", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
 			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)

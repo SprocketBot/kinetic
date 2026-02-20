@@ -149,6 +149,20 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":   teamID,
 	}, http.StatusConflict)
 
+	platformSubject := fmt.Sprintf("player-subject-%d", suffix)
+	createEntity(t, server, "/v1/platform-accounts/link", map[string]any{
+		"subject":             platformSubject,
+		"provider":            "steam",
+		"providerAccountId":   fmt.Sprintf("steam-%d", suffix),
+		"providerAccountName": fmt.Sprintf("Steam User %d", suffix),
+	}, http.StatusCreated)
+
+	createEntity(t, server, "/v1/platform-accounts/unlink", map[string]any{
+		"subject":           platformSubject,
+		"provider":          "steam",
+		"providerAccountId": fmt.Sprintf("steam-%d", suffix),
+	}, http.StatusOK)
+
 	queueResp := createEntity(t, server, "/v1/queues", map[string]any{
 		"name": fmt.Sprintf("Queue %d", suffix),
 		"slug": fmt.Sprintf("queue-%d", suffix),
@@ -454,6 +468,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/clubs")
 	assertListNotEmpty(t, server, "/v1/teams")
 	assertListNotEmpty(t, server, "/v1/players")
+	assertListNotEmpty(t, server, fmt.Sprintf("/v1/platform-accounts?subject=%s", platformSubject))
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-bans")
@@ -523,6 +538,12 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 	createEntity(t, server, "/v1/queue-entries", map[string]any{
 		"queueId": int64(0),
 		"teamId":  int64(1),
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/platform-accounts/link", map[string]any{
+		"subject":           "player-1",
+		"provider":          "invalid-provider",
+		"providerAccountId": "acct-1",
 	}, http.StatusBadRequest)
 
 	createEntity(t, server, "/v1/queue-bans", map[string]any{
