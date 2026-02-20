@@ -175,6 +175,38 @@ const rosterMemberships = [
   },
 ];
 
+const roleAssignments: Array<{
+  id: number;
+  playerId: number;
+  role: "fm" | "gm" | "agm" | "captain";
+  franchiseId: number | null;
+  clubId: number | null;
+  teamId: number | null;
+  assignedByActorPlayerId: number;
+  assignReason: string;
+  isActive: boolean;
+  assignedAt: string;
+  revokedByActorPlayerId: number | null;
+  revokeReason: string | null;
+  revokedAt: string | null;
+}> = [
+  {
+    id: 1,
+    playerId: 1,
+    role: "captain",
+    franchiseId: null,
+    clubId: null,
+    teamId: 1,
+    assignedByActorPlayerId: 2,
+    assignReason: "initial assignment",
+    isActive: true,
+    assignedAt: "2026-02-15T00:00:00Z",
+    revokedByActorPlayerId: null,
+    revokeReason: null,
+    revokedAt: null,
+  },
+];
+
 const exceptionActions = [
   {
     id: 1,
@@ -462,6 +494,74 @@ export const handlers = [
       isActive: true,
       createdAt: "2026-02-15T03:00:00Z",
     });
+  }),
+  http.get("http://localhost:8080/v1/role-assignments", () => HttpResponse.json(roleAssignments)),
+  http.post("http://localhost:8080/v1/role-assignments", async ({ request }) => {
+    const body = (await request.json()) as {
+      actorPlayerId: number;
+      targetPlayerId: number;
+      role: "fm" | "gm" | "agm" | "captain";
+      franchiseId?: number;
+      clubId?: number;
+      teamId?: number;
+      reason: string;
+    };
+
+    if (body.role === "fm" && !body.franchiseId) {
+      return HttpResponse.text("franchiseId required for fm role", { status: 400 });
+    }
+    if ((body.role === "gm" || body.role === "agm") && !body.clubId) {
+      return HttpResponse.text("clubId required for gm/agm role", { status: 400 });
+    }
+    if (body.role === "captain" && !body.teamId) {
+      return HttpResponse.text("teamId required for captain role", { status: 400 });
+    }
+
+    const duplicate = roleAssignments.find(
+      (assignment) =>
+        assignment.isActive &&
+        assignment.playerId === body.targetPlayerId &&
+        assignment.role === body.role &&
+        (assignment.franchiseId ?? null) === (body.franchiseId ?? null) &&
+        (assignment.clubId ?? null) === (body.clubId ?? null) &&
+        (assignment.teamId ?? null) === (body.teamId ?? null),
+    );
+    if (duplicate) {
+      return HttpResponse.text("role assignment already active", { status: 409 });
+    }
+
+    const assignment = {
+      id: roleAssignments.length + 1,
+      playerId: body.targetPlayerId,
+      role: body.role,
+      franchiseId: body.role === "fm" ? (body.franchiseId ?? null) : null,
+      clubId: body.role === "gm" || body.role === "agm" ? (body.clubId ?? null) : null,
+      teamId: body.role === "captain" ? (body.teamId ?? null) : null,
+      assignedByActorPlayerId: body.actorPlayerId,
+      assignReason: body.reason,
+      isActive: true,
+      assignedAt: "2026-02-15T03:10:00Z",
+      revokedByActorPlayerId: null,
+      revokeReason: null,
+      revokedAt: null,
+    };
+    roleAssignments.unshift(assignment);
+    return HttpResponse.json(assignment, { status: 201 });
+  }),
+  http.post("http://localhost:8080/v1/role-assignments/revoke", async ({ request }) => {
+    const body = (await request.json()) as { actorPlayerId: number; assignmentId: number; reason: string };
+    const assignment = roleAssignments.find((entry) => entry.id === body.assignmentId && entry.isActive);
+    if (!assignment) {
+      return HttpResponse.text("active role assignment not found", { status: 409 });
+    }
+
+    Object.assign(assignment, {
+      isActive: false,
+      revokedByActorPlayerId: body.actorPlayerId,
+      revokeReason: body.reason,
+      revokedAt: "2026-02-15T03:20:00Z",
+    });
+    return HttpResponse.json(assignment);
   }),
   http.get("http://localhost:8080/v1/exception-actions", () => HttpResponse.json(exceptionActions)),
   http.get("http://localhost:8080/v1/player-ratings", () => HttpResponse.json(playerRatings)),

@@ -11,26 +11,18 @@ This runbook covers roster/governance surfaces in `/app/admin` and `/app/player`
 - Roster membership explorer and assignment (`/v1/roster-memberships`)
 - Role delegation matrix with scope visibility
 - Audit feed (`/v1/exception-actions`)
-- Result override (NCP) form (API-pending)
-- Rating administration form (API-pending)
+- Result override (NCP) form (`/v1/result-overrides`)
+- Rating administration form (`/v1/player-ratings/adjust`)
 
 ## Player Surfaces
 
 - Ratings panel (`/v1/player-ratings`)
-- Account linking form (API-pending)
-- Eligibility panel (API-pending)
+- Account linking form (`/v1/platform-accounts`, `/v1/platform-accounts/link`, `/v1/platform-accounts/unlink`)
+- Eligibility panel (`/v1/eligibility`)
 
 ## Backend Gap Notes
 
-The following remain backend-dependent:
-
-- `API-WEB-02`: account link/unlink endpoints
-- `API-WEB-03`: eligibility points/decay endpoint
-- `API-WEB-04`: delegated role grant/revoke endpoints
-- `API-WEB-06`: result override/NCP submit endpoint
-- `API-WEB-07`: admin rating adjustment mutation endpoint
-
-Current UI surfaces these as explicit disabled actions with blocker copy.
+No open backend blockers remain for the current roster/governance web scope.
 
 ## Verification
 

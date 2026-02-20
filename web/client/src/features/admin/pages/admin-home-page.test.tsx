@@ -64,6 +64,12 @@ describe("AdminHomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Assign player to team" }));
     expect(await screen.findByTestId("admin-roster-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Assign role" }));
+    expect(await screen.findByTestId("admin-role-assign-success")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Revoke role" }));
+    expect(await screen.findByTestId("admin-role-revoke-success")).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Submit override" }));
     expect(await screen.findByTestId("admin-override-success")).toBeInTheDocument();
 

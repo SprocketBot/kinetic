@@ -8,6 +8,7 @@ import { getJson, postJson } from "../../../lib/api/client";
 import { ApiError } from "../../../lib/api/errors";
 import {
   adjustPlayerRatingInputSchema,
+  assignRoleInputSchema,
   createFixtureInputSchema,
   createMatchInputSchema,
   createRosterMembershipInputSchema,
@@ -26,6 +27,9 @@ import {
   playerListSchema,
   rosterMembershipListSchema,
   rosterMembershipSchema,
+  revokeRoleInputSchema,
+  roleAssignmentListSchema,
+  roleAssignmentSchema,
   scheduleGroupListSchema,
   scheduleGroupSchema,
   seasonListSchema,
@@ -36,6 +40,7 @@ import {
   type Match,
   type Player,
   type RosterMembership,
+  type RoleAssignment,
   type ResultSubmission,
   type ResultOverride,
   type ScheduleGroup,
@@ -104,6 +109,28 @@ async function createRosterMembership(input: { playerId: number; teamId: number 
   return postJson("/v1/roster-memberships", payload, rosterMembershipSchema);
 }
 
+async function listRoleAssignments() {
+  return getJson("/v1/role-assignments", roleAssignmentListSchema);
+}
+
+async function assignRole(input: {
+  actorPlayerId: number;
+  targetPlayerId: number;
+  role: "fm" | "gm" | "agm" | "captain";
+  franchiseId?: number;
+  clubId?: number;
+  teamId?: number;
+  reason: string;
+}) {
+  const payload = assignRoleInputSchema.parse(input);
+  return postJson("/v1/role-assignments", payload, roleAssignmentSchema);
+}
+
+async function revokeRole(input: { actorPlayerId: number; assignmentId: number; reason: string }) {
+  const payload = revokeRoleInputSchema.parse(input);
+  return postJson("/v1/role-assignments/revoke", payload, roleAssignmentSchema);
+}
+
 async function listExceptionActions() {
   return getJson("/v1/exception-actions", exceptionActionListSchema);
 }
@@ -159,6 +186,7 @@ export function AdminHomePage() {
   const playersQuery = useQuery({ queryKey: ["players"], queryFn: listPlayers });
   const teamsQuery = useQuery({ queryKey: ["teams"], queryFn: listTeams });
   const rosterQuery = useQuery({ queryKey: ["roster-memberships"], queryFn: listRosterMemberships });
+  const roleAssignmentsQuery = useQuery({ queryKey: ["role-assignments"], queryFn: listRoleAssignments });
   const actionsQuery = useQuery({ queryKey: ["exception-actions"], queryFn: listExceptionActions });
   const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
   const resultSubmissionsQuery = useQuery({ queryKey: ["result-submissions"], queryFn: listResultSubmissions });
@@ -280,6 +308,20 @@ export function AdminHomePage() {
     },
   });
 
+  const roleAssignMutation = useMutation({
+    mutationFn: assignRole,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["role-assignments"] });
+    },
+  });
+
+  const roleRevokeMutation = useMutation({
+    mutationFn: revokeRole,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["role-assignments"] });
+    },
+  });
+
   const ratingAdjustmentMutation = useMutation({
     mutationFn: adjustPlayerRating,
     onSuccess: async () => {
@@ -304,10 +346,7 @@ export function AdminHomePage() {
     <AppShell title="Sprocket Web Client">
       <h2>League Admin</h2>
       <p>Schedule lifecycle management and roster administration.</p>
-      <p>
-        Update/delete scheduling and delegated role grants are shown with API blockers until support lands in
-        `API-WEB-04` and related endpoints.
-      </p>
+      <p>Role delegation grants/revokes are now API-backed with scoped server enforcement.</p>
 
       <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
         <SeasonPanel
@@ -354,7 +393,17 @@ export function AdminHomePage() {
           teams={teamsQuery.data ?? []}
         />
 
-        <RoleDelegationPanel actions={actionsQuery.data ?? []} loading={actionsQuery.isLoading} />
+        <RoleDelegationPanel
+          actions={actionsQuery.data ?? []}
+          assignError={roleAssignMutation.error}
+          assignRole={roleAssignMutation.mutateAsync}
+          assignSuccess={roleAssignMutation.isSuccess}
+          assignments={roleAssignmentsQuery.data ?? []}
+          loading={actionsQuery.isLoading || roleAssignmentsQuery.isLoading}
+          revokeError={roleRevokeMutation.error}
+          revokeRole={roleRevokeMutation.mutateAsync}
+          revokeSuccess={roleRevokeMutation.isSuccess}
+        />
       </section>
 
       <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
@@ -669,34 +718,171 @@ function RosterPanel({
   );
 }
 
-function RoleDelegationPanel({ actions, loading }: { actions: ExceptionAction[]; loading: boolean }) {
-  const [scopeRole, setScopeRole] = useState("captain");
+function RoleDelegationPanel({
+  actions,
+  assignments,
+  loading,
+  assignRole,
+  revokeRole,
+  assignSuccess,
+  revokeSuccess,
+  assignError,
+  revokeError,
+}: {
+  actions: ExceptionAction[];
+  assignments: RoleAssignment[];
+  loading: boolean;
+  assignRole: (input: {
+    actorPlayerId: number;
+    targetPlayerId: number;
+    role: "fm" | "gm" | "agm" | "captain";
+    franchiseId?: number;
+    clubId?: number;
+    teamId?: number;
+    reason: string;
+  }) => Promise<unknown>;
+  revokeRole: (input: { actorPlayerId: number; assignmentId: number; reason: string }) => Promise<unknown>;
+  assignSuccess: boolean;
+  revokeSuccess: boolean;
+  assignError: Error | null;
+  revokeError: Error | null;
+}) {
+  const [actorPlayerId, setActorPlayerId] = useState(1);
+  const [targetPlayerId, setTargetPlayerId] = useState(2);
+  const [scopeRole, setScopeRole] = useState<"fm" | "gm" | "agm" | "captain">("captain");
+  const [franchiseId, setFranchiseId] = useState(1);
+  const [clubId, setClubId] = useState(1);
+  const [teamId, setTeamId] = useState(1);
+  const [assignReason, setAssignReason] = useState("season staffing");
+  const [revokeAssignmentId, setRevokeAssignmentId] = useState(1);
+  const [revokeReason, setRevokeReason] = useState("scope realignment");
 
-  const actionMatrix = {
-    captain: ["offer/release players on assigned team"],
-    agm: ["captain actions across club", "manage captain assignments (pending API)"],
-    gm: ["agm actions across club", "manage AGM assignments (pending API)"],
-    fm: ["gm actions across franchise", "manage GM assignments (pending API)"],
-  } as const;
+  async function submitAssign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await assignRole({
+      actorPlayerId,
+      targetPlayerId,
+      role: scopeRole,
+      franchiseId: scopeRole === "fm" ? franchiseId : undefined,
+      clubId: scopeRole === "gm" || scopeRole === "agm" ? clubId : undefined,
+      teamId: scopeRole === "captain" ? teamId : undefined,
+      reason: assignReason,
+    });
+  }
+
+  async function submitRevoke(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await revokeRole({
+      actorPlayerId,
+      assignmentId: revokeAssignmentId,
+      reason: revokeReason,
+    });
+  }
+
+  function scopeLabel(assignment: RoleAssignment): string {
+    if (assignment.franchiseId !== null && assignment.franchiseId !== undefined) {
+      return `franchise ${assignment.franchiseId}`;
+    }
+    if (assignment.clubId !== null && assignment.clubId !== undefined) {
+      return `club ${assignment.clubId}`;
+    }
+    if (assignment.teamId !== null && assignment.teamId !== undefined) {
+      return `team ${assignment.teamId}`;
+    }
+    return "unknown scope";
+  }
 
   return (
     <section>
       <h3>Role Delegation</h3>
-      <p>Delegated grant/revoke actions are blocked pending role-assignment APIs (`API-WEB-04`).</p>
-      <label>
-        Scope role
-        <select value={scopeRole} onChange={(event) => setScopeRole(event.target.value)}>
-          <option value="captain">Captain</option>
-          <option value="agm">AGM</option>
-          <option value="gm">GM</option>
-          <option value="fm">FM</option>
-        </select>
-      </label>
-      <ul>
-        {actionMatrix[scopeRole as keyof typeof actionMatrix].map((action) => (
-          <li key={action}>{action}</li>
-        ))}
-      </ul>
+      <form onSubmit={submitAssign}>
+        <label>
+          Actor player ID
+          <input
+            min={1}
+            type="number"
+            value={actorPlayerId}
+            onChange={(event) => setActorPlayerId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Target player ID
+          <input
+            min={1}
+            type="number"
+            value={targetPlayerId}
+            onChange={(event) => setTargetPlayerId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Role
+          <select value={scopeRole} onChange={(event) => setScopeRole(event.target.value as "fm" | "gm" | "agm" | "captain")}>
+            <option value="captain">Captain</option>
+            <option value="agm">AGM</option>
+            <option value="gm">GM</option>
+            <option value="fm">FM</option>
+          </select>
+        </label>
+        {scopeRole === "fm" && (
+          <label>
+            Franchise ID
+            <input min={1} type="number" value={franchiseId} onChange={(event) => setFranchiseId(Number(event.target.value))} />
+          </label>
+        )}
+        {(scopeRole === "gm" || scopeRole === "agm") && (
+          <label>
+            Club ID
+            <input min={1} type="number" value={clubId} onChange={(event) => setClubId(Number(event.target.value))} />
+          </label>
+        )}
+        {scopeRole === "captain" && (
+          <label>
+            Team ID
+            <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
+          </label>
+        )}
+        <label>
+          Reason
+          <input value={assignReason} onChange={(event) => setAssignReason(event.target.value)} />
+        </label>
+        <button type="submit">Assign role</button>
+      </form>
+
+      <form onSubmit={submitRevoke} style={{ marginTop: "0.6rem" }}>
+        <label>
+          Revoke assignment ID
+          <input
+            min={1}
+            type="number"
+            value={revokeAssignmentId}
+            onChange={(event) => setRevokeAssignmentId(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          Revoke reason
+          <input value={revokeReason} onChange={(event) => setRevokeReason(event.target.value)} />
+        </label>
+        <button type="submit">Revoke role</button>
+      </form>
+
+      {loading && <LoadingState label="Loading role delegation data..." />}
+      {assignSuccess && <p data-testid="admin-role-assign-success">Role assignment created.</p>}
+      {revokeSuccess && <p data-testid="admin-role-revoke-success">Role assignment revoked.</p>}
+      {assignError && <ErrorView error={assignError} label="Role assignment failed" />}
+      {revokeError && <ErrorView error={revokeError} label="Role revoke failed" />}
+
+      <h4>Current Role Assignments</h4>
+      {!loading && assignments.length === 0 && <p>No role assignments found.</p>}
+      {!loading && assignments.length > 0 && (
+        <ul style={{ margin: 0, paddingLeft: "1.2rem" }}>
+          {assignments.map((assignment) => (
+            <li key={assignment.id}>
+              #{assignment.id} · player {assignment.playerId} · {assignment.role} · {scopeLabel(assignment)} ·{" "}
+              {assignment.isActive ? "active" : "inactive"}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <h4>Recent Operator Actions (Audit Feed)</h4>
       <DataList

@@ -78,6 +78,60 @@ func ValidateCreateRosterMembershipInput(input CreateRosterMembershipInput) erro
 	return nil
 }
 
+func ValidateAssignRoleInput(input AssignRoleInput) error {
+	if input.ActorPlayerID <= 0 {
+		return fmt.Errorf("%w: actorPlayerId must be greater than zero", ErrInvalidInput)
+	}
+	if input.TargetPlayerID <= 0 {
+		return fmt.Errorf("%w: targetPlayerId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+
+	role := strings.TrimSpace(input.Role)
+	switch role {
+	case "fm":
+		if input.FranchiseID == nil || *input.FranchiseID <= 0 {
+			return fmt.Errorf("%w: franchiseId must be provided for fm role", ErrInvalidInput)
+		}
+		if input.ClubID != nil || input.TeamID != nil {
+			return fmt.Errorf("%w: fm role must not include clubId or teamId", ErrInvalidInput)
+		}
+	case "gm", "agm":
+		if input.ClubID == nil || *input.ClubID <= 0 {
+			return fmt.Errorf("%w: clubId must be provided for gm/agm role", ErrInvalidInput)
+		}
+		if input.FranchiseID != nil || input.TeamID != nil {
+			return fmt.Errorf("%w: gm/agm role must not include franchiseId or teamId", ErrInvalidInput)
+		}
+	case "captain":
+		if input.TeamID == nil || *input.TeamID <= 0 {
+			return fmt.Errorf("%w: teamId must be provided for captain role", ErrInvalidInput)
+		}
+		if input.FranchiseID != nil || input.ClubID != nil {
+			return fmt.Errorf("%w: captain role must not include franchiseId or clubId", ErrInvalidInput)
+		}
+	default:
+		return fmt.Errorf("%w: role must be fm, gm, agm, or captain", ErrInvalidInput)
+	}
+
+	return nil
+}
+
+func ValidateRevokeRoleInput(input RevokeRoleInput) error {
+	if input.ActorPlayerID <= 0 {
+		return fmt.Errorf("%w: actorPlayerId must be greater than zero", ErrInvalidInput)
+	}
+	if input.AssignmentID <= 0 {
+		return fmt.Errorf("%w: assignmentId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.Reason) == "" {
+		return fmt.Errorf("%w: reason is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateCreateQueueInput(input CreateQueueInput) error {
 	if strings.TrimSpace(input.Name) == "" {
 		return fmt.Errorf("%w: queue name is required", ErrInvalidInput)

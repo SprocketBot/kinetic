@@ -32,6 +32,7 @@ type fakeHierarchyStore struct {
 	teamToReturn             hierarchy.Team
 	playerToReturn           hierarchy.Player
 	membershipToReturn       hierarchy.RosterMembership
+	roleAssignmentToReturn   hierarchy.RoleAssignment
 	queueToReturn            hierarchy.Queue
 	eligibilityToReturn      hierarchy.EligibilityStatus
 	queueEntryToReturn       hierarchy.QueueEntry
@@ -48,6 +49,7 @@ type fakeHierarchyStore struct {
 	teamsToList              []hierarchy.Team
 	playersToList            []hierarchy.Player
 	membershipsToList        []hierarchy.RosterMembership
+	roleAssignmentsToList    []hierarchy.RoleAssignment
 	queuesToList             []hierarchy.Queue
 	platformLinksToList      []hierarchy.PlatformAccountLink
 	queueEntriesToList       []hierarchy.QueueEntry
@@ -77,6 +79,8 @@ type fakeHierarchyStore struct {
 	createTeamErr            error
 	createPlayerErr          error
 	createMemberErr          error
+	assignRoleErr            error
+	revokeRoleErr            error
 	createQueueErr           error
 	eligibilityErr           error
 	linkPlatformErr          error
@@ -143,6 +147,27 @@ func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarc
 }
 func (f *fakeHierarchyStore) ListRosterMemberships(_ context.Context) ([]hierarchy.RosterMembership, error) {
 	return f.membershipsToList, nil
+}
+func (f *fakeHierarchyStore) AssignRole(_ context.Context, _ hierarchy.AssignRoleInput) (hierarchy.RoleAssignment, error) {
+	if f.roleAssignmentToReturn.ID != 0 {
+		return f.roleAssignmentToReturn, f.assignRoleErr
+	}
+	if len(f.roleAssignmentsToList) > 0 {
+		return f.roleAssignmentsToList[0], f.assignRoleErr
+	}
+	return hierarchy.RoleAssignment{}, f.assignRoleErr
+}
+func (f *fakeHierarchyStore) RevokeRole(_ context.Context, _ hierarchy.RevokeRoleInput) (hierarchy.RoleAssignment, error) {
+	if f.roleAssignmentToReturn.ID != 0 {
+		return f.roleAssignmentToReturn, f.revokeRoleErr
+	}
+	if len(f.roleAssignmentsToList) > 0 {
+		return f.roleAssignmentsToList[0], f.revokeRoleErr
+	}
+	return hierarchy.RoleAssignment{}, f.revokeRoleErr
+}
+func (f *fakeHierarchyStore) ListRoleAssignments(_ context.Context) ([]hierarchy.RoleAssignment, error) {
+	return f.roleAssignmentsToList, nil
 }
 func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
 	return f.queueToReturn, f.createQueueErr
@@ -601,6 +626,97 @@ func TestCreateRosterMembershipSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestAssignRoleSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	clubID := int64(8)
+	store := &fakeHierarchyStore{
+		roleAssignmentToReturn: hierarchy.RoleAssignment{
+			ID:                      1,
+			PlayerID:                22,
+			Role:                    "gm",
+			ClubID:                  &clubID,
+			AssignedByActorPlayerID: 11,
+			AssignReason:            "season staffing",
+			IsActive:                true,
+			AssignedAt:              now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(
+		`{"actorPlayerId":11,"targetPlayerId":22,"role":"gm","clubId":8,"reason":"season staffing"}`,
+	))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestListRoleAssignmentsSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	teamID := int64(42)
+	store := &fakeHierarchyStore{
+		roleAssignmentsToList: []hierarchy.RoleAssignment{
+			{
+				ID:                      1,
+				PlayerID:                7,
+				Role:                    "captain",
+				TeamID:                  &teamID,
+				AssignedByActorPlayerID: 5,
+				AssignReason:            "team restructure",
+				IsActive:                true,
+				AssignedAt:              now,
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/role-assignments", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestRevokeRoleSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	clubID := int64(8)
+	store := &fakeHierarchyStore{
+		roleAssignmentToReturn: hierarchy.RoleAssignment{
+			ID:                      1,
+			PlayerID:                22,
+			Role:                    "gm",
+			ClubID:                  &clubID,
+			AssignedByActorPlayerID: 11,
+			AssignReason:            "season staffing",
+			IsActive:                false,
+			AssignedAt:              now.Add(-2 * time.Hour),
+			RevokedAt:               &now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments/revoke", strings.NewReader(
+		`{"actorPlayerId":11,"assignmentId":1,"reason":"role realignment"}`,
+	))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
 	}
 }
 

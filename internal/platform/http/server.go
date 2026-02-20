@@ -354,6 +354,61 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/role-assignments", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			assignments, err := deps.HierarchyStore.ListRoleAssignments(r.Context())
+			if err != nil {
+				http.Error(w, "failed to list role assignments", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, assignments)
+		case http.MethodPost:
+			var input hierarchy.AssignRoleInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			assignment, err := deps.HierarchyStore.AssignRole(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, assignment)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/role-assignments/revoke", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodPost:
+			var input hierarchy.RevokeRoleInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			assignment, err := deps.HierarchyStore.RevokeRole(r.Context(), input)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, assignment)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/v1/queues", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
 			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)

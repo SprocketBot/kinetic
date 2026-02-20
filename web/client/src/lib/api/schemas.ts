@@ -285,6 +285,52 @@ export const createRosterMembershipInputSchema = z.object({
   teamId: z.number().positive(),
 });
 
+export const roleAssignmentSchema = z.object({
+  id: z.number(),
+  playerId: z.number(),
+  role: z.enum(["fm", "gm", "agm", "captain"]),
+  franchiseId: z.number().nullable().optional(),
+  clubId: z.number().nullable().optional(),
+  teamId: z.number().nullable().optional(),
+  assignedByActorPlayerId: z.number(),
+  assignReason: z.string(),
+  isActive: z.boolean(),
+  assignedAt: z.string(),
+  revokedByActorPlayerId: z.number().nullable().optional(),
+  revokeReason: z.string().nullable().optional(),
+  revokedAt: z.string().nullable().optional(),
+});
+
+export const roleAssignmentListSchema = z.array(roleAssignmentSchema);
+
+export const assignRoleInputSchema = z
+  .object({
+    actorPlayerId: z.number().positive(),
+    targetPlayerId: z.number().positive(),
+    role: z.enum(["fm", "gm", "agm", "captain"]),
+    franchiseId: z.number().positive().optional(),
+    clubId: z.number().positive().optional(),
+    teamId: z.number().positive().optional(),
+    reason: z.string().min(1),
+  })
+  .superRefine((value, ctx) => {
+    if (value.role === "fm" && value.franchiseId === undefined) {
+      ctx.addIssue({ code: "custom", message: "franchiseId required for fm role" });
+    }
+    if ((value.role === "gm" || value.role === "agm") && value.clubId === undefined) {
+      ctx.addIssue({ code: "custom", message: "clubId required for gm/agm role" });
+    }
+    if (value.role === "captain" && value.teamId === undefined) {
+      ctx.addIssue({ code: "custom", message: "teamId required for captain role" });
+    }
+  });
+
+export const revokeRoleInputSchema = z.object({
+  actorPlayerId: z.number().positive(),
+  assignmentId: z.number().positive(),
+  reason: z.string().min(1),
+});
+
 export const exceptionActionSchema = z.object({
   id: z.number(),
   ticketId: z.number(),
@@ -429,6 +475,7 @@ export type Match = z.infer<typeof matchSchema>;
 export type Team = z.infer<typeof teamSchema>;
 export type Player = z.infer<typeof playerSchema>;
 export type RosterMembership = z.infer<typeof rosterMembershipSchema>;
+export type RoleAssignment = z.infer<typeof roleAssignmentSchema>;
 export type ExceptionAction = z.infer<typeof exceptionActionSchema>;
 export type EnqueueTeamInput = z.infer<typeof enqueueTeamInputSchema>;
 export type LeaveQueueInput = z.infer<typeof leaveQueueInputSchema>;
@@ -443,3 +490,5 @@ export type BanPlayerFromQueueInput = z.infer<typeof banPlayerFromQueueInputSche
 export type UnbanPlayerFromQueueInput = z.infer<typeof unbanPlayerFromQueueInputSchema>;
 export type LinkPlatformAccountInput = z.infer<typeof linkPlatformAccountInputSchema>;
 export type UnlinkPlatformAccountInput = z.infer<typeof unlinkPlatformAccountInputSchema>;
+export type AssignRoleInput = z.infer<typeof assignRoleInputSchema>;
+export type RevokeRoleInput = z.infer<typeof revokeRoleInputSchema>;

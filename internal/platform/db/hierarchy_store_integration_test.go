@@ -869,6 +869,145 @@ func TestHierarchyStoreGetEligibilityStatus(t *testing.T) {
 	}
 }
 
+func TestHierarchyStoreRoleAssignmentFlow(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	suffix := time.Now().UnixNano()
+
+	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{
+		Name: fmt.Sprintf("League Role %d", suffix),
+		Slug: fmt.Sprintf("league-role-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create league: %v", err)
+	}
+	franchise, err := store.CreateFranchise(ctx, hierarchy.CreateFranchiseInput{
+		LeagueID: league.ID,
+		Name:     fmt.Sprintf("Franchise Role %d", suffix),
+		Slug:     fmt.Sprintf("franchise-role-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create franchise: %v", err)
+	}
+	club, err := store.CreateClub(ctx, hierarchy.CreateClubInput{
+		FranchiseID: franchise.ID,
+		Name:        fmt.Sprintf("Club Role %d", suffix),
+		Slug:        fmt.Sprintf("club-role-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create club: %v", err)
+	}
+	team, err := store.CreateTeam(ctx, hierarchy.CreateTeamInput{
+		ClubID: club.ID,
+		Name:   fmt.Sprintf("Team Role %d", suffix),
+		Slug:   fmt.Sprintf("team-role-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create team: %v", err)
+	}
+	actor, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		DisplayName: fmt.Sprintf("Role Actor %d", suffix),
+		Slug:        fmt.Sprintf("role-actor-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create actor player: %v", err)
+	}
+	target, err := store.CreatePlayer(ctx, hierarchy.CreatePlayerInput{
+		DisplayName: fmt.Sprintf("Role Target %d", suffix),
+		Slug:        fmt.Sprintf("role-target-%d", suffix),
+	})
+	if err != nil {
+		t.Fatalf("failed to create target player: %v", err)
+	}
+
+	fmAssignment, err := store.AssignRole(ctx, hierarchy.AssignRoleInput{
+		ActorPlayerID:  actor.ID,
+		TargetPlayerID: actor.ID,
+		Role:           "fm",
+		FranchiseID:    &franchise.ID,
+		Reason:         "bootstrap franchise leadership",
+	})
+	if err != nil {
+		t.Fatalf("failed to assign fm role: %v", err)
+	}
+	if !fmAssignment.IsActive {
+		t.Fatal("expected fm assignment to be active")
+	}
+
+	gmAssignment, err := store.AssignRole(ctx, hierarchy.AssignRoleInput{
+		ActorPlayerID:  actor.ID,
+		TargetPlayerID: target.ID,
+		Role:           "gm",
+		ClubID:         &club.ID,
+		Reason:         "club leadership assignment",
+	})
+	if err != nil {
+		t.Fatalf("failed to assign gm role: %v", err)
+	}
+	if !gmAssignment.IsActive {
+		t.Fatal("expected gm assignment to be active")
+	}
+
+	if _, err := store.AssignRole(ctx, hierarchy.AssignRoleInput{
+		ActorPlayerID:  target.ID,
+		TargetPlayerID: target.ID,
+		Role:           "fm",
+		FranchiseID:    &franchise.ID,
+		Reason:         "unauthorized escalation",
+	}); err == nil {
+		t.Fatal("expected unauthorized fm assignment to fail")
+	} else if !errors.Is(err, hierarchy.ErrConflict) {
+		t.Fatalf("expected conflict for unauthorized role assignment, got: %v", err)
+	}
+
+	revoked, err := store.RevokeRole(ctx, hierarchy.RevokeRoleInput{
+		ActorPlayerID: actor.ID,
+		AssignmentID:  gmAssignment.ID,
+		Reason:        "role transition",
+	})
+	if err != nil {
+		t.Fatalf("failed to revoke gm assignment: %v", err)
+	}
+	if revoked.IsActive {
+		t.Fatal("expected revoked role assignment to be inactive")
+	}
+	if revoked.RevokedAt == nil {
+		t.Fatal("expected revokedAt timestamp on revoked role assignment")
+	}
+
+	assignments, err := store.ListRoleAssignments(ctx)
+	if err != nil {
+		t.Fatalf("failed to list role assignments: %v", err)
+	}
+	if len(assignments) == 0 {
+		t.Fatal("expected role assignment history rows")
+	}
+
+	_ = team // team creation verifies captain scope foreign keys are available for this slice.
+}
+
 func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
 	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
 	if testDatabaseURL == "" {

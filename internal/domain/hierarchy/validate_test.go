@@ -139,6 +139,64 @@ func TestValidateCreateRosterMembershipInput(t *testing.T) {
 	}
 }
 
+func TestValidateAssignRoleInput(t *testing.T) {
+	t.Parallel()
+
+	franchiseID := int64(1)
+	err := ValidateAssignRoleInput(AssignRoleInput{
+		ActorPlayerID:  10,
+		TargetPlayerID: 20,
+		Role:           "fm",
+		FranchiseID:    &franchiseID,
+		Reason:         "season staffing",
+	})
+	if err != nil {
+		t.Fatalf("expected valid role assignment input, got error: %v", err)
+	}
+
+	err = ValidateAssignRoleInput(AssignRoleInput{
+		ActorPlayerID:  10,
+		TargetPlayerID: 20,
+		Role:           "unknown",
+		Reason:         "invalid role",
+	})
+	if err == nil {
+		t.Fatal("expected invalid role to fail validation")
+	}
+
+	err = ValidateAssignRoleInput(AssignRoleInput{
+		ActorPlayerID:  10,
+		TargetPlayerID: 20,
+		Role:           "captain",
+		Reason:         "missing team scope",
+	})
+	if err == nil {
+		t.Fatal("expected missing captain teamId to fail validation")
+	}
+}
+
+func TestValidateRevokeRoleInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateRevokeRoleInput(RevokeRoleInput{
+		ActorPlayerID: 1,
+		AssignmentID:  2,
+		Reason:        "role realignment",
+	})
+	if err != nil {
+		t.Fatalf("expected valid revoke role input, got error: %v", err)
+	}
+
+	err = ValidateRevokeRoleInput(RevokeRoleInput{
+		ActorPlayerID: 0,
+		AssignmentID:  2,
+		Reason:        "invalid",
+	})
+	if err == nil {
+		t.Fatal("expected missing actorPlayerId to fail validation")
+	}
+}
+
 func TestValidateCreateQueueInput(t *testing.T) {
 	t.Parallel()
 

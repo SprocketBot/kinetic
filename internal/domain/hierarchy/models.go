@@ -56,6 +56,22 @@ type RosterMembership struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type RoleAssignment struct {
+	ID                      int64      `json:"id"`
+	PlayerID                int64      `json:"playerId"`
+	Role                    string     `json:"role"`
+	FranchiseID             *int64     `json:"franchiseId,omitempty"`
+	ClubID                  *int64     `json:"clubId,omitempty"`
+	TeamID                  *int64     `json:"teamId,omitempty"`
+	AssignedByActorPlayerID int64      `json:"assignedByActorPlayerId"`
+	AssignReason            string     `json:"assignReason"`
+	IsActive                bool       `json:"isActive"`
+	AssignedAt              time.Time  `json:"assignedAt"`
+	RevokedByActorPlayerID  *int64     `json:"revokedByActorPlayerId,omitempty"`
+	RevokeReason            *string    `json:"revokeReason,omitempty"`
+	RevokedAt               *time.Time `json:"revokedAt,omitempty"`
+}
+
 type Queue struct {
 	ID        int64     `json:"id"`
 	Name      string    `json:"name"`
@@ -341,6 +357,22 @@ type CreatePlayerInput struct {
 type CreateRosterMembershipInput struct {
 	PlayerID int64 `json:"playerId"`
 	TeamID   int64 `json:"teamId"`
+}
+
+type AssignRoleInput struct {
+	ActorPlayerID  int64  `json:"actorPlayerId"`
+	TargetPlayerID int64  `json:"targetPlayerId"`
+	Role           string `json:"role"`
+	FranchiseID    *int64 `json:"franchiseId,omitempty"`
+	ClubID         *int64 `json:"clubId,omitempty"`
+	TeamID         *int64 `json:"teamId,omitempty"`
+	Reason         string `json:"reason"`
+}
+
+type RevokeRoleInput struct {
+	ActorPlayerID int64  `json:"actorPlayerId"`
+	AssignmentID  int64  `json:"assignmentId"`
+	Reason        string `json:"reason"`
 }
 
 type CreateQueueInput struct {

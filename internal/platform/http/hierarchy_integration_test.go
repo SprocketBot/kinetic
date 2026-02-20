@@ -149,6 +149,29 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"teamId":   teamID,
 	}, http.StatusConflict)
 
+	createEntity(t, server, "/v1/role-assignments", map[string]any{
+		"actorPlayerId":  playerID,
+		"targetPlayerId": playerID,
+		"role":           "fm",
+		"franchiseId":    franchiseID,
+		"reason":         "initial franchise leadership",
+	}, http.StatusCreated)
+
+	gmAssignmentResp := createEntity(t, server, "/v1/role-assignments", map[string]any{
+		"actorPlayerId":  playerID,
+		"targetPlayerId": playerTwoID,
+		"role":           "gm",
+		"clubId":         clubID,
+		"reason":         "club leadership assignment",
+	}, http.StatusCreated)
+	gmAssignmentID := int64(gmAssignmentResp["id"].(float64))
+
+	createEntity(t, server, "/v1/role-assignments/revoke", map[string]any{
+		"actorPlayerId": playerID,
+		"assignmentId":  gmAssignmentID,
+		"reason":        "role restructure",
+	}, http.StatusOK)
+
 	platformSubject := fmt.Sprintf("player-subject-%d", suffix)
 	createEntity(t, server, "/v1/platform-accounts/link", map[string]any{
 		"subject":             platformSubject,
@@ -471,6 +494,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, fmt.Sprintf("/v1/platform-accounts?subject=%s", platformSubject))
 	assertEligibilityStatus(t, server, fmt.Sprintf("/v1/eligibility?subject=%s", platformSubject))
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
+	assertListNotEmpty(t, server, "/v1/role-assignments")
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-bans")
 	assertListNotEmpty(t, server, "/v1/queue-entries")
@@ -545,6 +569,19 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"subject":           "player-1",
 		"provider":          "invalid-provider",
 		"providerAccountId": "acct-1",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/role-assignments", map[string]any{
+		"actorPlayerId":  int64(1),
+		"targetPlayerId": int64(2),
+		"role":           "invalid",
+		"reason":         "bad role",
+	}, http.StatusBadRequest)
+
+	createEntity(t, server, "/v1/role-assignments/revoke", map[string]any{
+		"actorPlayerId": int64(1),
+		"assignmentId":  int64(0),
+		"reason":        "missing id",
 	}, http.StatusBadRequest)
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/eligibility", nil)
