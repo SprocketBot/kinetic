@@ -30,7 +30,7 @@ Deliver a role-aware web client that covers support/operator workflows first, th
 
 | ID | Task | Priority | Status | Acceptance Criteria |
 | --- | --- | --- | --- | --- |
-| API-WEB-01 | Auth/OIDC login + callback + session endpoints | P0 | Todo | Web client can complete login/logout without local passwords |
+| API-WEB-01 | Auth/OIDC login + callback + session endpoints | P0 | Done | Web client can complete login/logout without local passwords |
 | API-WEB-02 | Platform account link/unlink endpoints | P0 | Todo | User can link/unlink Steam/Xbox/PSN/Epic with audited ownership |
 | API-WEB-03 | Eligibility points + decay endpoint | P1 | Todo | User can fetch points + eligible-until projection |
 | API-WEB-04 | Role-assignment and delegation APIs (FM/GM/AGM/Captain) | P1 | Todo | Scoped assign/revoke checks enforced server-side |

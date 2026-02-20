@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
@@ -38,6 +40,20 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		defaultValidator := auth.NewLocalTokenValidator("local")
 		tokenValidator = defaultValidator
 	}
+	sessionTTL := parseSessionTTL(cfg.AuthSessionTTL)
+	sessionCookieName := strings.TrimSpace(cfg.AuthSessionCookie)
+	if sessionCookieName == "" {
+		sessionCookieName = "sprocket_session"
+	}
+	sessionSecret := strings.TrimSpace(cfg.AuthSessionSecret)
+	if sessionSecret == "" {
+		sessionSecret = "dev-insecure-session-secret"
+	}
+	webBaseURL := strings.TrimRight(strings.TrimSpace(cfg.WebBaseURL), "/")
+	if webBaseURL == "" {
+		webBaseURL = "http://localhost:5173"
+	}
+
 	evaluator := deps.Evaluator
 	if evaluator == nil {
 		defaultEvaluator := authz.NewStaticEvaluator(authz.DefaultPermissions())
@@ -58,6 +74,86 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 			Service:   "sprocket-v3-api",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		})
+	})
+
+	mux.HandleFunc("/v1/session", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret)
+			if !ok {
+				http.Error(w, "not authenticated", http.StatusUnauthorized)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"subject":     sessionPrincipal.Subject,
+				"displayName": sessionPrincipal.DisplayName,
+				"roles":       sessionPrincipal.Roles,
+			})
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/auth/login", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			callbackURL := "/v1/auth/callback?" + buildAuthCallbackQuery(r.URL.Query(), webBaseURL)
+			http.Redirect(w, r, callbackURL, http.StatusFound)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/auth/callback", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			query := r.URL.Query()
+			principal := auth.SessionPrincipal{
+				Subject:     firstNonEmpty(strings.TrimSpace(query.Get("subject")), "local-player"),
+				DisplayName: firstNonEmpty(strings.TrimSpace(query.Get("displayName")), strings.TrimSpace(query.Get("subject"))),
+				Roles:       parseRoleList(query.Get("roles")),
+				ExpiresAt:   time.Now().UTC().Add(sessionTTL),
+			}
+			if principal.DisplayName == "" {
+				principal.DisplayName = principal.Subject
+			}
+
+			token, err := auth.SignSessionToken(principal, sessionSecret)
+			if err != nil {
+				http.Error(w, "failed to issue session", http.StatusInternalServerError)
+				return
+			}
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     sessionCookieName,
+				Value:    token,
+				Path:     "/",
+				Expires:  principal.ExpiresAt,
+				MaxAge:   int(sessionTTL.Seconds()),
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			http.Redirect(w, r, normalizeRedirectURL(query.Get("redirect"), webBaseURL), http.StatusFound)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			http.SetCookie(w, &http.Cookie{
+				Name:     sessionCookieName,
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
 	})
 
 	adminPingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1140,4 +1236,89 @@ func handleHierarchyError(w http.ResponseWriter, err error) {
 	default:
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
+}
+
+func parseSessionTTL(raw string) time.Duration {
+	parsed, err := time.ParseDuration(strings.TrimSpace(raw))
+	if err != nil || parsed <= 0 {
+		return 12 * time.Hour
+	}
+	return parsed
+}
+
+func readSessionPrincipal(r *http.Request, cookieName, secret string) (auth.SessionPrincipal, bool) {
+	cookie, err := r.Cookie(cookieName)
+	if err != nil {
+		return auth.SessionPrincipal{}, false
+	}
+	principal, err := auth.VerifySessionToken(cookie.Value, secret, time.Now().UTC())
+	if err != nil {
+		return auth.SessionPrincipal{}, false
+	}
+	return principal, true
+}
+
+func buildAuthCallbackQuery(values url.Values, webBaseURL string) string {
+	subject := strings.TrimSpace(values.Get("subject"))
+	if subject == "" {
+		subject = "local-player"
+	}
+	displayName := strings.TrimSpace(values.Get("displayName"))
+	roles := strings.TrimSpace(values.Get("roles"))
+	if roles == "" {
+		roles = "player"
+	}
+	redirect := normalizeRedirectURL(values.Get("redirect"), webBaseURL)
+	query := url.Values{}
+	query.Set("subject", subject)
+	query.Set("displayName", firstNonEmpty(displayName, subject))
+	query.Set("roles", roles)
+	query.Set("redirect", redirect)
+	return query.Encode()
+}
+
+func normalizeRedirectURL(raw, webBaseURL string) string {
+	defaultRedirect := strings.TrimRight(webBaseURL, "/") + "/app"
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return defaultRedirect
+	}
+	if strings.HasPrefix(trimmed, "/") {
+		return strings.TrimRight(webBaseURL, "/") + trimmed
+	}
+
+	targetURL, err := url.Parse(trimmed)
+	if err != nil || targetURL.Scheme == "" || targetURL.Host == "" {
+		return defaultRedirect
+	}
+
+	allowedURL, err := url.Parse(webBaseURL)
+	if err != nil || !strings.EqualFold(allowedURL.Host, targetURL.Host) {
+		return defaultRedirect
+	}
+	return targetURL.String()
+}
+
+func parseRoleList(raw string) []string {
+	roles := make([]string, 0)
+	for _, role := range strings.Split(raw, ",") {
+		trimmed := strings.TrimSpace(role)
+		if trimmed != "" {
+			roles = append(roles, trimmed)
+		}
+	}
+	if len(roles) == 0 {
+		return []string{"player"}
+	}
+	return roles
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

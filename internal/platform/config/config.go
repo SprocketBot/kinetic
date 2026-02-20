@@ -9,6 +9,10 @@ const (
 	defaultMigrationsDir        = "migrations"
 	defaultRunMigrationsOnStart = "false"
 	defaultRequireDatabase      = "false"
+	defaultAuthSessionSecret    = "dev-insecure-session-secret"
+	defaultAuthSessionCookie    = "sprocket_session"
+	defaultAuthSessionTTL       = "12h"
+	defaultWebBaseURL           = "http://localhost:5173"
 )
 
 type Config struct {
@@ -18,6 +22,10 @@ type Config struct {
 	MigrationsDir        string
 	RunMigrationsOnStart bool
 	RequireDatabase      bool
+	AuthSessionSecret    string
+	AuthSessionCookie    string
+	AuthSessionTTL       string
+	WebBaseURL           string
 }
 
 func Load() Config {
@@ -28,6 +36,10 @@ func Load() Config {
 		MigrationsDir:        getOrDefault("MIGRATIONS_DIR", defaultMigrationsDir),
 		RunMigrationsOnStart: getOrDefault("RUN_MIGRATIONS_ON_START", defaultRunMigrationsOnStart) == "true",
 		RequireDatabase:      getOrDefault("REQUIRE_DATABASE", defaultRequireDatabase) == "true",
+		AuthSessionSecret:    getOrDefault("AUTH_SESSION_SECRET", defaultAuthSessionSecret),
+		AuthSessionCookie:    getOrDefault("AUTH_SESSION_COOKIE", defaultAuthSessionCookie),
+		AuthSessionTTL:       getOrDefault("AUTH_SESSION_TTL", defaultAuthSessionTTL),
+		WebBaseURL:           getOrDefault("WEB_BASE_URL", defaultWebBaseURL),
 	}
 }
 

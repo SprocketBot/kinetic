@@ -319,6 +319,95 @@ func TestReadyEndpoint(t *testing.T) {
 	assertProbePayload(t, rr.Body, "ready")
 }
 
+func TestSessionLifecycleViaLoginAndCallback(t *testing.T) {
+	cfg := config.Config{
+		Port:              "8080",
+		LogLevel:          "info",
+		AuthSessionSecret: "test-secret",
+		AuthSessionCookie: "sprocket_session",
+		AuthSessionTTL:    "1h",
+		WebBaseURL:        "http://localhost:5173",
+	}
+	srv := New(cfg, slog.Default(), Dependencies{})
+
+	loginReq := httptest.NewRequest(http.MethodGet, "/v1/auth/login?subject=alice&displayName=Alice&roles=league_admin&redirect=http://localhost:5173/app/admin", nil)
+	loginRR := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(loginRR, loginReq)
+	if loginRR.Code != http.StatusFound {
+		t.Fatalf("expected status %d, got %d", http.StatusFound, loginRR.Code)
+	}
+	callbackPath := loginRR.Result().Header.Get("Location")
+	if !strings.HasPrefix(callbackPath, "/v1/auth/callback?") {
+		t.Fatalf("expected callback redirect path, got %s", callbackPath)
+	}
+
+	callbackReq := httptest.NewRequest(http.MethodGet, callbackPath, nil)
+	callbackRR := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(callbackRR, callbackReq)
+	if callbackRR.Code != http.StatusFound {
+		t.Fatalf("expected status %d, got %d", http.StatusFound, callbackRR.Code)
+	}
+	if callbackRR.Result().Header.Get("Location") != "http://localhost:5173/app/admin" {
+		t.Fatalf("unexpected callback redirect target %s", callbackRR.Result().Header.Get("Location"))
+	}
+
+	var sessionCookie *http.Cookie
+	for _, cookie := range callbackRR.Result().Cookies() {
+		if cookie.Name == "sprocket_session" {
+			sessionCookie = cookie
+			break
+		}
+	}
+	if sessionCookie == nil {
+		t.Fatal("expected session cookie to be issued")
+	}
+
+	sessionReq := httptest.NewRequest(http.MethodGet, "/v1/session", nil)
+	sessionReq.AddCookie(sessionCookie)
+	sessionRR := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(sessionRR, sessionReq)
+	if sessionRR.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, sessionRR.Code, sessionRR.Body.String())
+	}
+
+	var sessionPayload map[string]any
+	if err := json.NewDecoder(sessionRR.Body).Decode(&sessionPayload); err != nil {
+		t.Fatalf("failed to decode session payload: %v", err)
+	}
+	if sessionPayload["subject"] != "alice" {
+		t.Fatalf("expected subject alice, got %#v", sessionPayload["subject"])
+	}
+
+	logoutReq := httptest.NewRequest(http.MethodPost, "/v1/auth/logout", nil)
+	logoutReq.AddCookie(sessionCookie)
+	logoutRR := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(logoutRR, logoutReq)
+	if logoutRR.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, logoutRR.Code)
+	}
+}
+
+func TestSessionEndpointRejectsInvalidCookie(t *testing.T) {
+	cfg := config.Config{
+		Port:              "8080",
+		LogLevel:          "info",
+		AuthSessionSecret: "test-secret",
+		AuthSessionCookie: "sprocket_session",
+		AuthSessionTTL:    "1h",
+		WebBaseURL:        "http://localhost:5173",
+	}
+	srv := New(cfg, slog.Default(), Dependencies{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/session", nil)
+	req.AddCookie(&http.Cookie{Name: "sprocket_session", Value: "bad-token"})
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
+	}
+}
+
 func TestAdminPingRequiresAuthentication(t *testing.T) {
 	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{})
 
