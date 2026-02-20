@@ -20,6 +20,7 @@ type Store interface {
 	LinkPlatformAccount(ctx context.Context, input LinkPlatformAccountInput) (PlatformAccountLink, error)
 	UnlinkPlatformAccount(ctx context.Context, input UnlinkPlatformAccountInput) (PlatformAccountLink, error)
 	ListPlatformAccountLinks(ctx context.Context, subject string) ([]PlatformAccountLink, error)
+	GetEligibilityStatus(ctx context.Context, subject string) (EligibilityStatus, error)
 	EnqueueTeam(ctx context.Context, input EnqueueTeamInput) (QueueEntry, error)
 	LeaveQueue(ctx context.Context, input LeaveQueueInput) (QueueEntry, error)
 	BanPlayerFromQueue(ctx context.Context, input BanPlayerFromQueueInput) (QueueBan, error)

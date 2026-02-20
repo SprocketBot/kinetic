@@ -300,6 +300,29 @@ export const handlers = [
     });
     return HttpResponse.json(existing);
   }),
+  http.get("http://localhost:8080/v1/eligibility", ({ request }) => {
+    const url = new URL(request.url);
+    const subject = url.searchParams.get("subject");
+    if (!subject) {
+      return HttpResponse.text("subject is required", { status: 400 });
+    }
+
+    return HttpResponse.json({
+      subject,
+      points: 92,
+      thresholdPoints: 40,
+      decayPerWeek: 10,
+      eligibleUntil: "2026-03-22T04:30:00Z",
+      evaluatedAt: "2026-02-15T04:30:00Z",
+      projection: [
+        { effectiveAt: "2026-02-15T04:30:00Z", points: 92, isEligible: true },
+        { effectiveAt: "2026-02-22T04:30:00Z", points: 82, isEligible: true },
+        { effectiveAt: "2026-03-01T04:30:00Z", points: 72, isEligible: true },
+        { effectiveAt: "2026-03-08T04:30:00Z", points: 62, isEligible: true },
+        { effectiveAt: "2026-03-15T04:30:00Z", points: 52, isEligible: true },
+      ],
+    });
+  }),
   http.get("http://localhost:8080/v1/queue-bans", () => HttpResponse.json(queueBans)),
   http.post("http://localhost:8080/v1/queue-bans", async ({ request }) => {
     const body = (await request.json()) as { queueId: number; playerId: number; actor: string; reason: string };

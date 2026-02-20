@@ -818,6 +818,57 @@ func TestHierarchyStorePlatformAccountLinkFlow(t *testing.T) {
 	}
 }
 
+func TestHierarchyStoreGetEligibilityStatus(t *testing.T) {
+	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
+	if testDatabaseURL == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
+	}
+
+	conn, err := Open(testDatabaseURL)
+	if err != nil {
+		t.Fatalf("failed to open test DB: %v", err)
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	if err := Ping(ctx, conn); err != nil {
+		t.Fatalf("failed to ping test DB: %v", err)
+	}
+
+	migrator := NewMigrator(conn, "../../../migrations")
+	if _, err := migrator.Up(ctx); err != nil {
+		t.Fatalf("failed to run migrations: %v", err)
+	}
+
+	store := NewHierarchyStore(conn)
+	subject := fmt.Sprintf("player-eligibility-%d", time.Now().UnixNano())
+
+	if _, err := store.LinkPlatformAccount(ctx, hierarchy.LinkPlatformAccountInput{
+		Subject:             subject,
+		Provider:            "steam",
+		ProviderAccountID:   "steam-elig-123",
+		ProviderAccountName: "Steam Eligibility",
+	}); err != nil {
+		t.Fatalf("failed to create linked account for eligibility: %v", err)
+	}
+
+	status, err := store.GetEligibilityStatus(ctx, subject)
+	if err != nil {
+		t.Fatalf("failed to get eligibility status: %v", err)
+	}
+	if status.Subject != subject {
+		t.Fatalf("expected subject %q, got %q", subject, status.Subject)
+	}
+	if status.Points <= 0 {
+		t.Fatalf("expected positive eligibility points, got %d", status.Points)
+	}
+	if len(status.Projection) == 0 {
+		t.Fatal("expected eligibility projection points")
+	}
+}
+
 func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
 	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
 	if testDatabaseURL == "" {

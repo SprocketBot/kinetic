@@ -10,6 +10,7 @@ import { ApiError } from "../../../lib/api/errors";
 import { env } from "../../../lib/config/env";
 import {
   enqueueTeamInputSchema,
+  eligibilityStatusSchema,
   ingestReplayEvidenceInputSchema,
   linkPlatformAccountInputSchema,
   leaveQueueInputSchema,
@@ -25,6 +26,7 @@ import {
   resultSubmissionSchema,
   scrimListSchema,
   unlinkPlatformAccountInputSchema,
+  type EligibilityStatus,
   type IngestReplayEvidenceInput,
   type PlatformAccountLink,
   type QueueEntry,
@@ -51,6 +53,10 @@ async function listPlayerRatings() {
 
 async function listPlatformAccounts(subject: string) {
   return getJson(`/v1/platform-accounts?subject=${encodeURIComponent(subject)}`, platformAccountLinkListSchema);
+}
+
+async function getEligibilityStatus(subject: string) {
+  return getJson(`/v1/eligibility?subject=${encodeURIComponent(subject)}`, eligibilityStatusSchema);
 }
 
 async function enqueueTeam(input: { queueId: number; teamId: number }) {
@@ -128,6 +134,11 @@ export function PlayerHomePage() {
   const platformAccountsQuery = useQuery({
     queryKey: ["platform-accounts", sessionSubject],
     queryFn: () => listPlatformAccounts(sessionSubject),
+    enabled: sessionSubject.length > 0,
+  });
+  const eligibilityQuery = useQuery({
+    queryKey: ["eligibility", sessionSubject],
+    queryFn: () => getEligibilityStatus(sessionSubject),
     enabled: sessionSubject.length > 0,
   });
 
@@ -236,6 +247,9 @@ export function PlayerHomePage() {
       <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
         <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
         <AccountAndEligibilityPanel
+          eligibility={eligibilityQuery.data ?? null}
+          eligibilityError={eligibilityQuery.error}
+          eligibilityLoading={session.status === "loading" || eligibilityQuery.isLoading}
           links={platformAccountsQuery.data ?? []}
           loading={session.status === "loading" || platformAccountsQuery.isLoading}
           onLink={linkPlatformMutation.mutateAsync}
@@ -524,6 +538,9 @@ function AccountAndEligibilityPanel({
   subject,
   links,
   loading,
+  eligibility,
+  eligibilityError,
+  eligibilityLoading,
   queryError,
   onLink,
   onUnlink,
@@ -532,6 +549,9 @@ function AccountAndEligibilityPanel({
   subject: string;
   links: PlatformAccountLink[];
   loading: boolean;
+  eligibility: EligibilityStatus | null;
+  eligibilityError: Error | null;
+  eligibilityLoading: boolean;
   queryError: Error | null;
   onLink: (input: {
     subject: string;
@@ -616,7 +636,25 @@ function AccountAndEligibilityPanel({
         ) : null,
       )}
       {queryError && <ErrorView error={queryError} label="Failed to load linked platform accounts" />}
-      <p>Eligibility points and decay schedule will render here once endpoint support is available (`API-WEB-03`).</p>
+      <h4>Eligibility</h4>
+      {eligibilityLoading && <LoadingState label="Loading eligibility projection..." />}
+      {!eligibilityLoading && eligibility !== null && (
+        <>
+          <p>
+            {eligibility.points} points (threshold {eligibility.thresholdPoints}, decay {eligibility.decayPerWeek}/week)
+          </p>
+          <p>Eligible until: {new Date(eligibility.eligibleUntil).toLocaleString()}</p>
+          <ul style={{ margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
+            {eligibility.projection.slice(0, 5).map((point) => (
+              <li key={point.effectiveAt}>
+                {new Date(point.effectiveAt).toLocaleDateString()} · {point.points} points ·{" "}
+                {point.isEligible ? "eligible" : "ineligible"}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {eligibilityError && <ErrorView error={eligibilityError} label="Failed to load eligibility status" />}
     </section>
   );
 }

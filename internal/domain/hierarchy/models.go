@@ -99,6 +99,22 @@ type PlatformAccountLink struct {
 	UnlinkedAt          *time.Time `json:"unlinkedAt,omitempty"`
 }
 
+type EligibilityProjectionPoint struct {
+	EffectiveAt time.Time `json:"effectiveAt"`
+	Points      int32     `json:"points"`
+	IsEligible  bool      `json:"isEligible"`
+}
+
+type EligibilityStatus struct {
+	Subject         string                       `json:"subject"`
+	Points          int32                        `json:"points"`
+	ThresholdPoints int32                        `json:"thresholdPoints"`
+	DecayPerWeek    int32                        `json:"decayPerWeek"`
+	EligibleUntil   time.Time                    `json:"eligibleUntil"`
+	EvaluatedAt     time.Time                    `json:"evaluatedAt"`
+	Projection      []EligibilityProjectionPoint `json:"projection"`
+}
+
 type Scrim struct {
 	ID         int64      `json:"id"`
 	QueueID    int64      `json:"queueId"`
@@ -367,6 +383,10 @@ type UnlinkPlatformAccountInput struct {
 	Subject           string `json:"subject"`
 	Provider          string `json:"provider"`
 	ProviderAccountID string `json:"providerAccountId"`
+}
+
+type GetEligibilityInput struct {
+	Subject string `json:"subject"`
 }
 
 type AdvanceQueueEntryStageInput struct {

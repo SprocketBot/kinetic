@@ -45,6 +45,7 @@ describe("PlayerHomePage", () => {
     await waitFor(() => expect(screen.getByTestId("player-submission-count")).toHaveTextContent("1"));
     expect(screen.getByRole("heading", { name: "Ratings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Accounts and Eligibility" })).toBeInTheDocument();
+    expect(await screen.findByText(/threshold 40/)).toBeInTheDocument();
   });
 
   it("submits queue and submission actions", async () => {

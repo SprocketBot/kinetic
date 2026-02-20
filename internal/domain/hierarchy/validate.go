@@ -118,6 +118,13 @@ func ValidateUnlinkPlatformAccountInput(input UnlinkPlatformAccountInput) error 
 	return nil
 }
 
+func ValidateGetEligibilityInput(input GetEligibilityInput) error {
+	if strings.TrimSpace(input.Subject) == "" {
+		return fmt.Errorf("%w: subject is required", ErrInvalidInput)
+	}
+	return nil
+}
+
 func ValidateEnqueueTeamInput(input EnqueueTeamInput) error {
 	if input.QueueID <= 0 {
 		return fmt.Errorf("%w: queueId must be greater than zero", ErrInvalidInput)

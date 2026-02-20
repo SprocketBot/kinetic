@@ -33,6 +33,7 @@ type fakeHierarchyStore struct {
 	playerToReturn           hierarchy.Player
 	membershipToReturn       hierarchy.RosterMembership
 	queueToReturn            hierarchy.Queue
+	eligibilityToReturn      hierarchy.EligibilityStatus
 	queueEntryToReturn       hierarchy.QueueEntry
 	scrimToReturn            hierarchy.Scrim
 	submissionToReturn       hierarchy.ResultSubmission
@@ -77,6 +78,7 @@ type fakeHierarchyStore struct {
 	createPlayerErr          error
 	createMemberErr          error
 	createQueueErr           error
+	eligibilityErr           error
 	linkPlatformErr          error
 	unlinkPlatformErr        error
 	enqueueTeamErr           error
@@ -162,6 +164,9 @@ func (f *fakeHierarchyStore) UnlinkPlatformAccount(_ context.Context, _ hierarch
 }
 func (f *fakeHierarchyStore) ListPlatformAccountLinks(_ context.Context, _ string) ([]hierarchy.PlatformAccountLink, error) {
 	return f.platformLinksToList, nil
+}
+func (f *fakeHierarchyStore) GetEligibilityStatus(_ context.Context, _ string) (hierarchy.EligibilityStatus, error) {
+	return f.eligibilityToReturn, f.eligibilityErr
 }
 func (f *fakeHierarchyStore) EnqueueTeam(_ context.Context, _ hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
 	return f.queueEntryToReturn, f.enqueueTeamErr
@@ -669,6 +674,35 @@ func TestListPlatformAccountsSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/platform-accounts?subject=player-1", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestGetEligibilityStatusSuccess(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		eligibilityToReturn: hierarchy.EligibilityStatus{
+			Subject:         "player-1",
+			Points:          92,
+			ThresholdPoints: 40,
+			DecayPerWeek:    10,
+			EligibleUntil:   now.AddDate(0, 0, 35),
+			EvaluatedAt:     now,
+			Projection: []hierarchy.EligibilityProjectionPoint{
+				{EffectiveAt: now, Points: 92, IsEligible: true},
+				{EffectiveAt: now.AddDate(0, 0, 7), Points: 82, IsEligible: true},
+			},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/eligibility?subject=player-1", nil)
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 

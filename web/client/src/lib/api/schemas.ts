@@ -78,6 +78,22 @@ export const platformAccountLinkSchema = z.object({
 
 export const platformAccountLinkListSchema = z.array(platformAccountLinkSchema);
 
+export const eligibilityProjectionPointSchema = z.object({
+  effectiveAt: z.string(),
+  points: z.number(),
+  isEligible: z.boolean(),
+});
+
+export const eligibilityStatusSchema = z.object({
+  subject: z.string(),
+  points: z.number(),
+  thresholdPoints: z.number(),
+  decayPerWeek: z.number(),
+  eligibleUntil: z.string(),
+  evaluatedAt: z.string(),
+  projection: z.array(eligibilityProjectionPointSchema),
+});
+
 export const banPlayerFromQueueInputSchema = z.object({
   queueId: z.number().positive(),
   playerId: z.number().positive(),
@@ -400,6 +416,7 @@ export type ResolveExceptionInput = z.infer<typeof resolveExceptionInputSchema>;
 export type QueueEntry = z.infer<typeof queueEntrySchema>;
 export type QueueBan = z.infer<typeof queueBanSchema>;
 export type PlatformAccountLink = z.infer<typeof platformAccountLinkSchema>;
+export type EligibilityStatus = z.infer<typeof eligibilityStatusSchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
 export type ResultOverride = z.infer<typeof resultOverrideSchema>;

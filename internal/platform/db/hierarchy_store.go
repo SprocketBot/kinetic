@@ -468,6 +468,73 @@ ORDER BY id DESC;`
 	return links, nil
 }
 
+func (s *HierarchyStore) GetEligibilityStatus(ctx context.Context, subject string) (hierarchy.EligibilityStatus, error) {
+	if err := hierarchy.ValidateGetEligibilityInput(hierarchy.GetEligibilityInput{Subject: subject}); err != nil {
+		return hierarchy.EligibilityStatus{}, err
+	}
+
+	const countsStmt = `
+SELECT
+	COUNT(*) FILTER (WHERE is_active = TRUE) AS active_links,
+	COUNT(*) FILTER (WHERE is_active = FALSE) AS inactive_links
+FROM platform_account_links
+WHERE subject = $1;`
+	var activeLinks int64
+	var inactiveLinks int64
+	if err := s.db.QueryRowContext(ctx, countsStmt, subject).Scan(&activeLinks, &inactiveLinks); err != nil {
+		return hierarchy.EligibilityStatus{}, err
+	}
+
+	const (
+		basePoints      int32 = 100
+		activeLinkBonus int32 = 5
+		inactivePenalty int32 = 10
+		maxPoints       int32 = 200
+		minPoints       int32 = 0
+		thresholdPoints int32 = 40
+		decayPerWeek    int32 = 10
+		projectionWeeks int   = 8
+	)
+
+	points := basePoints + int32(activeLinks)*activeLinkBonus - int32(inactiveLinks)*inactivePenalty
+	if points > maxPoints {
+		points = maxPoints
+	}
+	if points < minPoints {
+		points = minPoints
+	}
+
+	evaluatedAt := time.Now().UTC()
+	eligibleUntil := evaluatedAt
+	if points > thresholdPoints {
+		weeksEligible := int((points - thresholdPoints) / decayPerWeek)
+		eligibleUntil = evaluatedAt.AddDate(0, 0, weeksEligible*7)
+	}
+
+	projection := make([]hierarchy.EligibilityProjectionPoint, 0, projectionWeeks+1)
+	for week := 0; week <= projectionWeeks; week++ {
+		projectedPoints := points - int32(week)*decayPerWeek
+		if projectedPoints < minPoints {
+			projectedPoints = minPoints
+		}
+		projection = append(projection, hierarchy.EligibilityProjectionPoint{
+			EffectiveAt: evaluatedAt.AddDate(0, 0, week*7),
+			Points:      projectedPoints,
+			IsEligible:  projectedPoints >= thresholdPoints,
+		})
+	}
+
+	return hierarchy.EligibilityStatus{
+		Subject:         subject,
+		Points:          points,
+		ThresholdPoints: thresholdPoints,
+		DecayPerWeek:    decayPerWeek,
+		EligibleUntil:   eligibleUntil,
+		EvaluatedAt:     evaluatedAt,
+		Projection:      projection,
+	}, nil
+}
+
 func (s *HierarchyStore) EnqueueTeam(ctx context.Context, input hierarchy.EnqueueTeamInput) (hierarchy.QueueEntry, error) {
 	if err := hierarchy.ValidateEnqueueTeamInput(input); err != nil {
 		return hierarchy.QueueEntry{}, err

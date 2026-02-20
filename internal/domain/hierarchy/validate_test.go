@@ -203,6 +203,24 @@ func TestValidateUnlinkPlatformAccountInput(t *testing.T) {
 	}
 }
 
+func TestValidateGetEligibilityInput(t *testing.T) {
+	t.Parallel()
+
+	err := ValidateGetEligibilityInput(GetEligibilityInput{
+		Subject: "player-1",
+	})
+	if err != nil {
+		t.Fatalf("expected valid input, got error: %v", err)
+	}
+
+	err = ValidateGetEligibilityInput(GetEligibilityInput{
+		Subject: "",
+	})
+	if err == nil {
+		t.Fatal("expected missing subject to fail validation")
+	}
+}
+
 func TestValidateEnqueueTeamInput(t *testing.T) {
 	t.Parallel()
 

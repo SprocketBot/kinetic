@@ -469,6 +469,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/teams")
 	assertListNotEmpty(t, server, "/v1/players")
 	assertListNotEmpty(t, server, fmt.Sprintf("/v1/platform-accounts?subject=%s", platformSubject))
+	assertEligibilityStatus(t, server, fmt.Sprintf("/v1/eligibility?subject=%s", platformSubject))
 	assertListNotEmpty(t, server, "/v1/roster-memberships")
 	assertListNotEmpty(t, server, "/v1/queues")
 	assertListNotEmpty(t, server, "/v1/queue-bans")
@@ -545,6 +546,13 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"provider":          "invalid-provider",
 		"providerAccountId": "acct-1",
 	}, http.StatusBadRequest)
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/eligibility", nil)
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d for /v1/eligibility, got %d body=%s", http.StatusBadRequest, rr.Code, rr.Body.String())
+	}
 
 	createEntity(t, server, "/v1/queue-bans", map[string]any{
 		"queueId":  int64(1),
@@ -688,6 +696,29 @@ func assertListNotEmpty(t *testing.T, server *Server, path string) {
 	}
 	if len(items) == 0 {
 		t.Fatalf("expected non-empty list for %s", path)
+	}
+}
+
+func assertEligibilityStatus(t *testing.T, server *Server, path string) {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rr := httptest.NewRecorder()
+	server.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d for %s, got %d body=%s", http.StatusOK, path, rr.Code, rr.Body.String())
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(rr.Body).Decode(&payload); err != nil {
+		t.Fatalf("failed to decode eligibility response for %s: %v", path, err)
+	}
+	if _, ok := payload["points"]; !ok {
+		t.Fatalf("expected points in eligibility response for %s", path)
+	}
+	if _, ok := payload["eligibleUntil"]; !ok {
+		t.Fatalf("expected eligibleUntil in eligibility response for %s", path)
 	}
 }
 

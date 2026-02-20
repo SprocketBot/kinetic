@@ -472,6 +472,36 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	mux.HandleFunc("/v1/eligibility", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		switch r.Method {
+		case http.MethodGet:
+			subject := strings.TrimSpace(r.URL.Query().Get("subject"))
+			if subject == "" {
+				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+					subject = sessionPrincipal.Subject
+				}
+			}
+			if subject == "" {
+				http.Error(w, "subject is required", http.StatusBadRequest)
+				return
+			}
+
+			status, err := deps.HierarchyStore.GetEligibilityStatus(r.Context(), subject)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, status)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
 	mux.HandleFunc("/v1/queue-entries", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
 			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
