@@ -348,7 +348,7 @@ export function AdminHomePage() {
       <p>Schedule lifecycle management and roster administration.</p>
       <p>Role delegation grants/revokes are now API-backed with scoped server enforcement.</p>
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+      <section className="layout-grid layout-grid--2">
         <SeasonPanel
           createError={seasonMutation.error}
           createSeason={seasonMutation.mutateAsync}
@@ -382,7 +382,7 @@ export function AdminHomePage() {
         />
       </section>
 
-      <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+      <section className="layout-grid layout-grid--2">
         <RosterPanel
           createError={rosterMutation.error}
           createMembership={rosterMutation.mutateAsync}
@@ -406,7 +406,7 @@ export function AdminHomePage() {
         />
       </section>
 
-      <section style={{ marginTop: "1rem", display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+      <section className="layout-grid layout-grid--2">
         <ResultOverridePanel
           loading={resultSubmissionsQuery.isLoading || resultOverridesQuery.isLoading}
           overrideError={overrideMutation.error}

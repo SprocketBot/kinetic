@@ -27,7 +27,7 @@ export function PlatformOpsPage() {
       <h2>Platform Operations</h2>
       <p>Operational links and key exception metrics.</p>
 
-      <section aria-label="operations links" style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+      <section aria-label="operations links" className="layout-links">
         {opsLinks.map((link) => (
           <a href={link.href} key={link.label} rel="noreferrer" target="_blank">
             {link.label}
@@ -39,7 +39,7 @@ export function PlatformOpsPage() {
       {metricsQuery.isError && <ErrorView error={metricsQuery.error} />}
 
       {metricsQuery.isSuccess && (
-        <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+        <section className="layout-grid layout-grid--2">
           <MetricCard label="Admin hours / week" value={metricsQuery.data.adminHoursPerWeek.toFixed(2)} />
           <MetricCard label="Manual touches / fixture" value={metricsQuery.data.manualTouchesPerFixture.toFixed(2)} />
           <MetricCard label="Zero touch fixture rate" value={`${(metricsQuery.data.zeroTouchFixtureRate * 100).toFixed(1)}%`} />
@@ -52,9 +52,9 @@ export function PlatformOpsPage() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <article style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.8rem" }}>
+    <article>
       <h3 style={{ margin: 0 }}>{label}</h3>
-      <p style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: 0 }}>{value}</p>
+      <p>{value}</p>
     </article>
   );
 }

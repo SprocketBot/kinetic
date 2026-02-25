@@ -39,34 +39,39 @@ export function LoginPage() {
   }
 
   return (
-    <main style={{ margin: "3rem auto", maxWidth: 420, fontFamily: "ui-sans-serif, system-ui" }}>
-      <h1>Sprocket Sign In</h1>
-      {env.authMode === "mock" ? (
-        <>
-          <p>Mock login is enabled for local development.</p>
-          <button onClick={handleMockLogin} type="button">
-            Continue with mock session
-          </button>
-        </>
-      ) : (
-        <>
-          <p>Sign in through the local OIDC shim.</p>
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <button onClick={() => handleApiLogin("player")} type="button">
-              Continue as player
-            </button>
-            <button onClick={() => handleApiLogin("league_support")} type="button">
-              Continue as support
-            </button>
-            <button onClick={() => handleApiLogin("league_admin")} type="button">
-              Continue as admin
-            </button>
-            <button onClick={() => handleApiLogin("platform_operator")} type="button">
-              Continue as platform operator
-            </button>
-          </div>
-        </>
-      )}
+    <main className="login-page">
+      <section className="login-page__card">
+        <img alt="Sprocket" className="login-page__brand" src="/img/logo-horizontal.svg" />
+        <h1>Sprocket Sign In</h1>
+        {env.authMode === "mock" ? (
+          <>
+            <p>Mock login is enabled for local development.</p>
+            <div className="login-page__actions">
+              <button onClick={handleMockLogin} type="button">
+                Continue with mock session
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p>Sign in through the local OIDC shim.</p>
+            <div className="login-page__actions">
+              <button onClick={() => handleApiLogin("player")} type="button">
+                Continue as player
+              </button>
+              <button onClick={() => handleApiLogin("league_support")} type="button">
+                Continue as support
+              </button>
+              <button onClick={() => handleApiLogin("league_admin")} type="button">
+                Continue as admin
+              </button>
+              <button onClick={() => handleApiLogin("platform_operator")} type="button">
+                Continue as platform operator
+              </button>
+            </div>
+          </>
+        )}
+      </section>
     </main>
   );
 }

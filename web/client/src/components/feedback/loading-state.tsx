@@ -3,5 +3,5 @@ type LoadingStateProps = {
 };
 
 export function LoadingState({ label = "Loading..." }: LoadingStateProps) {
-  return <p>{label}</p>;
+  return <p className="loading-state">{label}</p>;
 }

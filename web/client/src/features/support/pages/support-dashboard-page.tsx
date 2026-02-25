@@ -178,7 +178,7 @@ export function SupportDashboardPage() {
       <h2>League Support</h2>
       <p>Inbox triage workspace for active exception operations.</p>
 
-      <section aria-label="support live snapshots" style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginBottom: "1rem" }}>
+      <section aria-label="support live snapshots" className="layout-grid layout-grid--2">
         <LiveCard
           count={activeScrims.length}
           label="Active scrims"
@@ -193,7 +193,7 @@ export function SupportDashboardPage() {
         />
       </section>
 
-      <section aria-label="support filters" style={{ display: "flex", gap: "0.75rem", marginBottom: "1rem" }}>
+      <section aria-label="support filters" className="layout-grid layout-grid--2">
         <label>
           Filter severity
           <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}>
@@ -247,12 +247,12 @@ export function SupportDashboardPage() {
         </section>
       )}
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
+      <section className="layout-grid layout-grid--2">
         <ScrimList scrims={activeScrims} />
         <SubmissionList submissions={inProcessSubmissions} />
       </section>
 
-      <section style={{ marginTop: "1rem" }}>
+      <section>
         <QueueModerationPanel
           actorDefault={actorDefault}
           banError={banMutation.error}
@@ -281,9 +281,9 @@ function LiveCard({
   testId: string;
 }) {
   return (
-    <article style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.8rem" }}>
+    <article>
       <h3 style={{ marginTop: 0 }}>{label}</h3>
-      <p data-testid={testId} style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: 0 }}>
+      <p data-testid={testId}>
         {loading ? "..." : count}
       </p>
     </article>
@@ -309,8 +309,10 @@ function InboxList({
             <button
               onClick={() => onSelect(ticket.id)}
               style={{
-                background: ticket.id === selectedTicketId ? "#dbeafe" : "#f8fafc",
-                border: "1px solid #cbd5e1",
+                background: ticket.id === selectedTicketId ? "rgba(254, 191, 43, 0.2)" : "rgba(13, 14, 14, 0.5)",
+                border: "1px solid rgba(207, 210, 211, 0.25)",
+                borderRadius: "10px",
+                color: "rgba(247, 248, 248, 0.94)",
                 cursor: "pointer",
                 padding: "0.6rem",
                 textAlign: "left",
@@ -558,7 +560,7 @@ function QueueModerationPanel({
   return (
     <section>
       <h3>Queue Moderation</h3>
-      <div style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr" }}>
+      <div className="layout-grid layout-grid--2">
         <form onSubmit={submitBan}>
           <h4>Ban Player</h4>
           <label>
@@ -609,7 +611,7 @@ function QueueModerationPanel({
       {loading ? (
         <LoadingState label="Loading queue bans..." />
       ) : (
-        <ul style={{ marginTop: "1rem", marginBottom: 0, paddingLeft: "1.25rem" }}>
+        <ul style={{ marginBottom: 0, marginTop: "1rem", paddingLeft: "1.25rem" }}>
           {bans.map((ban) => (
             <li key={ban.id}>
               Queue {ban.queueId} · player {ban.playerId} · {ban.isActive ? "active" : "lifted"} · {ban.banReason}

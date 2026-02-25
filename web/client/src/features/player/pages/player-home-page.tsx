@@ -203,13 +203,13 @@ export function PlayerHomePage() {
       <h2>Player</h2>
       <p>Queue, scrim, replay submission, and ratification workflows.</p>
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr 1fr" }}>
+      <section className="layout-grid layout-grid--3">
         <CountCard label="Queue entries" testId="player-queue-count" value={activeQueueEntries.length} />
         <CountCard label="Active scrims" testId="player-scrim-count" value={activeScrims.length} />
         <CountCard label="Submissions in progress" testId="player-submission-count" value={inProcessSubmissions.length} />
       </section>
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
+      <section className="layout-grid layout-grid--2">
         <QueueActions
           onEnqueue={enqueueMutation.mutateAsync}
           onLeave={leaveQueueMutation.mutateAsync}
@@ -223,7 +223,7 @@ export function PlayerHomePage() {
         />
       </section>
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr 1fr", marginTop: "1rem" }}>
+      <section className="layout-grid layout-grid--3">
         <DataList
           items={activeQueueEntries.map((entry) => `Entry #${entry.id} · queue ${entry.queueId} · team ${entry.teamId}`)}
           loading={queueQuery.isLoading}
@@ -244,7 +244,7 @@ export function PlayerHomePage() {
         />
       </section>
 
-      <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "1fr 1fr", marginTop: "1rem" }}>
+      <section className="layout-grid layout-grid--2">
         <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
         <AccountAndEligibilityPanel
           eligibility={eligibilityQuery.data ?? null}
@@ -271,9 +271,9 @@ export function PlayerHomePage() {
 
 function CountCard({ label, value, testId }: { label: string; value: number; testId: string }) {
   return (
-    <article style={{ border: "1px solid #cbd5e1", borderRadius: "8px", padding: "0.8rem" }}>
+    <article>
       <h3 style={{ marginTop: 0 }}>{label}</h3>
-      <p data-testid={testId} style={{ fontSize: "1.2rem", fontWeight: 700, marginBottom: 0 }}>
+      <p data-testid={testId}>
         {value}
       </p>
     </article>
@@ -490,7 +490,7 @@ function EvidenceSection({
   const selectedView = evidenceViews.find((view) => view.id === selected) ?? evidenceViews[0];
 
   return (
-    <section style={{ marginTop: "1rem" }}>
+    <section>
       <h3>Evidence Views</h3>
       <p>Read-only data is embedded from Evidence to avoid duplicating reporting surfaces.</p>
       <label>
@@ -503,7 +503,7 @@ function EvidenceSection({
           ))}
         </select>
       </label>
-      <div style={{ border: "1px solid #cbd5e1", height: "360px", marginTop: "0.75rem" }}>
+      <div style={{ border: "1px solid rgba(207, 210, 211, 0.24)", borderRadius: "10px", height: "360px", marginTop: "0.75rem" }}>
         <iframe
           src={`${env.evidenceBaseUrl}${selectedView.path}`}
           style={{ border: 0, height: "100%", width: "100%" }}

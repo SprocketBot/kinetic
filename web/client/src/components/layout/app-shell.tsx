@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useSession } from "../../auth/session-context";
 import { AppNav } from "./nav";
 
 type AppShellProps = {
@@ -8,16 +9,56 @@ type AppShellProps = {
 };
 
 export function AppShell({ title, children }: AppShellProps) {
+  const { principal } = useSession();
+  const displayName = principal?.displayName ?? principal?.subject ?? "Local session";
+  const roles = principal?.roles ?? [];
+
+  function roleLabel(role: string): string {
+    if (role === "league_support") {
+      return "Support";
+    }
+    if (role === "league_admin") {
+      return "Admin";
+    }
+    if (role === "platform_operator") {
+      return "Platform";
+    }
+    if (role === "player") {
+      return "Player";
+    }
+    return role;
+  }
+
   return (
-    <div style={{ fontFamily: "ui-sans-serif, system-ui", minHeight: "100vh" }}>
-      <header style={{ borderBottom: "1px solid #d1d5db", padding: "0.75rem 1rem" }}>
-        <h1 style={{ fontSize: "1.1rem", margin: 0 }}>{title}</h1>
+    <div className="app-shell">
+      <header className="app-shell__header">
+        <div className="app-shell__brand">
+          <img alt="Sprocket" className="app-shell__logo" src="/img/logo-horizontal.svg" />
+          <div className="app-shell__title-wrap">
+            <p className="app-shell__eyebrow">Web Client v3</p>
+            <h1 className="app-shell__title">{title}</h1>
+          </div>
+        </div>
+
+        <div className="app-shell__user">
+          <p className="app-shell__user-label">{displayName}</p>
+          <div className="app-shell__role-list">
+            {roles.length === 0 && <span className="app-shell__role-chip">No role</span>}
+            {roles.map((role) => (
+              <span className="app-shell__role-chip" key={role}>
+                {roleLabel(role)}
+              </span>
+            ))}
+          </div>
+        </div>
       </header>
-      <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", minHeight: "calc(100vh - 56px)" }}>
-        <aside style={{ borderRight: "1px solid #d1d5db", padding: "1rem" }}>
+      <div className="app-shell__body">
+        <aside className="app-shell__sidebar">
           <AppNav />
         </aside>
-        <main style={{ padding: "1rem" }}>{children}</main>
+        <main className="app-shell__main">
+          <div className="app-shell__content">{children}</div>
+        </main>
       </div>
     </div>
   );

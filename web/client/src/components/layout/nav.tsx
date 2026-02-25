@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 import { useSession } from "../../auth/session-context";
 import type { Role } from "../../auth/types";
@@ -21,14 +21,16 @@ export function AppNav() {
   const roles = principal?.roles ?? [];
 
   return (
-    <nav>
-      <div style={{ fontWeight: 600, marginBottom: "0.5rem" }}>Navigation</div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.4rem" }}>
+    <nav className="app-nav">
+      <p className="app-nav__title">Navigation</p>
+      <ul className="app-nav__list">
         {navItems
           .filter((item) => roles.includes(item.role))
           .map((item) => (
             <li key={item.to}>
-              <Link to={item.to}>{item.label}</Link>
+              <NavLink className={({ isActive }) => `app-nav__link${isActive ? " active" : ""}`} to={item.to}>
+                {item.label}
+              </NavLink>
             </li>
           ))}
       </ul>
