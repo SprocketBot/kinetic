@@ -55,6 +55,9 @@ func main() {
 	tokenValidator := auth.NewLocalTokenValidator("local")
 	var evaluator authz.Evaluator
 	var hierarchyStore hierarchy.Store
+	deps := httpserver.Dependencies{
+		TokenValidator: tokenValidator,
+	}
 	if conn != nil {
 		dbEvaluator, err := authz.NewDatabaseBackedEvaluator(ctx, conn, authz.DefaultPermissions())
 		if err != nil {
@@ -64,17 +67,20 @@ func main() {
 		logger.Info("loaded authz policies from database")
 		evaluator = dbEvaluator
 		hierarchyStore = db.NewHierarchyStore(conn)
+		deps.SkillGroupStore = db.NewSkillGroupStore(conn)
+		deps.OrgConfigStore = db.NewOrgConfigStore(conn)
+		deps.NotificationsStore = db.NewNotificationsStore(conn)
+		deps.APITokenStore = db.NewAPITokenStore(conn)
+		deps.ReplayStatsStore = db.NewReplayStatsStore(conn)
 	} else {
 		staticEvaluator := authz.NewStaticEvaluator(authz.DefaultPermissions())
 		evaluator = staticEvaluator
 		logger.Warn("using static in-memory authz policy set; database not required in current mode")
 	}
+	deps.Evaluator = evaluator
+	deps.HierarchyStore = hierarchyStore
 
-	srv := httpserver.New(cfg, logger, httpserver.Dependencies{
-		TokenValidator: tokenValidator,
-		Evaluator:      evaluator,
-		HierarchyStore: hierarchyStore,
-	})
+	srv := httpserver.New(cfg, logger, deps)
 
 	errCh := make(chan error, 1)
 	go func() {

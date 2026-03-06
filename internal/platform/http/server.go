@@ -2,16 +2,24 @@ package http
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
 	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
 	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/orgconfig"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/replaystats"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/skillgroup"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
 )
@@ -22,9 +30,14 @@ type Server struct {
 }
 
 type Dependencies struct {
-	TokenValidator auth.TokenValidator
-	Evaluator      authz.Evaluator
-	HierarchyStore hierarchy.Store
+	TokenValidator     auth.TokenValidator
+	Evaluator          authz.Evaluator
+	HierarchyStore     hierarchy.Store
+	SkillGroupStore    skillgroup.Store
+	OrgConfigStore     orgconfig.Store
+	NotificationsStore notifications.Store
+	APITokenStore      apitoken.Store
+	ReplayStatsStore   replaystats.Store
 }
 
 type healthResponse struct {
@@ -94,20 +107,136 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	discordClientID := strings.TrimSpace(cfg.DiscordClientID)
+	discordClientSecret := strings.TrimSpace(cfg.DiscordClientSecret)
+	discordRedirectURL := strings.TrimSpace(cfg.DiscordRedirectURL)
+
+	mux.HandleFunc("/v1/auth/providers", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		discordEnabled := discordClientID != "" && discordClientSecret != ""
+		type providerInfo struct {
+			ID      string `json:"id"`
+			Name    string `json:"name"`
+			Enabled bool   `json:"enabled"`
+		}
+		providers := []providerInfo{
+			{ID: "discord", Name: "Discord", Enabled: discordEnabled},
+		}
+		writeJSON(w, http.StatusOK, providers)
+	})
+
 	mux.HandleFunc("/v1/auth/login", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		provider := strings.TrimSpace(r.URL.Query().Get("provider"))
+		switch provider {
+		case "discord":
+			if discordClientID == "" || discordClientSecret == "" {
+				http.Error(w, "discord oauth not configured", http.StatusNotImplemented)
+				return
+			}
+			state, err := generateOAuthState()
+			if err != nil {
+				http.Error(w, "failed to generate state", http.StatusInternalServerError)
+				return
+			}
+			setOAuthStateCookie(w, state)
+			redirectURL := discordRedirectURL
+			if redirectURL == "" {
+				redirectURL = strings.TrimRight(webBaseURL, "/") + "/v1/auth/callback?provider=discord"
+			}
+			http.Redirect(w, r, discordBuildAuthorizeURL(discordClientID, redirectURL, state), http.StatusFound)
+		case "", "local":
+			// Local/dev flow: redirect straight to callback with query params forwarded.
 			callbackURL := "/v1/auth/callback?" + buildAuthCallbackQuery(r.URL.Query(), webBaseURL)
 			http.Redirect(w, r, callbackURL, http.StatusFound)
 		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			http.Error(w, "unknown provider", http.StatusBadRequest)
 		}
 	})
 
 	mux.HandleFunc("/v1/auth/callback", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			query := r.URL.Query()
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		provider := strings.TrimSpace(r.URL.Query().Get("provider"))
+		query := r.URL.Query()
+
+		switch provider {
+		case "discord":
+			// Validate state parameter against the state cookie.
+			providedState := query.Get("state")
+			if !validateOAuthStateCookie(r, providedState) {
+				http.Error(w, "invalid oauth state", http.StatusBadRequest)
+				return
+			}
+			// Clear the state cookie.
+			http.SetCookie(w, &http.Cookie{
+				Name:     oauthStateCookieName,
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+
+			code := query.Get("code")
+			if code == "" {
+				http.Error(w, "missing code parameter", http.StatusBadRequest)
+				return
+			}
+
+			redirectURL := discordRedirectURL
+			if redirectURL == "" {
+				redirectURL = strings.TrimRight(webBaseURL, "/") + "/v1/auth/callback?provider=discord"
+			}
+
+			accessToken, err := discordExchangeCode(r.Context(), discordClientID, discordClientSecret, redirectURL, code)
+			if err != nil {
+				logger.Error("discord code exchange failed", "error", err)
+				http.Error(w, "discord authentication failed", http.StatusBadGateway)
+				return
+			}
+
+			discordID, discordUsername, err := discordGetCurrentUser(r.Context(), accessToken)
+			if err != nil {
+				logger.Error("discord user fetch failed", "error", err)
+				http.Error(w, "discord authentication failed", http.StatusBadGateway)
+				return
+			}
+
+			principal := auth.SessionPrincipal{
+				Subject:     "discord:" + discordID,
+				DisplayName: discordUsername,
+				Roles:       []string{"player"},
+				ExpiresAt:   time.Now().UTC().Add(sessionTTL),
+			}
+
+			token, err := auth.SignSessionToken(principal, sessionSecret)
+			if err != nil {
+				http.Error(w, "failed to issue session", http.StatusInternalServerError)
+				return
+			}
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     sessionCookieName,
+				Value:    token,
+				Path:     "/",
+				Expires:  principal.ExpiresAt,
+				MaxAge:   int(sessionTTL.Seconds()),
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			http.Redirect(w, r, normalizeRedirectURL(query.Get("redirect"), webBaseURL), http.StatusFound)
+
+		default:
+			// Local/dev flow: build session directly from query parameters.
 			principal := auth.SessionPrincipal{
 				Subject:     firstNonEmpty(strings.TrimSpace(query.Get("subject")), "local-player"),
 				DisplayName: firstNonEmpty(strings.TrimSpace(query.Get("displayName")), strings.TrimSpace(query.Get("subject"))),
@@ -134,8 +263,6 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				SameSite: http.SameSiteLaxMode,
 			})
 			http.Redirect(w, r, normalizeRedirectURL(query.Get("redirect"), webBaseURL), http.StatusFound)
-		default:
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
 
@@ -369,6 +496,9 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 			}
 			writeJSON(w, http.StatusOK, assignments)
 		case http.MethodPost:
+			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceRoleAssignment, authz.ActionCreate) {
+				return
+			}
 			var input hierarchy.AssignRoleInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -393,6 +523,9 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 
 		switch r.Method {
 		case http.MethodPost:
+			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceRoleAssignment, authz.ActionRevoke) {
+				return
+			}
 			var input hierarchy.RevokeRoleInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -718,6 +851,9 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 
 		switch r.Method {
 		case http.MethodPost:
+			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceScrimPromotion, authz.ActionCreate) {
+				return
+			}
 			var input hierarchy.PromoteQueueToScrimInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -728,6 +864,7 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				handleHierarchyError(w, err)
 				return
 			}
+			startPopTimeoutWatcher(scrim.ID, 5*time.Minute, deps.HierarchyStore, logger)
 			writeJSON(w, http.StatusCreated, scrim)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -742,6 +879,9 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 
 		switch r.Method {
 		case http.MethodPost:
+			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceScrimPromotion, authz.ActionCreate) {
+				return
+			}
 			var input hierarchy.ProcessQueuePromotionsInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -758,7 +898,11 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				"processedQueues", result.ProcessedQueues,
 				"promotionsCreated", result.PromotionsCreated,
 				"conflicts", result.Conflicts,
+				"poppedScrims", len(result.PoppedScrimIDs),
 			)
+			for _, scrimID := range result.PoppedScrimIDs {
+				startPopTimeoutWatcher(scrimID, 5*time.Minute, deps.HierarchyStore, logger)
+			}
 			writeJSON(w, http.StatusOK, result)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -911,6 +1055,9 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 			}
 			writeJSON(w, http.StatusOK, overrides)
 		case http.MethodPost:
+			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceResultOverride, authz.ActionCreate) {
+				return
+			}
 			var input hierarchy.OverrideResultSubmissionInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -1000,6 +1147,14 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				handleHierarchyError(w, err)
 				return
 			}
+			// Trigger async stub replay parse in the background.
+			go func() {
+				bgCtx := context.Background()
+				if triggerErr := deps.HierarchyStore.TriggerReplayParse(bgCtx, result.Evidence.ID, input.ContextID, input.ContextType); triggerErr != nil {
+					// Log only — the HTTP response has already been sent.
+					_ = triggerErr
+				}
+			}()
 			status := http.StatusCreated
 			if result.Duplicate {
 				status = http.StatusOK
@@ -1043,6 +1198,52 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 				return
 			}
 			writeJSON(w, http.StatusOK, links)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/result-submissions/{id}/stats", func(w http.ResponseWriter, r *http.Request) {
+		if deps.ReplayStatsStore == nil {
+			http.Error(w, "replay stats store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			submissionID, err := parsePathID(r)
+			if err != nil {
+				http.Error(w, "invalid submission id", http.StatusBadRequest)
+				return
+			}
+			lines, err := deps.ReplayStatsStore.ListStatsBySubmission(r.Context(), submissionID)
+			if err != nil {
+				http.Error(w, "failed to list stats", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, lines)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/players/{id}/career-stats", func(w http.ResponseWriter, r *http.Request) {
+		if deps.ReplayStatsStore == nil {
+			http.Error(w, "replay stats store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			playerID, err := parsePathID(r)
+			if err != nil {
+				http.Error(w, "invalid player id", http.StatusBadRequest)
+				return
+			}
+			stats, err := deps.ReplayStatsStore.GetPlayerCareerStats(r.Context(), playerID)
+			if err != nil {
+				http.Error(w, "failed to get player career stats", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, stats)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -1364,6 +1565,626 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 		}
 	})
 
+	// --- Single-resource lookups (Theme 7.1) ---
+
+	mux.HandleFunc("GET /v1/fixtures/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid fixture id", http.StatusBadRequest)
+			return
+		}
+		fixture, err := deps.HierarchyStore.GetFixture(r.Context(), id)
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, fixture)
+	})
+
+	mux.HandleFunc("GET /v1/scrims/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid scrim id", http.StatusBadRequest)
+			return
+		}
+		scrim, err := deps.HierarchyStore.GetScrim(r.Context(), id)
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, scrim)
+	})
+
+	mux.HandleFunc("GET /v1/result-submissions/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid submission id", http.StatusBadRequest)
+			return
+		}
+		submission, err := deps.HierarchyStore.GetResultSubmission(r.Context(), id)
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, submission)
+	})
+
+	// --- Submission reset (Theme 7.2) ---
+
+	mux.HandleFunc("POST /v1/result-submissions/{id}/reset", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceResultSubmission, authz.ActionReset) {
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid submission id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			Actor string `json:"actor"`
+		}
+		if err := decodeJSON(r, &body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if body.Actor == "" {
+			if principal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+				body.Actor = principal.Subject
+			}
+		}
+		submission, err := deps.HierarchyStore.ResetResultSubmission(r.Context(), hierarchy.ResetResultSubmissionInput{
+			SubmissionID: id,
+			Actor:        body.Actor,
+		})
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, submission)
+	})
+
+	// --- Player activate / deactivate (Theme 7.3) ---
+
+	mux.HandleFunc("POST /v1/players/{id}/activate", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourcePlayer, authz.ActionUpdate) {
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid player id", http.StatusBadRequest)
+			return
+		}
+		player, err := deps.HierarchyStore.SetPlayerActive(r.Context(), hierarchy.SetPlayerActiveInput{
+			PlayerID: id,
+			IsActive: true,
+		})
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, player)
+	})
+
+	mux.HandleFunc("POST /v1/players/{id}/deactivate", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourcePlayer, authz.ActionUpdate) {
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid player id", http.StatusBadRequest)
+			return
+		}
+		player, err := deps.HierarchyStore.SetPlayerActive(r.Context(), hierarchy.SetPlayerActiveInput{
+			PlayerID: id,
+			IsActive: false,
+		})
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, player)
+	})
+
+	// --- Skill group transitions (Theme 5C) ---
+
+	mux.HandleFunc("GET /v1/players/{id}/skill-group-transitions", func(w http.ResponseWriter, r *http.Request) {
+		if deps.SkillGroupStore == nil {
+			http.Error(w, "skill group store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid player id", http.StatusBadRequest)
+			return
+		}
+		transitions, err := deps.SkillGroupStore.ListTransitionsByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, transitions)
+	})
+
+	// --- Skill groups (Theme 5A) ---
+
+	mux.HandleFunc("/v1/leagues/{id}/skill-groups", func(w http.ResponseWriter, r *http.Request) {
+		if deps.SkillGroupStore == nil {
+			http.Error(w, "skill group store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		leagueID, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid league id", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			groups, err := deps.SkillGroupStore.ListSkillGroups(r.Context(), leagueID)
+			if err != nil {
+				http.Error(w, "failed to list skill groups", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, groups)
+		case http.MethodPost:
+			var input skillgroup.CreateSkillGroupInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			input.LeagueID = leagueID
+			sg, err := deps.SkillGroupStore.CreateSkillGroup(r.Context(), input)
+			if err != nil {
+				handleSkillGroupError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusCreated, sg)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.HandleFunc("/v1/skill-groups/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if deps.SkillGroupStore == nil {
+			http.Error(w, "skill group store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		id, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid skill group id", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			sg, err := deps.SkillGroupStore.GetSkillGroup(r.Context(), id)
+			if err != nil {
+				handleSkillGroupError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, sg)
+		case http.MethodPatch:
+			var input skillgroup.UpdateSkillGroupInput
+			if err := decodeJSON(r, &input); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			input.SkillGroupID = id
+			sg, err := deps.SkillGroupStore.UpdateSkillGroup(r.Context(), input)
+			if err != nil {
+				handleSkillGroupError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, sg)
+		case http.MethodDelete:
+			inactive := false
+			sg, err := deps.SkillGroupStore.UpdateSkillGroup(r.Context(), skillgroup.UpdateSkillGroupInput{
+				SkillGroupID: id,
+				IsActive:     &inactive,
+			})
+			if err != nil {
+				handleSkillGroupError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, sg)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// --- Organization config (Theme 6) ---
+
+	mux.HandleFunc("/v1/leagues/{id}/config", func(w http.ResponseWriter, r *http.Request) {
+		if deps.OrgConfigStore == nil {
+			http.Error(w, "org config store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		leagueID, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid league id", http.StatusBadRequest)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			configs, err := deps.OrgConfigStore.ListConfigs(r.Context(), leagueID)
+			if err != nil {
+				http.Error(w, "failed to read config", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, configs)
+		case http.MethodPatch:
+			var updates map[string]string
+			if err := decodeJSON(r, &updates); err != nil {
+				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			var updatedBy *int64
+			if principal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
+				playerID, parseErr := strconv.ParseInt(principal.Subject, 10, 64)
+				if parseErr == nil {
+					updatedBy = &playerID
+				}
+			}
+			for key, value := range updates {
+				if err := deps.OrgConfigStore.SetConfig(r.Context(), leagueID, key, value, updatedBy); err != nil {
+					http.Error(w, "failed to update config key: "+key, http.StatusInternalServerError)
+					return
+				}
+			}
+			configs, err := deps.OrgConfigStore.ListConfigs(r.Context(), leagueID)
+			if err != nil {
+				http.Error(w, "failed to read updated config", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, configs)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// --- Scrim check-in (Theme 3.2) ---
+
+	mux.HandleFunc("POST /v1/scrims/{id}/check-in", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		scrimID, err := parsePathID(r)
+		if err != nil {
+			http.Error(w, "invalid scrim id", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			TeamID int64 `json:"teamId"`
+		}
+		if err := decodeJSON(r, &body); err != nil || body.TeamID == 0 {
+			http.Error(w, "teamId is required", http.StatusBadRequest)
+			return
+		}
+		scrim, err := deps.HierarchyStore.CheckInScrim(r.Context(), hierarchy.CheckInScrimInput{
+			ScrimID: scrimID,
+			TeamID:  body.TeamID,
+		})
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, scrim)
+	})
+
+	// --- Scrim metrics (Theme 3.4) ---
+
+	mux.HandleFunc("GET /v1/scrim-metrics", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		metrics, err := deps.HierarchyStore.GetScrimMetrics(r.Context())
+		if err != nil {
+			http.Error(w, "failed to get scrim metrics", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, metrics)
+	})
+
+	// --- Me-scoped endpoints (Theme 2) ---
+
+	mux.HandleFunc("GET /v1/me", func(w http.ResponseWriter, r *http.Request) {
+		principal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret)
+		if !ok {
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"subject":     principal.Subject,
+			"displayName": principal.DisplayName,
+			"roles":       principal.Roles,
+		})
+	})
+
+	mux.HandleFunc("GET /v1/me/eligibility", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		principal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret)
+		if !ok {
+			http.Error(w, "not authenticated", http.StatusUnauthorized)
+			return
+		}
+		status, err := deps.HierarchyStore.GetEligibilityStatus(r.Context(), principal.Subject)
+		if err != nil {
+			handleHierarchyError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, status)
+	})
+
+	mux.HandleFunc("GET /v1/me/roster-membership", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		rm, err := deps.HierarchyStore.GetActiveRosterMembershipByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "failed to get roster membership", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, rm)
+	})
+
+	mux.HandleFunc("GET /v1/me/queue-bans", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		bans, err := deps.HierarchyStore.ListActiveQueueBansByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "failed to get queue bans", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, bans)
+	})
+
+	mux.HandleFunc("GET /v1/me/queue-entry", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		entry, err := deps.HierarchyStore.GetActiveQueueEntryByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "failed to get queue entry", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, entry)
+	})
+
+	mux.HandleFunc("GET /v1/me/scrim", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		scrim, err := deps.HierarchyStore.GetActiveScrimByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "failed to get scrim", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, scrim)
+	})
+
+	mux.HandleFunc("GET /v1/me/result-submissions", func(w http.ResponseWriter, r *http.Request) {
+		if deps.HierarchyStore == nil {
+			http.Error(w, "hierarchy store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		rm, err := deps.HierarchyStore.GetActiveRosterMembershipByPlayerID(r.Context(), playerID)
+		if err != nil {
+			http.Error(w, "failed to resolve roster membership", http.StatusInternalServerError)
+			return
+		}
+		if rm == nil {
+			writeJSON(w, http.StatusOK, []hierarchy.ResultSubmission{})
+			return
+		}
+		input := hierarchy.ListResultSubmissionsInput{TeamID: &rm.TeamID}
+		if state := strings.TrimSpace(r.URL.Query().Get("state")); state != "" {
+			input.State = &state
+		}
+		submissions, err := deps.HierarchyStore.ListResultSubmissionsFiltered(r.Context(), input)
+		if err != nil {
+			http.Error(w, "failed to list result submissions", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, submissions)
+	})
+
+	// --- Notifications (Theme 2.3) ---
+
+	mux.HandleFunc("GET /v1/me/notifications", func(w http.ResponseWriter, r *http.Request) {
+		if deps.NotificationsStore == nil {
+			http.Error(w, "notifications store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		unreadOnly := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("unread")), "true")
+		notifs, err := deps.NotificationsStore.ListNotifications(r.Context(), playerID, unreadOnly)
+		if err != nil {
+			http.Error(w, "failed to list notifications", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, notifs)
+	})
+
+	mux.HandleFunc("POST /v1/me/notifications/mark-read", func(w http.ResponseWriter, r *http.Request) {
+		if deps.NotificationsStore == nil {
+			http.Error(w, "notifications store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		playerID, err := parseIntQueryParam(r, "player_id")
+		if err != nil {
+			http.Error(w, "player_id query parameter required", http.StatusBadRequest)
+			return
+		}
+		var body struct {
+			IDs     []int64 `json:"ids"`
+			MarkAll bool    `json:"all"`
+		}
+		if err := decodeJSON(r, &body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if err := deps.NotificationsStore.MarkRead(r.Context(), notifications.MarkReadInput{
+			PlayerID: playerID,
+			IDs:      body.IDs,
+			MarkAll:  body.MarkAll,
+		}); err != nil {
+			http.Error(w, "failed to mark notifications as read", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	// --- API Tokens (Theme 1.4) ---
+
+	mux.HandleFunc("POST /v1/api-tokens", func(w http.ResponseWriter, r *http.Request) {
+		if deps.APITokenStore == nil {
+			http.Error(w, "api token store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		principal, ok := readPrincipal(r, sessionCookieName, sessionSecret, deps.APITokenStore)
+		if !ok {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		var body struct {
+			Name   string   `json:"name"`
+			Scopes []string `json:"scopes"`
+		}
+		if err := decodeJSON(r, &body); err != nil {
+			http.Error(w, "invalid request body", http.StatusBadRequest)
+			return
+		}
+		if strings.TrimSpace(body.Name) == "" {
+			http.Error(w, "name is required", http.StatusBadRequest)
+			return
+		}
+		input := apitoken.CreateAPITokenInput{
+			Name:    body.Name,
+			Subject: principal.Subject,
+			Scopes:  body.Scopes,
+		}
+		token, plainText, err := deps.APITokenStore.CreateAPIToken(r.Context(), input)
+		if err != nil {
+			http.Error(w, "failed to create api token", http.StatusInternalServerError)
+			return
+		}
+		type createResponse struct {
+			apitoken.APIToken
+			PlainTextToken string `json:"plainTextToken"`
+		}
+		writeJSON(w, http.StatusCreated, createResponse{APIToken: token, PlainTextToken: plainText})
+	})
+
+	mux.HandleFunc("GET /v1/api-tokens", func(w http.ResponseWriter, r *http.Request) {
+		if deps.APITokenStore == nil {
+			http.Error(w, "api token store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		principal, ok := readPrincipal(r, sessionCookieName, sessionSecret, deps.APITokenStore)
+		if !ok {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		tokens, err := deps.APITokenStore.ListAPITokens(r.Context(), principal.Subject)
+		if err != nil {
+			http.Error(w, "failed to list api tokens", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, tokens)
+	})
+
+	mux.HandleFunc("DELETE /v1/api-tokens/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if deps.APITokenStore == nil {
+			http.Error(w, "api token store unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		principal, ok := readPrincipal(r, sessionCookieName, sessionSecret, deps.APITokenStore)
+		if !ok {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return
+		}
+		idStr := r.PathValue("id")
+		tokenID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "invalid token id", http.StatusBadRequest)
+			return
+		}
+		token, err := deps.APITokenStore.RevokeAPIToken(r.Context(), apitoken.RevokeAPITokenInput{
+			TokenID: tokenID,
+			Subject: principal.Subject,
+		})
+		if err != nil {
+			if errors.Is(err, apitoken.ErrNotFound) {
+				http.Error(w, "token not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "failed to revoke api token", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, token)
+	})
+
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           mux,
@@ -1410,6 +2231,31 @@ func handleHierarchyError(w http.ResponseWriter, err error) {
 	}
 }
 
+func handleSkillGroupError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, skillgroup.ErrNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+	case errors.Is(err, skillgroup.ErrInvalidInput):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, skillgroup.ErrConflict), errors.Is(err, skillgroup.ErrDependency):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	}
+}
+
+func parsePathID(r *http.Request) (int64, error) {
+	return strconv.ParseInt(r.PathValue("id"), 10, 64)
+}
+
+func parseIntQueryParam(r *http.Request, name string) (int64, error) {
+	raw := strings.TrimSpace(r.URL.Query().Get(name))
+	if raw == "" {
+		return 0, errors.New("missing")
+	}
+	return strconv.ParseInt(raw, 10, 64)
+}
+
 func parseSessionTTL(raw string) time.Duration {
 	parsed, err := time.ParseDuration(strings.TrimSpace(raw))
 	if err != nil || parsed <= 0 {
@@ -1428,6 +2274,38 @@ func readSessionPrincipal(r *http.Request, cookieName, secret string) (auth.Sess
 		return auth.SessionPrincipal{}, false
 	}
 	return principal, true
+}
+
+// readPrincipal returns an auth.SessionPrincipal for the request. It first
+// checks the session cookie; if none is present it falls back to an
+// Authorization: Bearer token validated via the apitoken store. Session cookie
+// auth takes priority.
+func readPrincipal(r *http.Request, cookieName, secret string, tokenStore apitoken.Store) (auth.SessionPrincipal, bool) {
+	if p, ok := readSessionPrincipal(r, cookieName, secret); ok {
+		return p, true
+	}
+	if tokenStore == nil {
+		return auth.SessionPrincipal{}, false
+	}
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return auth.SessionPrincipal{}, false
+	}
+	rawToken := strings.TrimPrefix(authHeader, "Bearer ")
+	rawToken = strings.TrimSpace(rawToken)
+	if rawToken == "" {
+		return auth.SessionPrincipal{}, false
+	}
+	result, err := tokenStore.ValidateAPIToken(r.Context(), rawToken)
+	if err != nil {
+		return auth.SessionPrincipal{}, false
+	}
+	return auth.SessionPrincipal{
+		Subject:     result.Subject,
+		DisplayName: result.Subject,
+		Roles:       result.Scopes,
+		ExpiresAt:   time.Time{},
+	}, true
 }
 
 func buildAuthCallbackQuery(values url.Values, webBaseURL string) string {
@@ -1485,6 +2363,20 @@ func parseRoleList(raw string) []string {
 	return roles
 }
 
+// startPopTimeoutWatcher launches a goroutine that cancels a popped scrim if it hasn't
+// fully checked in within the given timeout. Default ban duration is 60 minutes.
+func startPopTimeoutWatcher(scrimID int64, timeout time.Duration, store hierarchy.Store, logger *slog.Logger) {
+	time.AfterFunc(timeout, func() {
+		ctx := context.Background()
+		if err := store.ExecutePopTimeout(ctx, hierarchy.ExecutePopTimeoutInput{
+			ScrimID:                 scrimID,
+			QueueBanDurationMinutes: 60,
+		}); err != nil {
+			logger.Error("pop timeout execution failed", "scrimId", scrimID, "error", err)
+		}
+	})
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		trimmed := strings.TrimSpace(value)
@@ -1493,4 +2385,125 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// checkPermission reads the requesting principal and checks whether they hold
+// the required resource+action permission. Auth is resolved in order:
+//  1. Session cookie
+//  2. Bearer token validated by the TokenValidator (local/JWT format)
+//  3. Bearer token validated by the APITokenStore (spr_ machine tokens)
+//
+// It writes an appropriate HTTP error and returns false if the check fails.
+// Callers should return immediately when this returns false.
+func checkPermission(
+	w http.ResponseWriter,
+	r *http.Request,
+	cookieName, secret string,
+	tokenValidator auth.TokenValidator,
+	tokenStore apitoken.Store,
+	ev authz.Evaluator,
+	resource, action string,
+) bool {
+	var roles []string
+
+	if sp, ok := readSessionPrincipal(r, cookieName, secret); ok {
+		roles = sp.Roles
+	} else if tokenValidator != nil {
+		authHeader := r.Header.Get("Authorization")
+		if principal, err := tokenValidator.Validate(authHeader); err == nil && !principal.Anonymous {
+			roles = principal.Roles
+		} else if tokenStore != nil {
+			sp, ok := readAPIBearerPrincipal(r, tokenStore)
+			if !ok {
+				http.Error(w, "authentication required", http.StatusUnauthorized)
+				return false
+			}
+			roles = sp.Roles
+		} else {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return false
+		}
+	} else if tokenStore != nil {
+		sp, ok := readAPIBearerPrincipal(r, tokenStore)
+		if !ok {
+			http.Error(w, "authentication required", http.StatusUnauthorized)
+			return false
+		}
+		roles = sp.Roles
+	} else {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return false
+	}
+
+	if ev == nil {
+		// No evaluator configured — allow by default (development mode).
+		return true
+	}
+	if !ev.AllowedInContext(roles, nil, resource, action, authz.GlobalContext()) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return false
+	}
+	return true
+}
+
+// readAPIBearerPrincipal extracts a principal from an Authorization: Bearer
+// header using the APITokenStore (for spr_* machine tokens).
+func readAPIBearerPrincipal(r *http.Request, tokenStore apitoken.Store) (auth.SessionPrincipal, bool) {
+	authHeader := strings.TrimSpace(r.Header.Get("Authorization"))
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return auth.SessionPrincipal{}, false
+	}
+	rawToken := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer "))
+	if rawToken == "" {
+		return auth.SessionPrincipal{}, false
+	}
+	result, err := tokenStore.ValidateAPIToken(r.Context(), rawToken)
+	if err != nil {
+		return auth.SessionPrincipal{}, false
+	}
+	return auth.SessionPrincipal{
+		Subject:     result.Subject,
+		DisplayName: result.Subject,
+		Roles:       result.Scopes,
+		ExpiresAt:   time.Time{},
+	}, true
+}
+
+const oauthStateCookieName = "oauth_state"
+
+// generateOAuthState returns a cryptographically random hex string suitable
+// for use as an OAuth2 state parameter.
+func generateOAuthState() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+// setOAuthStateCookie writes a short-lived HttpOnly cookie containing the
+// OAuth state value. The cookie expires in 10 minutes.
+func setOAuthStateCookie(w http.ResponseWriter, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     oauthStateCookieName,
+		Value:    state,
+		Path:     "/",
+		MaxAge:   600,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// validateOAuthStateCookie checks that the provided state value matches the
+// oauth_state cookie on the request. It returns true only when the cookie is
+// present and the values match.
+func validateOAuthStateCookie(r *http.Request, providedState string) bool {
+	if strings.TrimSpace(providedState) == "" {
+		return false
+	}
+	cookie, err := r.Cookie(oauthStateCookieName)
+	if err != nil {
+		return false
+	}
+	return cookie.Value == providedState
 }

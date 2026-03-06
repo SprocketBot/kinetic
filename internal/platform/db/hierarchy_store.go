@@ -2,16 +2,19 @@ package db
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
 )
 
 type HierarchyStore struct {
@@ -28,6 +31,13 @@ type promotionCandidate struct {
 	entry            hierarchy.QueueEntry
 	teamRating       int32
 	queueWaitSeconds int32
+}
+
+type playerRatingSnapshot struct {
+	playerID      int64
+	rating        int32
+	uncertainty   int32
+	matchesPlayed int32
 }
 
 func NewHierarchyStore(db *sql.DB) *HierarchyStore {
@@ -1224,6 +1234,51 @@ ORDER BY queue_id ASC, created_at ASC, id ASC;`
 	return entries, nil
 }
 
+const scrimCols = `id, queue_id, home_team_id, away_team_id, state,
+       lobby_name, lobby_password, popped_at, home_checked_in_at, away_checked_in_at,
+       created_at, started_at, ended_at`
+
+func scanScrim(scanner interface{ Scan(...any) error }) (hierarchy.Scrim, error) {
+	var sc hierarchy.Scrim
+	var lobbyName, lobbyPassword sql.NullString
+	if err := scanner.Scan(
+		&sc.ID, &sc.QueueID, &sc.HomeTeamID, &sc.AwayTeamID, &sc.State,
+		&lobbyName, &lobbyPassword, &sc.PoppedAt, &sc.HomeCheckedInAt, &sc.AwayCheckedInAt,
+		&sc.CreatedAt, &sc.StartedAt, &sc.EndedAt,
+	); err != nil {
+		return hierarchy.Scrim{}, err
+	}
+	if lobbyName.Valid {
+		sc.LobbyName = &lobbyName.String
+	}
+	if lobbyPassword.Valid {
+		sc.LobbyPassword = &lobbyPassword.String
+	}
+	return sc, nil
+}
+
+const lobbyCharset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+func generateLobbyCredentials() (name, password string) {
+	randBytes := func(n int) []byte {
+		b := make([]byte, n)
+		_, _ = rand.Read(b)
+		return b
+	}
+	nameRaw := randBytes(6)
+	var nb strings.Builder
+	nb.WriteString("SPR-")
+	for _, v := range nameRaw {
+		nb.WriteByte(lobbyCharset[int(v)%len(lobbyCharset)])
+	}
+	passRaw := randBytes(8)
+	var pb strings.Builder
+	for _, v := range passRaw {
+		pb.WriteByte(lobbyCharset[int(v)%len(lobbyCharset)])
+	}
+	return nb.String(), pb.String()
+}
+
 func (s *HierarchyStore) CreateScrim(ctx context.Context, input hierarchy.CreateScrimInput) (hierarchy.Scrim, error) {
 	if err := hierarchy.ValidateCreateScrimInput(input); err != nil {
 		return hierarchy.Scrim{}, err
@@ -1232,18 +1287,8 @@ func (s *HierarchyStore) CreateScrim(ctx context.Context, input hierarchy.Create
 	const stmt = `
 INSERT INTO scrims(queue_id, home_team_id, away_team_id, state)
 VALUES ($1, $2, $3, $4)
-RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at;`
-	var scrim hierarchy.Scrim
-	err := s.db.QueryRowContext(ctx, stmt, input.QueueID, input.HomeTeamID, input.AwayTeamID, input.State).Scan(
-		&scrim.ID,
-		&scrim.QueueID,
-		&scrim.HomeTeamID,
-		&scrim.AwayTeamID,
-		&scrim.State,
-		&scrim.CreatedAt,
-		&scrim.StartedAt,
-		&scrim.EndedAt,
-	)
+RETURNING ` + scrimCols + `;`
+	scrim, err := scanScrim(s.db.QueryRowContext(ctx, stmt, input.QueueID, input.HomeTeamID, input.AwayTeamID, input.State))
 	if err != nil {
 		return hierarchy.Scrim{}, mapSQLError(err)
 	}
@@ -1264,43 +1309,30 @@ SET
 		ELSE started_at
 	END,
 	ended_at = CASE
-		WHEN $2 IN ('closed', 'voided') THEN NOW()
+		WHEN $2 IN ('closed', 'voided', 'cancelled') THEN NOW()
 		ELSE ended_at
 	END
 WHERE id = $1
   AND state <> $2
   AND (
-		(state = 'created' AND $2 IN ('in_progress', 'voided'))
+		(state = 'created'     AND $2 IN ('popped', 'in_progress', 'voided'))
+		OR (state = 'popped'   AND $2 IN ('in_progress', 'voided', 'cancelled'))
 		OR (state = 'in_progress' AND $2 IN ('closed', 'voided'))
   )
-RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at;`
+RETURNING ` + scrimCols + `;`
 
-	var scrim hierarchy.Scrim
-	err := s.db.QueryRowContext(ctx, stmt, input.ScrimID, input.State).Scan(
-		&scrim.ID,
-		&scrim.QueueID,
-		&scrim.HomeTeamID,
-		&scrim.AwayTeamID,
-		&scrim.State,
-		&scrim.CreatedAt,
-		&scrim.StartedAt,
-		&scrim.EndedAt,
-	)
+	scrim, err := scanScrim(s.db.QueryRowContext(ctx, stmt, input.ScrimID, input.State))
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return hierarchy.Scrim{}, fmt.Errorf("%w: scrim transition not allowed or scrim not found", hierarchy.ErrConflict)
 		}
 		return hierarchy.Scrim{}, mapSQLError(err)
 	}
-
 	return scrim, nil
 }
 
 func (s *HierarchyStore) ListScrims(ctx context.Context) ([]hierarchy.Scrim, error) {
-	const stmt = `
-SELECT id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at
-FROM scrims
-ORDER BY id ASC;`
+	stmt := `SELECT ` + scrimCols + ` FROM scrims ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
 	if err != nil {
 		return nil, err
@@ -1309,25 +1341,13 @@ ORDER BY id ASC;`
 
 	scrims := make([]hierarchy.Scrim, 0)
 	for rows.Next() {
-		var scrim hierarchy.Scrim
-		if err := rows.Scan(
-			&scrim.ID,
-			&scrim.QueueID,
-			&scrim.HomeTeamID,
-			&scrim.AwayTeamID,
-			&scrim.State,
-			&scrim.CreatedAt,
-			&scrim.StartedAt,
-			&scrim.EndedAt,
-		); err != nil {
+		sc, err := scanScrim(rows)
+		if err != nil {
 			return nil, err
 		}
-		scrims = append(scrims, scrim)
+		scrims = append(scrims, sc)
 	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return scrims, nil
+	return scrims, rows.Err()
 }
 
 func (s *HierarchyStore) PromoteQueueToScrim(ctx context.Context, input hierarchy.PromoteQueueToScrimInput) (hierarchy.Scrim, error) {
@@ -1402,15 +1422,23 @@ FOR UPDATE;`
 		})
 	}
 
-	bestLeft := 0
-	bestRight := 1
+	bestLeft := -1
+	bestRight := -1
 	for i := 0; i < len(candidates)-1; i++ {
 		for j := i + 1; j < len(candidates); j++ {
-			if isBetterPair(candidates[i], candidates[j], candidates[bestLeft], candidates[bestRight]) {
+			maxWait := max32(candidates[i].queueWaitSeconds, candidates[j].queueWaitSeconds)
+			radius := ratingRadiusForWait(maxWait)
+			if abs32(candidates[i].teamRating-candidates[j].teamRating) > radius {
+				continue
+			}
+			if bestLeft < 0 || isBetterPair(candidates[i], candidates[j], candidates[bestLeft], candidates[bestRight]) {
 				bestLeft = i
 				bestRight = j
 			}
 		}
+	}
+	if bestLeft < 0 {
+		return hierarchy.Scrim{}, fmt.Errorf("%w: no valid pair within expansion radius", hierarchy.ErrConflict)
 	}
 
 	home := candidates[bestLeft]
@@ -1418,23 +1446,17 @@ FOR UPDATE;`
 	ratingSpread := abs32(home.teamRating - away.teamRating)
 	waitSkewSeconds := abs32(home.queueWaitSeconds - away.queueWaitSeconds)
 	queueWaitSeconds := max32(home.queueWaitSeconds, away.queueWaitSeconds)
-	expansionStage := max32(home.entry.Stage, away.entry.Stage)
+	expansionStage := expansionStageForWait(queueWaitSeconds)
+	crossGroup := ratingSpread > 100
 
+	lobbyName, lobbyPassword := generateLobbyCredentials()
 	const createScrimStmt = `
-INSERT INTO scrims(queue_id, home_team_id, away_team_id, state)
-VALUES ($1, $2, $3, 'created')
-RETURNING id, queue_id, home_team_id, away_team_id, state, created_at, started_at, ended_at;`
-	var scrim hierarchy.Scrim
-	err = tx.QueryRowContext(ctx, createScrimStmt, input.QueueID, home.entry.TeamID, away.entry.TeamID).Scan(
-		&scrim.ID,
-		&scrim.QueueID,
-		&scrim.HomeTeamID,
-		&scrim.AwayTeamID,
-		&scrim.State,
-		&scrim.CreatedAt,
-		&scrim.StartedAt,
-		&scrim.EndedAt,
-	)
+INSERT INTO scrims(queue_id, home_team_id, away_team_id, state, lobby_name, lobby_password, popped_at)
+VALUES ($1, $2, $3, 'popped', $4, $5, NOW())
+RETURNING ` + scrimCols + `;`
+	scrim, err := scanScrim(tx.QueryRowContext(ctx, createScrimStmt,
+		input.QueueID, home.entry.TeamID, away.entry.TeamID, lobbyName, lobbyPassword,
+	))
 	if err != nil {
 		return hierarchy.Scrim{}, mapSQLError(err)
 	}
@@ -1472,7 +1494,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 		ratingSpread,
 		home.teamRating,
 		away.teamRating,
-		false,
+		crossGroup,
 		matchmakingOrderingStrategyV1,
 	); err != nil {
 		return hierarchy.Scrim{}, err
@@ -1517,13 +1539,16 @@ ORDER BY id ASC;`
 		}
 	}
 
-	result := hierarchy.ProcessQueuePromotionsResult{}
+	result := hierarchy.ProcessQueuePromotionsResult{
+		PoppedScrimIDs: make([]int64, 0),
+	}
 	for _, queueID := range queueIDs {
 		result.ProcessedQueues++
 		for {
-			_, err := s.PromoteQueueToScrim(ctx, hierarchy.PromoteQueueToScrimInput{QueueID: queueID})
+			scrim, err := s.PromoteQueueToScrim(ctx, hierarchy.PromoteQueueToScrimInput{QueueID: queueID})
 			if err == nil {
 				result.PromotionsCreated++
+				result.PoppedScrimIDs = append(result.PoppedScrimIDs, scrim.ID)
 				continue
 			}
 			if errors.Is(err, hierarchy.ErrConflict) || errors.Is(err, hierarchy.ErrDependency) {
@@ -2264,6 +2289,13 @@ RETURNING
 		&submission.CreatedAt,
 	); err != nil {
 		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+
+	// When both sides have ratified, trigger automated Glicko-2 rating updates.
+	if submission.State == "ratified" {
+		if err := s.applyRatingUpdatesInTx(ctx, tx, submission); err != nil {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("rating update failed: %w", err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -3230,6 +3262,49 @@ func isBetterPair(leftA, rightA, leftB, rightB promotionCandidate) bool {
 	return rightA.entry.ID < rightB.entry.ID
 }
 
+// computeGlicko2 applies one Glicko-2 style match update.
+// actualScore is 1.0 for a win, 0.0 for a loss.
+// opponentRating is the average rating of the opposing team.
+func computeGlicko2(snap playerRatingSnapshot, actualScore float64, opponentRating float64) (newRating, newUncertainty int32) {
+	const minUncertainty = 50.0
+	const uncertaintyDecayFactor = 0.95
+	expected := 1.0 / (1.0 + math.Pow(10.0, (opponentRating-float64(snap.rating))/400.0))
+	k := math.Max(16.0, math.Min(float64(snap.uncertainty)/3.0, 64.0))
+	delta := k * (actualScore - expected)
+	newR := math.Max(0, math.Min(9999, float64(snap.rating)+delta))
+	newU := math.Max(minUncertainty, float64(snap.uncertainty)*uncertaintyDecayFactor)
+	return int32(math.Round(newR)), int32(math.Round(newU))
+}
+
+// ratingRadiusForWait returns the maximum rating spread allowed for a pair
+// based on the longer-waiting team's queue wait time (Theme 5D expansion windows).
+func ratingRadiusForWait(waitSeconds int32) int32 {
+	switch {
+	case waitSeconds >= 600:
+		return 400
+	case waitSeconds >= 300:
+		return 250
+	case waitSeconds >= 120:
+		return 150
+	default:
+		return 100
+	}
+}
+
+// expansionStageForWait returns the discrete expansion stage (0–3) for a wait time.
+func expansionStageForWait(waitSeconds int32) int32 {
+	switch {
+	case waitSeconds >= 600:
+		return 3
+	case waitSeconds >= 300:
+		return 2
+	case waitSeconds >= 120:
+		return 1
+	default:
+		return 0
+	}
+}
+
 func abs32(v int32) int32 {
 	return int32(math.Abs(float64(v)))
 }
@@ -3246,6 +3321,240 @@ func maxTime(a, b time.Time) time.Time {
 		return a
 	}
 	return b
+}
+
+// applyRatingUpdatesInTx applies Glicko-2 rating updates for all participants in a
+// ratified result submission within the given transaction.
+func (s *HierarchyStore) applyRatingUpdatesInTx(ctx context.Context, tx *sql.Tx, sub hierarchy.ResultSubmission) error {
+	// Resolve context_key: use the queue slug for scrims, fallback for other contexts.
+	contextKey := fallbackRatingContextGlobalKey
+	if sub.ContextType == "scrim" {
+		const queueSlugStmt = `
+SELECT q.slug FROM scrims sc JOIN queues q ON q.id = sc.queue_id WHERE sc.id = $1;`
+		var slug string
+		if err := tx.QueryRowContext(ctx, queueSlugStmt, sub.ContextID).Scan(&slug); err == nil {
+			contextKey = slug
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+	}
+
+	// Collect roster for a team.
+	getRoster := func(teamID int64) ([]int64, error) {
+		rows, err := tx.QueryContext(ctx,
+			`SELECT player_id FROM roster_memberships WHERE team_id = $1 AND is_active = TRUE;`,
+			teamID,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var ids []int64
+		for rows.Next() {
+			var pid int64
+			if err := rows.Scan(&pid); err != nil {
+				rows.Close()
+				return nil, err
+			}
+			ids = append(ids, pid)
+		}
+		rows.Close()
+		return ids, rows.Err()
+	}
+
+	winnerIDs, err := getRoster(sub.WinningTeamID)
+	if err != nil {
+		return err
+	}
+	loserIDs, err := getRoster(sub.LosingTeamID)
+	if err != nil {
+		return err
+	}
+	if len(winnerIDs) == 0 && len(loserIDs) == 0 {
+		return nil
+	}
+
+	// Fetch current ratings for all participants.
+	const ratingStmt = `
+SELECT rating, uncertainty, matches_played
+FROM player_ratings
+WHERE player_id = $1 AND context_key = $2 AND is_active = TRUE;`
+	snapshots := make(map[int64]playerRatingSnapshot)
+	for _, pid := range append(winnerIDs, loserIDs...) {
+		snap := playerRatingSnapshot{
+			playerID:    pid,
+			rating:      defaultTeamRating,
+			uncertainty: 350,
+		}
+		err := tx.QueryRowContext(ctx, ratingStmt, pid, contextKey).Scan(
+			&snap.rating, &snap.uncertainty, &snap.matchesPlayed,
+		)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
+		snapshots[pid] = snap
+	}
+
+	// Compute average rating for a side.
+	avgRating := func(ids []int64) float64 {
+		if len(ids) == 0 {
+			return float64(defaultTeamRating)
+		}
+		var sum int64
+		for _, pid := range ids {
+			sum += int64(snapshots[pid].rating)
+		}
+		return float64(sum) / float64(len(ids))
+	}
+	winnerAvg := avgRating(winnerIDs)
+	loserAvg := avgRating(loserIDs)
+
+	reason := "scrim_result"
+	if sub.ContextType == "match" {
+		reason = "league_result"
+	}
+
+	const upsertRatingStmt = `
+INSERT INTO player_ratings(player_id, context_key, rating, uncertainty, matches_played, last_competed_at)
+VALUES ($1, $2, $3, $4, $5, NOW())
+ON CONFLICT (player_id, context_key) WHERE is_active = TRUE
+DO UPDATE SET
+	rating = EXCLUDED.rating,
+	uncertainty = EXCLUDED.uncertainty,
+	matches_played = EXCLUDED.matches_played,
+	last_competed_at = NOW(),
+	updated_at = NOW();`
+
+	const adjStmt = `
+INSERT INTO rating_adjustments(
+	actor_player_id, target_player_id, context_key,
+	previous_rating, new_rating,
+	previous_uncertainty, new_uncertainty,
+	previous_matches_played, new_matches_played,
+	reason
+) VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9);`
+
+	applyOne := func(pid int64, actualScore float64, opponentAvg float64, teamID int64) error {
+		snap := snapshots[pid]
+		newRating, newUncertainty := computeGlicko2(snap, actualScore, opponentAvg)
+		newMatchesPlayed := snap.matchesPlayed + 1
+
+		if _, err := tx.ExecContext(ctx, upsertRatingStmt,
+			pid, contextKey, newRating, newUncertainty, newMatchesPlayed,
+		); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, adjStmt,
+			pid, contextKey,
+			snap.rating, newRating,
+			snap.uncertainty, newUncertainty,
+			snap.matchesPlayed, newMatchesPlayed,
+			reason,
+		); err != nil {
+			return err
+		}
+		return s.evaluateSkillGroupBoundaryInTx(ctx, tx, pid, teamID, snap.rating, newRating, sub.ID)
+	}
+
+	for _, pid := range winnerIDs {
+		if err := applyOne(pid, 1.0, loserAvg, sub.WinningTeamID); err != nil {
+			return err
+		}
+	}
+	for _, pid := range loserIDs {
+		if err := applyOne(pid, 0.0, winnerAvg, sub.LosingTeamID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// evaluateSkillGroupBoundaryInTx checks whether a player's new rating crosses a
+// skill group boundary and, if so, records the transition and notifies the player.
+func (s *HierarchyStore) evaluateSkillGroupBoundaryInTx(ctx context.Context, tx *sql.Tx, playerID, teamID int64, oldRating, newRating int32, submissionID int64) error {
+	// Derive league from team → club → franchise → league.
+	const leagueStmt = `
+SELECT f.league_id
+FROM teams t
+JOIN clubs c ON c.id = t.club_id
+JOIN franchises f ON f.id = c.franchise_id
+WHERE t.id = $1;`
+	var leagueID int64
+	if err := tx.QueryRowContext(ctx, leagueStmt, teamID).Scan(&leagueID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	// Find the skill group the player was in (based on their previous rating).
+	const currentSgStmt = `
+SELECT id, promotion_threshold, demotion_threshold
+FROM skill_groups
+WHERE league_id = $1 AND is_active = TRUE
+ORDER BY
+    CASE WHEN rating_floor <= $2 AND $2 <= rating_ceiling THEN 0 ELSE 1 END,
+    display_order DESC
+LIMIT 1;`
+	var currentSgID int64
+	var promotionThreshold, demotionThreshold sql.NullInt32
+	if err := tx.QueryRowContext(ctx, currentSgStmt, leagueID, oldRating).Scan(
+		&currentSgID, &promotionThreshold, &demotionThreshold,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		return err
+	}
+
+	var targetSgID *int64
+	var direction string
+	if promotionThreshold.Valid && newRating >= promotionThreshold.Int32 {
+		const nextUpStmt = `
+SELECT id FROM skill_groups
+WHERE league_id = $1 AND is_active = TRUE
+  AND rating_floor > (SELECT rating_ceiling FROM skill_groups WHERE id = $2)
+ORDER BY display_order ASC
+LIMIT 1;`
+		var nextID int64
+		if err := tx.QueryRowContext(ctx, nextUpStmt, leagueID, currentSgID).Scan(&nextID); err == nil {
+			targetSgID = &nextID
+			direction = "promotion"
+		}
+	} else if demotionThreshold.Valid && newRating <= demotionThreshold.Int32 {
+		const nextDownStmt = `
+SELECT id FROM skill_groups
+WHERE league_id = $1 AND is_active = TRUE
+  AND rating_ceiling < (SELECT rating_floor FROM skill_groups WHERE id = $2)
+ORDER BY display_order DESC
+LIMIT 1;`
+		var nextID int64
+		if err := tx.QueryRowContext(ctx, nextDownStmt, leagueID, currentSgID).Scan(&nextID); err == nil {
+			targetSgID = &nextID
+			direction = "demotion"
+		}
+	}
+	if targetSgID == nil {
+		return nil
+	}
+
+	const transitionStmt = `
+INSERT INTO skill_group_transitions(player_id, from_skill_group_id, to_skill_group_id, rating_at_transition, direction)
+VALUES ($1, $2, $3, $4, $5);`
+	if _, err := tx.ExecContext(ctx, transitionStmt, playerID, currentSgID, *targetSgID, newRating, direction); err != nil {
+		return err
+	}
+
+	var msg string
+	if direction == "promotion" {
+		msg = fmt.Sprintf("Congratulations! Your rating of %d has earned you a promotion.", newRating)
+	} else {
+		msg = fmt.Sprintf("Your rating of %d has resulted in a demotion.", newRating)
+	}
+	_, err := tx.ExecContext(ctx,
+		`INSERT INTO player_notifications(player_id, category, context_type, context_id, message) VALUES ($1, $2, 'result_submission', $3, $4);`,
+		playerID, notifications.CategorySkillGroupChange, submissionID, msg,
+	)
+	return err
 }
 
 func (s *HierarchyStore) CreateSeason(ctx context.Context, input hierarchy.CreateSeasonInput) (hierarchy.Season, error) {
@@ -3466,6 +3775,568 @@ ORDER BY id ASC;`
 		return nil, err
 	}
 	return matches, nil
+}
+
+func (s *HierarchyStore) GetFixture(ctx context.Context, fixtureID int64) (hierarchy.Fixture, error) {
+	const stmt = `
+SELECT id, schedule_group_id, home_club_id, away_club_id, is_active, created_at
+FROM fixtures
+WHERE id = $1;`
+	var fixture hierarchy.Fixture
+	err := s.db.QueryRowContext(ctx, stmt, fixtureID).Scan(
+		&fixture.ID,
+		&fixture.ScheduleGroupID,
+		&fixture.HomeClubID,
+		&fixture.AwayClubID,
+		&fixture.IsActive,
+		&fixture.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Fixture{}, fmt.Errorf("%w: fixture not found", hierarchy.ErrDependency)
+		}
+		return hierarchy.Fixture{}, mapSQLError(err)
+	}
+	return fixture, nil
+}
+
+func (s *HierarchyStore) GetScrim(ctx context.Context, scrimID int64) (hierarchy.Scrim, error) {
+	stmt := `SELECT ` + scrimCols + ` FROM scrims WHERE id = $1;`
+	sc, err := scanScrim(s.db.QueryRowContext(ctx, stmt, scrimID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Scrim{}, fmt.Errorf("%w: scrim not found", hierarchy.ErrDependency)
+		}
+		return hierarchy.Scrim{}, mapSQLError(err)
+	}
+	return sc, nil
+}
+
+func (s *HierarchyStore) GetResultSubmission(ctx context.Context, submissionID int64) (hierarchy.ResultSubmission, error) {
+	const stmt = `
+SELECT
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at
+FROM result_submissions
+WHERE id = $1;`
+	var submission hierarchy.ResultSubmission
+	err := s.db.QueryRowContext(ctx, stmt, submissionID).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: result submission not found", hierarchy.ErrDependency)
+		}
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+	return submission, nil
+}
+
+func (s *HierarchyStore) ListResultSubmissionsFiltered(ctx context.Context, input hierarchy.ListResultSubmissionsInput) ([]hierarchy.ResultSubmission, error) {
+	query := `
+SELECT
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at
+FROM result_submissions`
+
+	args := make([]any, 0)
+	conditions := make([]string, 0)
+
+	if input.State != nil {
+		args = append(args, *input.State)
+		conditions = append(conditions, fmt.Sprintf("state = $%d", len(args)))
+	}
+	if input.TeamID != nil {
+		args = append(args, *input.TeamID)
+		conditions = append(conditions, fmt.Sprintf("(home_team_id = $%d OR away_team_id = $%d)", len(args), len(args)))
+	}
+
+	if len(conditions) > 0 {
+		query += "\nWHERE " + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += "\n  AND " + conditions[i]
+		}
+	}
+	query += "\nORDER BY id ASC;"
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	submissions := make([]hierarchy.ResultSubmission, 0)
+	for rows.Next() {
+		var submission hierarchy.ResultSubmission
+		if err := rows.Scan(
+			&submission.ID,
+			&submission.ContextType,
+			&submission.ContextID,
+			&submission.SubmittedByTeamID,
+			&submission.HomeTeamID,
+			&submission.AwayTeamID,
+			&submission.WinningTeamID,
+			&submission.LosingTeamID,
+			&submission.State,
+			&submission.PayloadJSON,
+			&submission.HomeRatifiedAt,
+			&submission.AwayRatifiedAt,
+			&submission.RejectedByTeamID,
+			&submission.RejectionReason,
+			&submission.RejectedAt,
+			&submission.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		submissions = append(submissions, submission)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return submissions, nil
+}
+
+func (s *HierarchyStore) ResetResultSubmission(ctx context.Context, input hierarchy.ResetResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	const stmt = `
+UPDATE result_submissions
+SET
+	state = 'pending',
+	rejected_by_team_id = NULL,
+	rejection_reason = NULL,
+	rejected_at = NULL,
+	home_ratified_at = NULL,
+	away_ratified_at = NULL
+WHERE id = $1
+  AND state = 'rejected'
+RETURNING
+	id,
+	context_type,
+	context_id,
+	submitted_by_team_id,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	home_ratified_at,
+	away_ratified_at,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at;`
+	var submission hierarchy.ResultSubmission
+	err := s.db.QueryRowContext(ctx, stmt, input.SubmissionID).Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.SubmittedByTeamID,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.HomeRatifiedAt,
+		&submission.AwayRatifiedAt,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission reset not allowed or not found", hierarchy.ErrConflict)
+		}
+		return hierarchy.ResultSubmission{}, mapSQLError(err)
+	}
+	return submission, nil
+}
+
+func (s *HierarchyStore) SetPlayerActive(ctx context.Context, input hierarchy.SetPlayerActiveInput) (hierarchy.Player, error) {
+	const stmt = `
+UPDATE players
+SET is_active = $1
+WHERE id = $2
+RETURNING id, display_name, slug, is_active, created_at;`
+	var player hierarchy.Player
+	err := s.db.QueryRowContext(ctx, stmt, input.IsActive, input.PlayerID).Scan(
+		&player.ID,
+		&player.DisplayName,
+		&player.Slug,
+		&player.IsActive,
+		&player.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Player{}, fmt.Errorf("%w: player not found", hierarchy.ErrDependency)
+		}
+		return hierarchy.Player{}, mapSQLError(err)
+	}
+	return player, nil
+}
+
+func (s *HierarchyStore) GetActiveRosterMembershipByPlayerID(ctx context.Context, playerID int64) (*hierarchy.RosterMembership, error) {
+	const stmt = `
+SELECT id, player_id, team_id, is_active, created_at
+FROM roster_memberships
+WHERE player_id = $1 AND is_active = true
+LIMIT 1;`
+	var rm hierarchy.RosterMembership
+	err := s.db.QueryRowContext(ctx, stmt, playerID).Scan(
+		&rm.ID, &rm.PlayerID, &rm.TeamID, &rm.IsActive, &rm.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &rm, nil
+}
+
+func (s *HierarchyStore) ListActiveQueueBansByPlayerID(ctx context.Context, playerID int64) ([]hierarchy.QueueBan, error) {
+	const stmt = `
+SELECT id, queue_id, player_id, banned_by_actor, ban_reason, is_active, banned_at,
+       unbanned_by_actor, unban_reason, unbanned_at
+FROM queue_bans
+WHERE player_id = $1 AND is_active = true
+ORDER BY banned_at DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	bans := make([]hierarchy.QueueBan, 0)
+	for rows.Next() {
+		var ban hierarchy.QueueBan
+		if err := rows.Scan(
+			&ban.ID, &ban.QueueID, &ban.PlayerID, &ban.BannedByActor, &ban.BanReason,
+			&ban.IsActive, &ban.BannedAt, &ban.UnbannedByActor, &ban.UnbanReason, &ban.UnbannedAt,
+		); err != nil {
+			return nil, err
+		}
+		bans = append(bans, ban)
+	}
+	return bans, rows.Err()
+}
+
+func (s *HierarchyStore) GetActiveQueueEntryByPlayerID(ctx context.Context, playerID int64) (*hierarchy.QueueEntry, error) {
+	const stmt = `
+SELECT qe.id, qe.queue_id, qe.team_id, qe.is_active, qe.stage, qe.created_at, qe.stage_at, qe.left_at
+FROM queue_entries qe
+JOIN roster_memberships rm ON rm.team_id = qe.team_id
+    AND rm.player_id = $1 AND rm.is_active = true
+WHERE qe.is_active = true AND qe.left_at IS NULL
+LIMIT 1;`
+	var qe hierarchy.QueueEntry
+	err := s.db.QueryRowContext(ctx, stmt, playerID).Scan(
+		&qe.ID, &qe.QueueID, &qe.TeamID, &qe.IsActive, &qe.Stage, &qe.CreatedAt, &qe.StageAt, &qe.LeftAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &qe, nil
+}
+
+func (s *HierarchyStore) GetActiveScrimByPlayerID(ctx context.Context, playerID int64) (*hierarchy.Scrim, error) {
+	const stmt = `
+SELECT s.id, s.queue_id, s.home_team_id, s.away_team_id, s.state,
+       s.lobby_name, s.lobby_password, s.popped_at, s.home_checked_in_at, s.away_checked_in_at,
+       s.created_at, s.started_at, s.ended_at
+FROM scrims s
+JOIN roster_memberships rm ON (rm.team_id = s.home_team_id OR rm.team_id = s.away_team_id)
+    AND rm.player_id = $1 AND rm.is_active = true
+WHERE s.state NOT IN ('closed', 'voided', 'cancelled')
+LIMIT 1;`
+	sc, err := scanScrim(s.db.QueryRowContext(ctx, stmt, playerID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &sc, nil
+}
+
+func (s *HierarchyStore) CheckInScrim(ctx context.Context, input hierarchy.CheckInScrimInput) (hierarchy.Scrim, error) {
+	const stmt = `
+UPDATE scrims
+SET
+	home_checked_in_at = CASE WHEN home_team_id = $2 THEN COALESCE(home_checked_in_at, NOW()) ELSE home_checked_in_at END,
+	away_checked_in_at = CASE WHEN away_team_id = $2 THEN COALESCE(away_checked_in_at, NOW()) ELSE away_checked_in_at END,
+	state = CASE
+		WHEN home_team_id = $2 AND away_checked_in_at IS NOT NULL THEN 'in_progress'
+		WHEN away_team_id = $2 AND home_checked_in_at IS NOT NULL THEN 'in_progress'
+		ELSE state
+	END,
+	started_at = CASE
+		WHEN home_team_id = $2 AND away_checked_in_at IS NOT NULL AND started_at IS NULL THEN NOW()
+		WHEN away_team_id = $2 AND home_checked_in_at IS NOT NULL AND started_at IS NULL THEN NOW()
+		ELSE started_at
+	END
+WHERE id = $1
+  AND state = 'popped'
+  AND (home_team_id = $2 OR away_team_id = $2)
+RETURNING ` + scrimCols + `;`
+
+	sc, err := scanScrim(s.db.QueryRowContext(ctx, stmt, input.ScrimID, input.TeamID))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return hierarchy.Scrim{}, fmt.Errorf("%w: scrim not found, not in popped state, or team is not a participant", hierarchy.ErrConflict)
+		}
+		return hierarchy.Scrim{}, mapSQLError(err)
+	}
+	return sc, nil
+}
+
+func (s *HierarchyStore) ExecutePopTimeout(ctx context.Context, input hierarchy.ExecutePopTimeoutInput) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// Lock and verify scrim is still popped.
+	const lockStmt = `
+SELECT id, queue_id, home_team_id, away_team_id, home_checked_in_at, away_checked_in_at
+FROM scrims WHERE id = $1 AND state = 'popped' FOR UPDATE;`
+	var scrimID, queueID, homeTeamID, awayTeamID int64
+	var homeCheckedInAt, awayCheckedInAt sql.NullTime
+	err = tx.QueryRowContext(ctx, lockStmt, input.ScrimID).Scan(
+		&scrimID, &queueID, &homeTeamID, &awayTeamID, &homeCheckedInAt, &awayCheckedInAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil // scrim already transitioned; no-op
+	}
+	if err != nil {
+		return err
+	}
+
+	// Cancel the scrim.
+	if _, err := tx.ExecContext(ctx, `UPDATE scrims SET state = 'cancelled', ended_at = NOW() WHERE id = $1`, scrimID); err != nil {
+		return err
+	}
+
+	banDuration := time.Duration(input.QueueBanDurationMinutes) * time.Minute
+	bannedAt := time.Now().UTC()
+	banUntil := bannedAt.Add(banDuration)
+	_ = banUntil // stored via ban_reason for now; future work can add expires_at to queue_bans
+
+	// Determine which teams need bans.
+	teamsToban := make([]int64, 0, 2)
+	if !homeCheckedInAt.Valid {
+		teamsToban = append(teamsToban, homeTeamID)
+	}
+	if !awayCheckedInAt.Valid {
+		teamsToban = append(teamsToban, awayTeamID)
+	}
+	if len(teamsToban) == 0 {
+		return tx.Commit() // both checked in somehow; just cancel
+	}
+
+	// Get queue slug for ban record.
+	var queueSlug string
+	if err := tx.QueryRowContext(ctx, `SELECT slug FROM queues WHERE id = $1`, queueID).Scan(&queueSlug); err != nil {
+		queueSlug = "unknown"
+	}
+
+	for _, teamID := range teamsToban {
+		// Get roster members for this team.
+		rows, err := tx.QueryContext(ctx,
+			`SELECT player_id FROM roster_memberships WHERE team_id = $1 AND is_active = true`, teamID)
+		if err != nil {
+			return err
+		}
+		playerIDs := make([]int64, 0)
+		for rows.Next() {
+			var pid int64
+			if err := rows.Scan(&pid); err != nil {
+				rows.Close()
+				return err
+			}
+			playerIDs = append(playerIDs, pid)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+
+		banReason := fmt.Sprintf("no-show: failed to check in for scrim %d within %d minutes", scrimID, input.QueueBanDurationMinutes)
+		for _, playerID := range playerIDs {
+			var banID int64
+			err := tx.QueryRowContext(ctx,
+				`INSERT INTO queue_bans(queue_id, player_id, banned_by_actor, ban_reason) VALUES($1, $2, 'system', $3) RETURNING id`,
+				queueID, playerID, banReason,
+			).Scan(&banID)
+			if err != nil {
+				return err
+			}
+			_, err = tx.ExecContext(ctx,
+				`INSERT INTO player_notifications(player_id, category, context_type, context_id, message)
+				 VALUES($1, $2, 'scrims', $3, $4)`,
+				playerID, notifications.CategoryQueueBan, scrimID,
+				fmt.Sprintf("You received a %d-minute queue ban for not checking in to your scrim.", input.QueueBanDurationMinutes),
+			)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (s *HierarchyStore) GetScrimMetrics(ctx context.Context) (hierarchy.ScrimMetrics, error) {
+	const stmt = `
+SELECT
+	(SELECT COUNT(DISTINCT rm.player_id)
+	 FROM queue_entries qe
+	 JOIN roster_memberships rm ON rm.team_id = qe.team_id AND rm.is_active = true
+	 WHERE qe.is_active = true AND qe.left_at IS NULL)                                 AS players_queued,
+	(SELECT COUNT(DISTINCT team_id)
+	 FROM (
+		 SELECT home_team_id AS team_id FROM scrims WHERE state IN ('popped', 'in_progress')
+		 UNION ALL
+		 SELECT away_team_id AS team_id FROM scrims WHERE state IN ('popped', 'in_progress')
+	 ) t)                                                                               AS teams_in_scrim,
+	(SELECT COUNT(*) FROM scrims WHERE state IN ('popped', 'in_progress'))             AS open_scrims,
+	(SELECT COUNT(*) FROM scrims WHERE state = 'closed'
+	 AND ended_at >= NOW() - INTERVAL '1 day')                                         AS scrims_closed_today,
+	(SELECT COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY queue_wait_seconds), 0)
+	 FROM matchmaking_decisions
+	 WHERE created_at >= NOW() - INTERVAL '1 day')                                     AS avg_wait_seconds_p50;`
+
+	var m hierarchy.ScrimMetrics
+	err := s.db.QueryRowContext(ctx, stmt).Scan(
+		&m.PlayersQueued,
+		&m.TeamsInScrim,
+		&m.OpenScrims,
+		&m.ScrimsClosedToday,
+		&m.AvgWaitSecondsP50,
+	)
+	if err != nil {
+		return hierarchy.ScrimMetrics{}, err
+	}
+	return m, nil
+}
+
+// TriggerReplayParse inserts stub round and player stat line data for the
+// replay evidence identified by evidenceID. It is intended to be called as a
+// background goroutine after IngestReplayEvidence succeeds. The implementation
+// is a stub: it creates 3 rounds with deterministic dummy stat lines instead of
+// parsing actual Rocket League replay bytes.
+func (s *HierarchyStore) TriggerReplayParse(ctx context.Context, evidenceID, contextID int64, contextType string) error {
+	// Find the result submission linked to this evidence, if any.
+	const findSubmissionStmt = `
+SELECT result_submission_id
+FROM result_submission_replay_links
+WHERE replay_evidence_id = $1
+LIMIT 1;`
+	var submissionID int64
+	err := s.db.QueryRowContext(ctx, findSubmissionStmt, evidenceID).Scan(&submissionID)
+	if err != nil {
+		// No submission linked yet — nothing to do.
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	const numRounds = 3
+	const playersPerTeam = 3 // standard 3v3
+
+	// Stub round durations (seconds) — deterministic values.
+	roundDurations := [numRounds]int32{300, 285, 315}
+
+	for roundNum := int32(1); roundNum <= numRounds; roundNum++ {
+		var roundID int64
+		const insertRoundStmt = `
+INSERT INTO rounds(submission_id, round_number, duration_seconds)
+VALUES ($1, $2, $3)
+ON CONFLICT (submission_id, round_number) DO NOTHING
+RETURNING id;`
+		err := tx.QueryRowContext(ctx, insertRoundStmt, submissionID, roundNum, roundDurations[roundNum-1]).Scan(&roundID)
+		if err != nil {
+			// Round already exists — skip stat lines for this round.
+			continue
+		}
+
+		// Insert stub player stat lines for 6 players (3 per team).
+		// Values are derived deterministically from submissionID, roundNum, and
+		// the player's position index so that repeated calls produce consistent
+		// data without importing math/rand.
+		for pos := int32(0); pos < int32(playersPerTeam*2); pos++ {
+			seed := submissionID*100 + int64(roundNum)*10 + int64(pos)
+			goals := int32(seed%3)   // 0–2
+			assists := int32(seed%2) // 0–1
+			saves := int32(seed%4)   // 0–3
+			shots := goals + int32(seed%3)
+			score := goals*100 + assists*50 + saves*30 + shots*20
+
+			replayIdentity := fmt.Sprintf("stub-player-%d-%d-%d", submissionID, roundNum, pos)
+
+			const insertStatStmt = `
+INSERT INTO player_stat_lines(round_id, replay_identity, goals, assists, saves, shots, score)
+VALUES ($1, $2, $3, $4, $5, $6, $7);`
+			if _, err := tx.ExecContext(ctx, insertStatStmt,
+				roundID, replayIdentity, goals, assists, saves, shots, score,
+			); err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit()
 }
 
 func mapSQLError(err error) error {

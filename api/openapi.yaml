@@ -1,0 +1,4678 @@
+openapi: "3.1.0"
+
+info:
+  title: "Sprocket v3 API"
+  version: "0.1.0"
+  description: |
+    REST API for the Sprocket v3 Rocket League esports league management platform.
+
+    ## Authentication
+    Most read endpoints are publicly accessible. Write and sensitive operations
+    require authentication via either a session cookie (set by the OAuth login flow)
+    or an HTTP Bearer token (API token issued via `/v1/api-tokens`).
+
+    ## Permission model
+    Protected routes enforce a resource/action pair checked against the caller's
+    roles. Available resources are defined in `authz.resources` and include
+    `league`, `franchise`, `club`, `team`, `player`, `roster_membership`,
+    `role_assignment`, `queue`, `queue_entry`, `queue_ban`, `scrim`,
+    `scrim_promotion`, `result_submission`, `result_override`, `replay_evidence`,
+    `platform_account_link`, `player_rating`, `rating_adjustment`,
+    `matchmaking_decision`, `exception_ticket`, `season`, `schedule_group`,
+    `fixture`, `match`, `eligibility`, `player_stat`, `skill_group`,
+    `skill_group_transition`, `organization_config`, `api_token`, and
+    `player_notification`.
+
+servers:
+  - url: "http://localhost:8080"
+    description: "Local development server"
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: sprocket_session
+      description: "Signed session token set by the OAuth login flow."
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: "Long-lived API token issued via POST /v1/api-tokens."
+
+  schemas:
+    # ── Utility ────────────────────────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        service:
+          type: string
+          example: "sprocket-v3-api"
+        timestamp:
+          type: string
+          format: date-time
+      required:
+        - status
+        - service
+        - timestamp
+
+    SessionPrincipal:
+      type: object
+      properties:
+        subject:
+          type: string
+          description: "Unique identifier for the authenticated user (e.g. discord:<snowflake>)."
+        displayName:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+      required:
+        - subject
+        - displayName
+        - roles
+
+    # ── Hierarchy ──────────────────────────────────────────────────────────────
+    League:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    Franchise:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        leagueId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - leagueId
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    Club:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        franchiseId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - franchiseId
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        clubId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clubId
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        displayName:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - displayName
+        - slug
+        - isActive
+        - createdAt
+
+    RosterMembership:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        teamId:
+          type: integer
+          format: int64
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - teamId
+        - isActive
+        - createdAt
+
+    RoleAssignment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        role:
+          type: string
+        franchiseId:
+          type: integer
+          format: int64
+          nullable: true
+        clubId:
+          type: integer
+          format: int64
+          nullable: true
+        teamId:
+          type: integer
+          format: int64
+          nullable: true
+        assignedByActorPlayerId:
+          type: integer
+          format: int64
+        assignReason:
+          type: string
+        isActive:
+          type: boolean
+        assignedAt:
+          type: string
+          format: date-time
+        revokedByActorPlayerId:
+          type: integer
+          format: int64
+          nullable: true
+        revokeReason:
+          type: string
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - playerId
+        - role
+        - assignedByActorPlayerId
+        - assignReason
+        - isActive
+        - assignedAt
+
+    # ── Queue ──────────────────────────────────────────────────────────────────
+    Queue:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    QueueEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        queueId:
+          type: integer
+          format: int64
+        teamId:
+          type: integer
+          format: int64
+        isActive:
+          type: boolean
+        stage:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+        stageAt:
+          type: string
+          format: date-time
+        leftAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - queueId
+        - teamId
+        - isActive
+        - stage
+        - createdAt
+        - stageAt
+
+    QueueBan:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        queueId:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        bannedByActor:
+          type: string
+        banReason:
+          type: string
+        isActive:
+          type: boolean
+        bannedAt:
+          type: string
+          format: date-time
+        unbannedByActor:
+          type: string
+          nullable: true
+        unbanReason:
+          type: string
+          nullable: true
+        unbannedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - queueId
+        - playerId
+        - bannedByActor
+        - banReason
+        - isActive
+        - bannedAt
+
+    # ── Scrim ──────────────────────────────────────────────────────────────────
+    Scrim:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        queueId:
+          type: integer
+          format: int64
+        homeTeamId:
+          type: integer
+          format: int64
+        awayTeamId:
+          type: integer
+          format: int64
+        state:
+          type: string
+          description: "State machine value (e.g. popped, checked_in, in_progress, complete, cancelled)."
+        lobbyName:
+          type: string
+          nullable: true
+        lobbyPassword:
+          type: string
+          nullable: true
+        poppedAt:
+          type: string
+          format: date-time
+          nullable: true
+        homeCheckedInAt:
+          type: string
+          format: date-time
+          nullable: true
+        awayCheckedInAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - queueId
+        - homeTeamId
+        - awayTeamId
+        - state
+        - createdAt
+
+    ScrimMetrics:
+      type: object
+      properties:
+        playersQueued:
+          type: integer
+          format: int32
+        teamsInScrim:
+          type: integer
+          format: int32
+        openScrims:
+          type: integer
+          format: int32
+        scrimsClosedToday:
+          type: integer
+          format: int32
+        avgWaitSecondsP50:
+          type: number
+          format: double
+      required:
+        - playersQueued
+        - teamsInScrim
+        - openScrims
+        - scrimsClosedToday
+        - avgWaitSecondsP50
+
+    ProcessQueuePromotionsResult:
+      type: object
+      properties:
+        processedQueues:
+          type: integer
+          format: int32
+        promotionsCreated:
+          type: integer
+          format: int32
+        conflicts:
+          type: integer
+          format: int32
+        poppedScrimIds:
+          type: array
+          items:
+            type: integer
+            format: int64
+      required:
+        - processedQueues
+        - promotionsCreated
+        - conflicts
+        - poppedScrimIds
+
+    PromotionProcessingRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        queueId:
+          type: integer
+          format: int64
+          nullable: true
+        processedQueues:
+          type: integer
+          format: int32
+        promotionsCreated:
+          type: integer
+          format: int32
+        conflicts:
+          type: integer
+          format: int32
+        durationMs:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - processedQueues
+        - promotionsCreated
+        - conflicts
+        - durationMs
+        - createdAt
+
+    # ── Ratings ────────────────────────────────────────────────────────────────
+    PlayerRating:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        contextKey:
+          type: string
+          description: "Opaque key identifying the rating context (e.g. queue slug)."
+        rating:
+          type: integer
+          format: int32
+        uncertainty:
+          type: integer
+          format: int32
+        matchesPlayed:
+          type: integer
+          format: int32
+        lastCompetedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - contextKey
+        - rating
+        - uncertainty
+        - matchesPlayed
+        - isActive
+        - updatedAt
+
+    RatingAdjustment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        actorPlayerId:
+          type: integer
+          format: int64
+        targetPlayerId:
+          type: integer
+          format: int64
+        contextKey:
+          type: string
+        previousRating:
+          type: integer
+          format: int32
+        newRating:
+          type: integer
+          format: int32
+        previousUncertainty:
+          type: integer
+          format: int32
+        newUncertainty:
+          type: integer
+          format: int32
+        previousMatchesPlayed:
+          type: integer
+          format: int32
+        newMatchesPlayed:
+          type: integer
+          format: int32
+        reason:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - actorPlayerId
+        - targetPlayerId
+        - contextKey
+        - previousRating
+        - newRating
+        - previousUncertainty
+        - newUncertainty
+        - previousMatchesPlayed
+        - newMatchesPlayed
+        - reason
+        - createdAt
+
+    MatchmakingDecision:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        scrimId:
+          type: integer
+          format: int64
+        queueId:
+          type: integer
+          format: int64
+        queueWaitSeconds:
+          type: integer
+          format: int32
+        waitSkewSeconds:
+          type: integer
+          format: int32
+        expansionStage:
+          type: integer
+          format: int32
+        ratingSpread:
+          type: integer
+          format: int32
+        homeTeamRating:
+          type: integer
+          format: int32
+        awayTeamRating:
+          type: integer
+          format: int32
+        crossGroup:
+          type: boolean
+        orderingStrategy:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - scrimId
+        - queueId
+        - queueWaitSeconds
+        - waitSkewSeconds
+        - expansionStage
+        - ratingSpread
+        - homeTeamRating
+        - awayTeamRating
+        - crossGroup
+        - orderingStrategy
+        - createdAt
+
+    # ── Results ────────────────────────────────────────────────────────────────
+    ResultSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        contextType:
+          type: string
+          description: "Either 'scrim' or 'match'."
+        contextId:
+          type: integer
+          format: int64
+        submittedByTeamId:
+          type: integer
+          format: int64
+        homeTeamId:
+          type: integer
+          format: int64
+        awayTeamId:
+          type: integer
+          format: int64
+        winningTeamId:
+          type: integer
+          format: int64
+        losingTeamId:
+          type: integer
+          format: int64
+        state:
+          type: string
+          description: "Workflow state (e.g. pending, ratified, rejected, overridden)."
+        payloadJson:
+          description: "Arbitrary JSON payload attached to the submission."
+        homeRatifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        awayRatifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        rejectedByTeamId:
+          type: integer
+          format: int64
+          nullable: true
+        rejectionReason:
+          type: string
+          nullable: true
+        rejectedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - contextType
+        - contextId
+        - submittedByTeamId
+        - homeTeamId
+        - awayTeamId
+        - winningTeamId
+        - losingTeamId
+        - state
+        - createdAt
+
+    ResultOverride:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        submissionId:
+          type: integer
+          format: int64
+        actor:
+          type: string
+        reason:
+          type: string
+        previousWinningTeamId:
+          type: integer
+          format: int64
+        previousLosingTeamId:
+          type: integer
+          format: int64
+        newWinningTeamId:
+          type: integer
+          format: int64
+        newLosingTeamId:
+          type: integer
+          format: int64
+        previousState:
+          type: string
+        newState:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - submissionId
+        - actor
+        - reason
+        - previousWinningTeamId
+        - previousLosingTeamId
+        - newWinningTeamId
+        - newLosingTeamId
+        - previousState
+        - newState
+        - createdAt
+
+    # ── Replay ─────────────────────────────────────────────────────────────────
+    ReplayEvidence:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        contextType:
+          type: string
+        contextId:
+          type: integer
+          format: int64
+        submittedByTeamId:
+          type: integer
+          format: int64
+        replaySha256:
+          type: string
+        contentSizeBytes:
+          type: integer
+          format: int64
+        storageRef:
+          type: string
+        state:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - contextType
+        - contextId
+        - submittedByTeamId
+        - replaySha256
+        - contentSizeBytes
+        - storageRef
+        - state
+        - createdAt
+
+    ReplayParseRun:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        replayEvidenceId:
+          type: integer
+          format: int64
+        parserName:
+          type: string
+        parserVersion:
+          type: string
+        parserConfigDigest:
+          type: string
+        status:
+          type: string
+        outputJson:
+          description: "Raw parsed output from the replay parser."
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - replayEvidenceId
+        - parserName
+        - parserVersion
+        - parserConfigDigest
+        - status
+        - createdAt
+
+    ReplayIngestionResult:
+      type: object
+      properties:
+        evidence:
+          $ref: "#/components/schemas/ReplayEvidence"
+        parseRun:
+          $ref: "#/components/schemas/ReplayParseRun"
+        duplicate:
+          type: boolean
+        linkedSubmissionId:
+          type: integer
+          format: int64
+          nullable: true
+      required:
+        - evidence
+        - parseRun
+        - duplicate
+
+    ResultSubmissionReplayLink:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        resultSubmissionId:
+          type: integer
+          format: int64
+        replayEvidenceId:
+          type: integer
+          format: int64
+        linkedByTeamId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - resultSubmissionId
+        - replayEvidenceId
+        - linkedByTeamId
+        - createdAt
+
+    # ── Stats ──────────────────────────────────────────────────────────────────
+    PlayerStatLine:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        roundId:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+          nullable: true
+        replayIdentity:
+          type: string
+        goals:
+          type: integer
+          format: int32
+        assists:
+          type: integer
+          format: int32
+        saves:
+          type: integer
+          format: int32
+        shots:
+          type: integer
+          format: int32
+        score:
+          type: integer
+          format: int32
+        opi:
+          type: number
+          format: double
+          description: "Offensive performance index."
+        dpi:
+          type: number
+          format: double
+          description: "Defensive performance index."
+        gpi:
+          type: number
+          format: double
+          description: "General performance index (opi + dpi)."
+      required:
+        - id
+        - roundId
+        - replayIdentity
+        - goals
+        - assists
+        - saves
+        - shots
+        - score
+        - opi
+        - dpi
+        - gpi
+
+    PlayerCareerStats:
+      type: object
+      properties:
+        playerId:
+          type: integer
+          format: int64
+        totalGames:
+          type: integer
+          format: int32
+        totalGoals:
+          type: integer
+          format: int32
+        totalAssists:
+          type: integer
+          format: int32
+        totalSaves:
+          type: integer
+          format: int32
+        totalShots:
+          type: integer
+          format: int32
+        avgOpi:
+          type: number
+          format: double
+        avgDpi:
+          type: number
+          format: double
+        avgGpi:
+          type: number
+          format: double
+      required:
+        - playerId
+        - totalGames
+        - totalGoals
+        - totalAssists
+        - totalSaves
+        - totalShots
+        - avgOpi
+        - avgDpi
+        - avgGpi
+
+    # ── Exceptions ─────────────────────────────────────────────────────────────
+    ExceptionTicket:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        category:
+          type: string
+        contextType:
+          type: string
+        contextId:
+          type: integer
+          format: int64
+        reportedByTeamId:
+          type: integer
+          format: int64
+          nullable: true
+        state:
+          type: string
+        reasonCode:
+          type: string
+        severity:
+          type: integer
+          format: int32
+        suggestedAction:
+          type: string
+        detailsJson:
+          description: "Arbitrary JSON details for the exception."
+        resolutionCode:
+          type: string
+          nullable: true
+        openedAt:
+          type: string
+          format: date-time
+        triagedAt:
+          type: string
+          format: date-time
+          nullable: true
+        resolvedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - category
+        - contextType
+        - contextId
+        - state
+        - reasonCode
+        - severity
+        - suggestedAction
+        - openedAt
+
+    ExceptionAction:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        ticketId:
+          type: integer
+          format: int64
+        actionType:
+          type: string
+        actor:
+          type: string
+        automated:
+          type: boolean
+        notes:
+          type: string
+        minutesSpent:
+          type: integer
+          format: int32
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - ticketId
+        - actionType
+        - actor
+        - automated
+        - notes
+        - minutesSpent
+        - createdAt
+
+    ExceptionMetrics:
+      type: object
+      properties:
+        adminHoursPerWeek:
+          type: number
+          format: double
+        manualTouchesPerFixture:
+          type: number
+          format: double
+        zeroTouchFixtureRate:
+          type: number
+          format: double
+        timeToCloseHoursP50:
+          type: number
+          format: double
+      required:
+        - adminHoursPerWeek
+        - manualTouchesPerFixture
+        - zeroTouchFixtureRate
+        - timeToCloseHoursP50
+
+    ExceptionAutomationResult:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/ExceptionTicket"
+        autoResolved:
+          type: boolean
+      required:
+        - ticket
+        - autoResolved
+
+    # ── Scheduling ─────────────────────────────────────────────────────────────
+    Season:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - isActive
+        - createdAt
+
+    ScheduleGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        seasonId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        sequence:
+          type: integer
+          format: int32
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - seasonId
+        - name
+        - sequence
+        - isActive
+        - createdAt
+
+    Fixture:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        scheduleGroupId:
+          type: integer
+          format: int64
+        homeClubId:
+          type: integer
+          format: int64
+        awayClubId:
+          type: integer
+          format: int64
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - scheduleGroupId
+        - homeClubId
+        - awayClubId
+        - isActive
+        - createdAt
+
+    Match:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        fixtureId:
+          type: integer
+          format: int64
+        homeTeamId:
+          type: integer
+          format: int64
+        awayTeamId:
+          type: integer
+          format: int64
+        state:
+          type: string
+        scheduledFor:
+          type: string
+          format: date-time
+          nullable: true
+        homeTimeRatifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        awayTimeRatifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fixtureId
+        - homeTeamId
+        - awayTeamId
+        - state
+        - createdAt
+
+    # ── Skill Groups ───────────────────────────────────────────────────────────
+    SkillGroup:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        leagueId:
+          type: integer
+          format: int64
+        name:
+          type: string
+        displayOrder:
+          type: integer
+          format: int32
+        ratingFloor:
+          type: integer
+          format: int32
+        ratingCeiling:
+          type: integer
+          format: int32
+        promotionThreshold:
+          type: integer
+          format: int32
+          nullable: true
+        demotionThreshold:
+          type: integer
+          format: int32
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - leagueId
+        - name
+        - displayOrder
+        - ratingFloor
+        - ratingCeiling
+        - isActive
+        - createdAt
+
+    SkillGroupTransition:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        fromSkillGroupId:
+          type: integer
+          format: int64
+          nullable: true
+        toSkillGroupId:
+          type: integer
+          format: int64
+        ratingAtTransition:
+          type: integer
+          format: int32
+        direction:
+          type: string
+          description: "Either 'promotion' or 'demotion'."
+        effectiveAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - toSkillGroupId
+        - ratingAtTransition
+        - direction
+        - effectiveAt
+
+    # ── Org Config ─────────────────────────────────────────────────────────────
+    OrgConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        leagueId:
+          type: integer
+          format: int64
+        key:
+          type: string
+          description: >
+            One of: scrim.pop_timeout_minutes, scrim.queue_ban_initial_duration_minutes,
+            scrim.queue_ban_duration_modifier, scrim.queue_ban_modifier_falloff_days,
+            scrim.required_ratifications, queue.expansion_interval_seconds.
+        value:
+          type: string
+        updatedBy:
+          type: integer
+          format: int64
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - leagueId
+        - key
+        - value
+        - updatedAt
+
+    # ── Platform Accounts ──────────────────────────────────────────────────────
+    PlatformAccountLink:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        subject:
+          type: string
+        provider:
+          type: string
+          description: "OAuth provider identifier (e.g. 'discord')."
+        providerAccountId:
+          type: string
+        providerAccountName:
+          type: string
+        isActive:
+          type: boolean
+        linkedAt:
+          type: string
+          format: date-time
+        unlinkedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - subject
+        - provider
+        - providerAccountId
+        - providerAccountName
+        - isActive
+        - linkedAt
+
+    # ── Eligibility ────────────────────────────────────────────────────────────
+    EligibilityProjectionPoint:
+      type: object
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+        points:
+          type: integer
+          format: int32
+        isEligible:
+          type: boolean
+      required:
+        - effectiveAt
+        - points
+        - isEligible
+
+    EligibilityStatus:
+      type: object
+      properties:
+        subject:
+          type: string
+        points:
+          type: integer
+          format: int32
+        thresholdPoints:
+          type: integer
+          format: int32
+        decayPerWeek:
+          type: integer
+          format: int32
+        eligibleUntil:
+          type: string
+          format: date-time
+        evaluatedAt:
+          type: string
+          format: date-time
+        projection:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibilityProjectionPoint"
+      required:
+        - subject
+        - points
+        - thresholdPoints
+        - decayPerWeek
+        - eligibleUntil
+        - evaluatedAt
+        - projection
+
+    # ── Notifications ──────────────────────────────────────────────────────────
+    PlayerNotification:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        category:
+          type: string
+          description: >
+            One of: scrim_popped, queue_ban, ratification_needed,
+            skill_group_change, roster_change.
+        contextType:
+          type: string
+          nullable: true
+        contextId:
+          type: integer
+          format: int64
+          nullable: true
+        message:
+          type: string
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - playerId
+        - category
+        - message
+        - createdAt
+
+    # ── API Tokens ─────────────────────────────────────────────────────────────
+    APIToken:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        tokenPrefix:
+          type: string
+          description: "First few characters of the token, shown for identification only."
+        subject:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        createdBy:
+          type: integer
+          format: int64
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - tokenPrefix
+        - subject
+        - scopes
+        - createdAt
+
+    APITokenCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/APIToken"
+        - type: object
+          properties:
+            plainTextToken:
+              type: string
+              description: "The raw token value. Only returned once at creation time."
+          required:
+            - plainTextToken
+
+    # ── Provider info ──────────────────────────────────────────────────────────
+    ProviderInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+      required:
+        - id
+        - name
+        - enabled
+
+# =============================================================================
+# Paths
+# =============================================================================
+paths:
+
+  # ── Health ──────────────────────────────────────────────────────────────────
+  /healthz:
+    get:
+      operationId: getHealth
+      summary: "Liveness probe"
+      tags:
+        - health
+      responses:
+        "200":
+          description: "Service is alive."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /readyz:
+    get:
+      operationId: getReady
+      summary: "Readiness probe"
+      tags:
+        - health
+      responses:
+        "200":
+          description: "Service is ready to accept traffic."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+  /v1/auth/providers:
+    get:
+      operationId: listAuthProviders
+      summary: "List configured OAuth providers"
+      tags:
+        - auth
+      responses:
+        "200":
+          description: "List of providers."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProviderInfo"
+
+  /v1/auth/login:
+    get:
+      operationId: authLogin
+      summary: "Initiate OAuth login flow"
+      tags:
+        - auth
+      parameters:
+        - name: provider
+          in: query
+          required: false
+          description: "OAuth provider to use. Defaults to local/dev flow."
+          schema:
+            type: string
+            enum:
+              - discord
+              - local
+        - name: subject
+          in: query
+          required: false
+          description: "Subject override for local/dev flow."
+          schema:
+            type: string
+        - name: displayName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: roles
+          in: query
+          required: false
+          description: "Comma-separated roles for local/dev flow."
+          schema:
+            type: string
+        - name: redirect
+          in: query
+          required: false
+          description: "URL to redirect to after login."
+          schema:
+            type: string
+      responses:
+        "302":
+          description: "Redirects to the OAuth provider or to the callback for local flow."
+        "400":
+          description: "Unknown provider."
+        "501":
+          description: "Provider not configured."
+
+  /v1/auth/callback:
+    get:
+      operationId: authCallback
+      summary: "OAuth callback — exchanges code for session cookie"
+      tags:
+        - auth
+      parameters:
+        - name: provider
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: code
+          in: query
+          required: false
+          description: "Authorization code from OAuth provider."
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          description: "CSRF state parameter."
+          schema:
+            type: string
+        - name: redirect
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: "Redirects to the web app after setting session cookie."
+        "400":
+          description: "Invalid state or missing code."
+        "502":
+          description: "OAuth provider error."
+
+  /v1/auth/logout:
+    post:
+      operationId: authLogout
+      summary: "Clear the session cookie"
+      tags:
+        - auth
+      responses:
+        "204":
+          description: "Session cookie cleared."
+
+  /v1/session:
+    get:
+      operationId: getSession
+      summary: "Get current authenticated principal"
+      tags:
+        - auth
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "Current session principal."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionPrincipal"
+        "401":
+          description: "Not authenticated."
+
+  /v1/admin/ping:
+    get:
+      operationId: adminPing
+      summary: "Admin liveness check — verifies authentication and admin.ping permission"
+      tags:
+        - auth
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: "OK."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  subject:
+                    type: string
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions."
+
+  # ── Hierarchy: Leagues ─────────────────────────────────────────────────────
+  /v1/leagues:
+    get:
+      operationId: listLeagues
+      summary: "List all leagues"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All leagues."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/League"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createLeague
+      summary: "Create a new league"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created league."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/League"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict (duplicate slug)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Hierarchy: Franchises ──────────────────────────────────────────────────
+  /v1/franchises:
+    get:
+      operationId: listFranchises
+      summary: "List all franchises"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All franchises."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Franchise"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createFranchise
+      summary: "Create a new franchise"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                leagueId:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - leagueId
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created franchise."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Franchise"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Hierarchy: Clubs ───────────────────────────────────────────────────────
+  /v1/clubs:
+    get:
+      operationId: listClubs
+      summary: "List all clubs"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All clubs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Club"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createClub
+      summary: "Create a new club"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                franchiseId:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - franchiseId
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created club."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Club"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Hierarchy: Teams ───────────────────────────────────────────────────────
+  /v1/teams:
+    get:
+      operationId: listTeams
+      summary: "List all teams"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All teams."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createTeam
+      summary: "Create a new team"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clubId:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - clubId
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created team."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Hierarchy: Players ─────────────────────────────────────────────────────
+  /v1/players:
+    get:
+      operationId: listPlayers
+      summary: "List all players"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All players."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createPlayer
+      summary: "Create a new player"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - displayName
+                - slug
+      responses:
+        "201":
+          description: "Created player."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/players/{id}/activate:
+    post:
+      operationId: activatePlayer
+      summary: "Mark a player as active"
+      tags:
+        - hierarchy
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Updated player."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "400":
+          description: "Invalid player ID."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (player:update required)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/players/{id}/deactivate:
+    post:
+      operationId: deactivatePlayer
+      summary: "Mark a player as inactive"
+      tags:
+        - hierarchy
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Updated player."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+        "400":
+          description: "Invalid player ID."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (player:update required)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/players/{id}/career-stats:
+    get:
+      operationId: getPlayerCareerStats
+      summary: "Get career-aggregate stats for a player"
+      tags:
+        - replay
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Career stats."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerCareerStats"
+        "400":
+          description: "Invalid player ID."
+        "503":
+          description: "Replay stats store unavailable."
+
+  /v1/players/{id}/skill-group-transitions:
+    get:
+      operationId: listPlayerSkillGroupTransitions
+      summary: "List skill-group transitions for a player"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Transitions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SkillGroupTransition"
+        "400":
+          description: "Invalid player ID."
+        "503":
+          description: "Skill group store unavailable."
+
+  # ── Hierarchy: Roster memberships ──────────────────────────────────────────
+  /v1/roster-memberships:
+    get:
+      operationId: listRosterMemberships
+      summary: "List all roster memberships"
+      tags:
+        - hierarchy
+      responses:
+        "200":
+          description: "All roster memberships."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RosterMembership"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createRosterMembership
+      summary: "Add a player to a team roster"
+      tags:
+        - hierarchy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                playerId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+              required:
+                - playerId
+                - teamId
+      responses:
+        "201":
+          description: "Created membership."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RosterMembership"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Roles ──────────────────────────────────────────────────────────────────
+  /v1/role-assignments:
+    get:
+      operationId: listRoleAssignments
+      summary: "List all role assignments"
+      tags:
+        - roles
+      responses:
+        "200":
+          description: "All role assignments."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleAssignment"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: assignRole
+      summary: "Assign a role to a player"
+      tags:
+        - roles
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actorPlayerId:
+                  type: integer
+                  format: int64
+                targetPlayerId:
+                  type: integer
+                  format: int64
+                role:
+                  type: string
+                franchiseId:
+                  type: integer
+                  format: int64
+                  nullable: true
+                clubId:
+                  type: integer
+                  format: int64
+                  nullable: true
+                teamId:
+                  type: integer
+                  format: int64
+                  nullable: true
+                reason:
+                  type: string
+              required:
+                - actorPlayerId
+                - targetPlayerId
+                - role
+                - reason
+      responses:
+        "201":
+          description: "Created role assignment."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleAssignment"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (role_assignment:create required)."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/role-assignments/revoke:
+    post:
+      operationId: revokeRole
+      summary: "Revoke an existing role assignment"
+      tags:
+        - roles
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actorPlayerId:
+                  type: integer
+                  format: int64
+                assignmentId:
+                  type: integer
+                  format: int64
+                reason:
+                  type: string
+              required:
+                - actorPlayerId
+                - assignmentId
+                - reason
+      responses:
+        "200":
+          description: "Revoked role assignment."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleAssignment"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (role_assignment:revoke required)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Platform Accounts ──────────────────────────────────────────────────────
+  /v1/platform-accounts:
+    get:
+      operationId: listPlatformAccounts
+      summary: "List platform account links for a subject"
+      tags:
+        - platform-accounts
+      parameters:
+        - name: subject
+          in: query
+          required: false
+          description: "Subject to look up. Defaults to the session principal's subject."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Platform account links."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlatformAccountLink"
+        "400":
+          description: "Subject is required and could not be determined."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/platform-accounts/link:
+    post:
+      operationId: linkPlatformAccount
+      summary: "Link a platform account (e.g. Discord) to a subject"
+      tags:
+        - platform-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: string
+                  description: "Defaults to the session principal's subject when omitted."
+                provider:
+                  type: string
+                providerAccountId:
+                  type: string
+                providerAccountName:
+                  type: string
+              required:
+                - provider
+                - providerAccountId
+                - providerAccountName
+      responses:
+        "201":
+          description: "Created link."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformAccountLink"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict (account already linked)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/platform-accounts/unlink:
+    post:
+      operationId: unlinkPlatformAccount
+      summary: "Unlink a platform account from a subject"
+      tags:
+        - platform-accounts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: string
+                  description: "Defaults to the session principal's subject when omitted."
+                provider:
+                  type: string
+                providerAccountId:
+                  type: string
+              required:
+                - provider
+                - providerAccountId
+      responses:
+        "200":
+          description: "Unlinked account."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformAccountLink"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Eligibility ────────────────────────────────────────────────────────────
+  /v1/eligibility:
+    get:
+      operationId: getEligibility
+      summary: "Get eligibility status for a subject"
+      tags:
+        - eligibility
+      parameters:
+        - name: subject
+          in: query
+          required: false
+          description: "Subject to look up. Defaults to the session principal's subject."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Eligibility status."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityStatus"
+        "400":
+          description: "Subject is required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Queue ──────────────────────────────────────────────────────────────────
+  /v1/queues:
+    get:
+      operationId: listQueues
+      summary: "List all queues"
+      tags:
+        - queue
+      responses:
+        "200":
+          description: "All queues."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Queue"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createQueue
+      summary: "Create a new queue"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created queue."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Queue"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/queue-entries:
+    get:
+      operationId: listQueueEntries
+      summary: "List active queue entries"
+      tags:
+        - queue
+      responses:
+        "200":
+          description: "Active queue entries."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QueueEntry"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: enqueueTeam
+      summary: "Add a team to a queue"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+              required:
+                - queueId
+                - teamId
+      responses:
+        "201":
+          description: "Queue entry created."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Team already in queue."
+        "503":
+          description: "Hierarchy store unavailable."
+    delete:
+      operationId: leaveQueue
+      summary: "Remove a team from a queue"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+              required:
+                - queueId
+                - teamId
+      responses:
+        "200":
+          description: "Updated queue entry."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+    patch:
+      operationId: advanceQueueEntryStage
+      summary: "Advance the matchmaking expansion stage for a queue entry"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+                stage:
+                  type: integer
+                  format: int32
+              required:
+                - queueId
+                - teamId
+                - stage
+      responses:
+        "200":
+          description: "Updated queue entry."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/queue-bans:
+    get:
+      operationId: listQueueBans
+      summary: "List all queue bans"
+      tags:
+        - queue
+      responses:
+        "200":
+          description: "All queue bans."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QueueBan"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: banPlayerFromQueue
+      summary: "Ban a player from a queue"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                playerId:
+                  type: integer
+                  format: int64
+                actor:
+                  type: string
+                reason:
+                  type: string
+              required:
+                - queueId
+                - playerId
+                - actor
+                - reason
+      responses:
+        "201":
+          description: "Queue ban created."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueBan"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Player already banned."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/queue-bans/lift:
+    post:
+      operationId: liftQueueBan
+      summary: "Lift (unban) a player from a queue"
+      tags:
+        - queue
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                playerId:
+                  type: integer
+                  format: int64
+                actor:
+                  type: string
+                reason:
+                  type: string
+              required:
+                - queueId
+                - playerId
+                - actor
+                - reason
+      responses:
+        "200":
+          description: "Updated queue ban."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueBan"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Scrims ─────────────────────────────────────────────────────────────────
+  /v1/scrims:
+    get:
+      operationId: listScrims
+      summary: "List all scrims"
+      tags:
+        - scrims
+      responses:
+        "200":
+          description: "All scrims."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scrim"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createScrim
+      summary: "Create a scrim manually"
+      tags:
+        - scrims
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+                homeTeamId:
+                  type: integer
+                  format: int64
+                awayTeamId:
+                  type: integer
+                  format: int64
+                state:
+                  type: string
+              required:
+                - queueId
+                - homeTeamId
+                - awayTeamId
+                - state
+      responses:
+        "201":
+          description: "Created scrim."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+    patch:
+      operationId: updateScrimState
+      summary: "Update the state of a scrim"
+      tags:
+        - scrims
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scrimId:
+                  type: integer
+                  format: int64
+                state:
+                  type: string
+              required:
+                - scrimId
+                - state
+      responses:
+        "200":
+          description: "Updated scrim."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "Invalid input or invalid state transition."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/scrims/{id}:
+    get:
+      operationId: getScrim
+      summary: "Get a single scrim by ID"
+      tags:
+        - scrims
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "The scrim."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "Invalid scrim ID."
+        "404":
+          description: "Scrim not found."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/scrims/{id}/check-in:
+    post:
+      operationId: checkInScrim
+      summary: "Check a team in to a popped scrim"
+      tags:
+        - scrims
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                teamId:
+                  type: integer
+                  format: int64
+              required:
+                - teamId
+      responses:
+        "200":
+          description: "Updated scrim."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/scrim-metrics:
+    get:
+      operationId: getScrimMetrics
+      summary: "Get real-time scrim queue metrics"
+      tags:
+        - scrims
+      responses:
+        "200":
+          description: "Current scrim metrics."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrimMetrics"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/scrim-promotions:
+    post:
+      operationId: promoteQueueToScrim
+      summary: "Pop a single queue match into a scrim (requires scrim_promotion:create)"
+      tags:
+        - scrims
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+              required:
+                - queueId
+      responses:
+        "201":
+          description: "Created scrim."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions."
+        "409":
+          description: "No eligible pairs in queue."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/scrim-promotions/process:
+    post:
+      operationId: processQueuePromotions
+      summary: "Run the full matchmaking promotion pass for a queue"
+      tags:
+        - scrims
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                queueId:
+                  type: integer
+                  format: int64
+              required:
+                - queueId
+      responses:
+        "200":
+          description: "Promotion processing result."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessQueuePromotionsResult"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/promotion-processing-runs:
+    get:
+      operationId: listPromotionProcessingRuns
+      summary: "List historical promotion processing runs"
+      tags:
+        - scrims
+      responses:
+        "200":
+          description: "Promotion processing runs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromotionProcessingRun"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Ratings ────────────────────────────────────────────────────────────────
+  /v1/player-ratings:
+    get:
+      operationId: listPlayerRatings
+      summary: "List all player ratings"
+      tags:
+        - ratings
+      responses:
+        "200":
+          description: "All player ratings."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerRating"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/player-ratings/adjust:
+    post:
+      operationId: adjustPlayerRating
+      summary: "Manually adjust a player's rating"
+      tags:
+        - ratings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actorPlayerId:
+                  type: integer
+                  format: int64
+                targetPlayerId:
+                  type: integer
+                  format: int64
+                contextKey:
+                  type: string
+                rating:
+                  type: integer
+                  format: int32
+                uncertainty:
+                  type: integer
+                  format: int32
+                matchesPlayed:
+                  type: integer
+                  format: int32
+                reason:
+                  type: string
+              required:
+                - actorPlayerId
+                - targetPlayerId
+                - contextKey
+                - rating
+                - uncertainty
+                - matchesPlayed
+                - reason
+      responses:
+        "200":
+          description: "Updated player rating."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerRating"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/rating-adjustments:
+    get:
+      operationId: listRatingAdjustments
+      summary: "List all rating adjustment records"
+      tags:
+        - ratings
+      responses:
+        "200":
+          description: "All rating adjustments."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RatingAdjustment"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/matchmaking-decisions:
+    get:
+      operationId: listMatchmakingDecisions
+      summary: "List matchmaking decision records"
+      tags:
+        - ratings
+      responses:
+        "200":
+          description: "All matchmaking decisions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MatchmakingDecision"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Results ────────────────────────────────────────────────────────────────
+  /v1/result-submissions:
+    get:
+      operationId: listResultSubmissions
+      summary: "List all result submissions"
+      tags:
+        - results
+      responses:
+        "200":
+          description: "All result submissions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResultSubmission"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createResultSubmission
+      summary: "Submit a match result"
+      tags:
+        - results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contextType:
+                  type: string
+                  description: "Either 'scrim' or 'match'."
+                contextId:
+                  type: integer
+                  format: int64
+                submittedByTeamId:
+                  type: integer
+                  format: int64
+                winningTeamId:
+                  type: integer
+                  format: int64
+                losingTeamId:
+                  type: integer
+                  format: int64
+                payloadJson:
+                  description: "Arbitrary JSON payload."
+              required:
+                - contextType
+                - contextId
+                - submittedByTeamId
+                - winningTeamId
+                - losingTeamId
+      responses:
+        "201":
+          description: "Created result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-submissions/{id}:
+    get:
+      operationId: getResultSubmission
+      summary: "Get a single result submission by ID"
+      tags:
+        - results
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "The result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid ID."
+        "404":
+          description: "Not found."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-submissions/{id}/reset:
+    post:
+      operationId: resetResultSubmission
+      summary: "Reset a result submission back to pending state"
+      tags:
+        - results
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                actor:
+                  type: string
+                  description: "Defaults to the session principal's subject."
+      responses:
+        "200":
+          description: "Reset result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (result_submission:reset required)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-submissions/{id}/stats:
+    get:
+      operationId: listResultSubmissionStats
+      summary: "List player stat lines for a result submission"
+      tags:
+        - replay
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Player stat lines."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerStatLine"
+        "400":
+          description: "Invalid submission ID."
+        "503":
+          description: "Replay stats store unavailable."
+
+  /v1/result-submission-ratifications:
+    post:
+      operationId: ratifyResultSubmission
+      summary: "Ratify a result submission on behalf of a team"
+      tags:
+        - results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                submissionId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+              required:
+                - submissionId
+                - teamId
+      responses:
+        "200":
+          description: "Updated result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Already ratified or in wrong state."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-submission-rejections:
+    post:
+      operationId: rejectResultSubmission
+      summary: "Reject a result submission on behalf of a team"
+      tags:
+        - results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                submissionId:
+                  type: integer
+                  format: int64
+                teamId:
+                  type: integer
+                  format: int64
+                reason:
+                  type: string
+              required:
+                - submissionId
+                - teamId
+                - reason
+      responses:
+        "200":
+          description: "Updated result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Already rejected or in wrong state."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-overrides:
+    get:
+      operationId: listResultOverrides
+      summary: "List all result overrides"
+      tags:
+        - results
+      responses:
+        "200":
+          description: "All result overrides."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResultOverride"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: overrideResultSubmission
+      summary: "Override the outcome of a result submission (admin)"
+      tags:
+        - results
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                submissionId:
+                  type: integer
+                  format: int64
+                actor:
+                  type: string
+                reason:
+                  type: string
+                winningTeamId:
+                  type: integer
+                  format: int64
+                losingTeamId:
+                  type: integer
+                  format: int64
+              required:
+                - submissionId
+                - actor
+                - reason
+                - winningTeamId
+                - losingTeamId
+      responses:
+        "200":
+          description: "Updated result submission."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Not authenticated."
+        "403":
+          description: "Insufficient permissions (result_override:create required)."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Replay ─────────────────────────────────────────────────────────────────
+  /v1/replay-evidence:
+    get:
+      operationId: listReplayEvidence
+      summary: "List all replay evidence records"
+      tags:
+        - replay
+      responses:
+        "200":
+          description: "All replay evidence."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReplayEvidence"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: ingestReplayEvidence
+      summary: "Ingest a replay file and trigger parse"
+      tags:
+        - replay
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                contextType:
+                  type: string
+                contextId:
+                  type: integer
+                  format: int64
+                submittedByTeamId:
+                  type: integer
+                  format: int64
+                replayBody:
+                  type: string
+                  description: "Base64-encoded or raw replay file content."
+                parserName:
+                  type: string
+                parserVersion:
+                  type: string
+                parserConfigDigest:
+                  type: string
+                parseOutputJson:
+                  description: "Pre-parsed output JSON if available."
+                resultSubmissionId:
+                  type: integer
+                  format: int64
+                  nullable: true
+              required:
+                - contextType
+                - contextId
+                - submittedByTeamId
+                - replayBody
+                - parserName
+                - parserVersion
+                - parserConfigDigest
+      responses:
+        "201":
+          description: "Replay ingested (new)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayIngestionResult"
+        "200":
+          description: "Replay already known (duplicate SHA256)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReplayIngestionResult"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/replay-parse-runs:
+    get:
+      operationId: listReplayParseRuns
+      summary: "List all replay parse runs"
+      tags:
+        - replay
+      responses:
+        "200":
+          description: "All replay parse runs."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReplayParseRun"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/result-submission-replay-links:
+    get:
+      operationId: listResultSubmissionReplayLinks
+      summary: "List all replay links attached to result submissions"
+      tags:
+        - replay
+      responses:
+        "200":
+          description: "All replay links."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResultSubmissionReplayLink"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Exceptions ─────────────────────────────────────────────────────────────
+  /v1/exceptions/report:
+    post:
+      operationId: reportException
+      summary: "Report a new exception ticket"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                category:
+                  type: string
+                contextType:
+                  type: string
+                contextId:
+                  type: integer
+                  format: int64
+                reportedByTeamId:
+                  type: integer
+                  format: int64
+                  nullable: true
+                reasonCode:
+                  type: string
+                severity:
+                  type: integer
+                  format: int32
+                suggestedAction:
+                  type: string
+                detailsJson:
+                  description: "Arbitrary JSON details."
+              required:
+                - category
+                - contextType
+                - contextId
+                - reasonCode
+                - severity
+                - suggestedAction
+      responses:
+        "201":
+          description: "Created exception ticket."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionTicket"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/operator-inbox:
+    get:
+      operationId: listOperatorInbox
+      summary: "List open exception tickets in the operator inbox"
+      tags:
+        - exceptions
+      responses:
+        "200":
+          description: "Open tickets."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExceptionTicket"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/operator-inbox/triage:
+    post:
+      operationId: triageException
+      summary: "Triage an exception ticket"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticketId:
+                  type: integer
+                  format: int64
+                actor:
+                  type: string
+                reasonCode:
+                  type: string
+                severity:
+                  type: integer
+                  format: int32
+                suggestedAction:
+                  type: string
+                minutesSpent:
+                  type: integer
+                  format: int32
+              required:
+                - ticketId
+                - actor
+                - reasonCode
+                - severity
+                - suggestedAction
+                - minutesSpent
+      responses:
+        "200":
+          description: "Updated exception ticket."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionTicket"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/operator-inbox/resolve:
+    post:
+      operationId: resolveException
+      summary: "Resolve an exception ticket"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ticketId:
+                  type: integer
+                  format: int64
+                actor:
+                  type: string
+                resolutionCode:
+                  type: string
+                notes:
+                  type: string
+                automated:
+                  type: boolean
+                minutesSpent:
+                  type: integer
+                  format: int32
+              required:
+                - ticketId
+                - actor
+                - resolutionCode
+                - notes
+                - automated
+                - minutesSpent
+      responses:
+        "200":
+          description: "Resolved exception ticket."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionTicket"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/exception-actions:
+    get:
+      operationId: listExceptionActions
+      summary: "List all exception actions taken on tickets"
+      tags:
+        - exceptions
+      responses:
+        "200":
+          description: "All exception actions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ExceptionAction"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/exception-metrics:
+    get:
+      operationId: getExceptionMetrics
+      summary: "Get aggregate exception management metrics"
+      tags:
+        - exceptions
+      responses:
+        "200":
+          description: "Exception metrics."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionMetrics"
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/exception-automations/scheduling:
+    post:
+      operationId: evaluateSchedulingException
+      summary: "Automatically evaluate a scheduling-conflict exception"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                matchId:
+                  type: integer
+                  format: int64
+                conflictCode:
+                  type: string
+                homeConfirmed:
+                  type: boolean
+                awayConfirmed:
+                  type: boolean
+                actor:
+                  type: string
+              required:
+                - matchId
+                - conflictCode
+                - homeConfirmed
+                - awayConfirmed
+                - actor
+      responses:
+        "200":
+          description: "Automation result."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionAutomationResult"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/exception-automations/no-show:
+    post:
+      operationId: evaluateNoShowException
+      summary: "Automatically evaluate a no-show exception"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                matchId:
+                  type: integer
+                  format: int64
+                homeCheckedIn:
+                  type: boolean
+                awayCheckedIn:
+                  type: boolean
+                graceMinutes:
+                  type: integer
+                  format: int32
+                actor:
+                  type: string
+              required:
+                - matchId
+                - homeCheckedIn
+                - awayCheckedIn
+                - graceMinutes
+                - actor
+      responses:
+        "200":
+          description: "Automation result."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionAutomationResult"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/exception-automations/replay-dispute:
+    post:
+      operationId: evaluateReplayDisputeException
+      summary: "Automatically evaluate a replay-dispute exception"
+      tags:
+        - exceptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resultSubmissionId:
+                  type: integer
+                  format: int64
+                parseStatus:
+                  type: string
+                identityStatus:
+                  type: string
+                disputeRaised:
+                  type: boolean
+                actor:
+                  type: string
+              required:
+                - resultSubmissionId
+                - parseStatus
+                - identityStatus
+                - disputeRaised
+                - actor
+      responses:
+        "200":
+          description: "Automation result."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExceptionAutomationResult"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Scheduling ─────────────────────────────────────────────────────────────
+  /v1/seasons:
+    get:
+      operationId: listSeasons
+      summary: "List all seasons"
+      tags:
+        - scheduling
+      responses:
+        "200":
+          description: "All seasons."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Season"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createSeason
+      summary: "Create a new season"
+      tags:
+        - scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                slug:
+                  type: string
+              required:
+                - name
+                - slug
+      responses:
+        "201":
+          description: "Created season."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Season"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/schedule-groups:
+    get:
+      operationId: listScheduleGroups
+      summary: "List all schedule groups (weeks/rounds)"
+      tags:
+        - scheduling
+      responses:
+        "200":
+          description: "All schedule groups."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleGroup"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createScheduleGroup
+      summary: "Create a schedule group within a season"
+      tags:
+        - scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                seasonId:
+                  type: integer
+                  format: int64
+                name:
+                  type: string
+                sequence:
+                  type: integer
+                  format: int32
+              required:
+                - seasonId
+                - name
+                - sequence
+      responses:
+        "201":
+          description: "Created schedule group."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleGroup"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/fixtures:
+    get:
+      operationId: listFixtures
+      summary: "List all fixtures"
+      tags:
+        - scheduling
+      responses:
+        "200":
+          description: "All fixtures."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Fixture"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createFixture
+      summary: "Create a fixture (club vs club matchup in a schedule group)"
+      tags:
+        - scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scheduleGroupId:
+                  type: integer
+                  format: int64
+                homeClubId:
+                  type: integer
+                  format: int64
+                awayClubId:
+                  type: integer
+                  format: int64
+              required:
+                - scheduleGroupId
+                - homeClubId
+                - awayClubId
+      responses:
+        "201":
+          description: "Created fixture."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fixture"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/fixtures/{id}:
+    get:
+      operationId: getFixture
+      summary: "Get a single fixture by ID"
+      tags:
+        - scheduling
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "The fixture."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fixture"
+        "400":
+          description: "Invalid fixture ID."
+        "404":
+          description: "Fixture not found."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/matches:
+    get:
+      operationId: listMatches
+      summary: "List all matches"
+      tags:
+        - scheduling
+      responses:
+        "200":
+          description: "All matches."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+        "503":
+          description: "Hierarchy store unavailable."
+    post:
+      operationId: createMatch
+      summary: "Create a match within a fixture"
+      tags:
+        - scheduling
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fixtureId:
+                  type: integer
+                  format: int64
+                homeTeamId:
+                  type: integer
+                  format: int64
+                awayTeamId:
+                  type: integer
+                  format: int64
+                state:
+                  type: string
+                scheduledFor:
+                  type: string
+                  format: date-time
+                  nullable: true
+                homeTimeRatifiedAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                awayTimeRatifiedAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+              required:
+                - fixtureId
+                - homeTeamId
+                - awayTeamId
+                - state
+      responses:
+        "201":
+          description: "Created match."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Skill Groups ───────────────────────────────────────────────────────────
+  /v1/leagues/{id}/skill-groups:
+    get:
+      operationId: listLeagueSkillGroups
+      summary: "List skill groups for a league"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "League ID."
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Skill groups."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SkillGroup"
+        "400":
+          description: "Invalid league ID."
+        "503":
+          description: "Skill group store unavailable."
+    post:
+      operationId: createSkillGroup
+      summary: "Create a skill group for a league"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "League ID."
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                displayOrder:
+                  type: integer
+                  format: int32
+                ratingFloor:
+                  type: integer
+                  format: int32
+                ratingCeiling:
+                  type: integer
+                  format: int32
+                promotionThreshold:
+                  type: integer
+                  format: int32
+                  nullable: true
+                demotionThreshold:
+                  type: integer
+                  format: int32
+                  nullable: true
+              required:
+                - name
+                - displayOrder
+                - ratingFloor
+                - ratingCeiling
+      responses:
+        "201":
+          description: "Created skill group."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillGroup"
+        "400":
+          description: "Invalid input."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Skill group store unavailable."
+
+  /v1/skill-groups/{id}:
+    get:
+      operationId: getSkillGroup
+      summary: "Get a skill group by ID"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "The skill group."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillGroup"
+        "400":
+          description: "Invalid ID."
+        "404":
+          description: "Not found."
+        "503":
+          description: "Skill group store unavailable."
+    patch:
+      operationId: updateSkillGroup
+      summary: "Update rating bounds / thresholds for a skill group"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ratingFloor:
+                  type: integer
+                  format: int32
+                  nullable: true
+                ratingCeiling:
+                  type: integer
+                  format: int32
+                  nullable: true
+                promotionThreshold:
+                  type: integer
+                  format: int32
+                  nullable: true
+                demotionThreshold:
+                  type: integer
+                  format: int32
+                  nullable: true
+                isActive:
+                  type: boolean
+                  nullable: true
+      responses:
+        "200":
+          description: "Updated skill group."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillGroup"
+        "400":
+          description: "Invalid input."
+        "404":
+          description: "Not found."
+        "409":
+          description: "Conflict."
+        "503":
+          description: "Skill group store unavailable."
+    delete:
+      operationId: deactivateSkillGroup
+      summary: "Deactivate a skill group (sets isActive to false)"
+      tags:
+        - skill-groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Deactivated skill group."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SkillGroup"
+        "400":
+          description: "Invalid ID."
+        "404":
+          description: "Not found."
+        "503":
+          description: "Skill group store unavailable."
+
+  # ── Org Config ─────────────────────────────────────────────────────────────
+  /v1/leagues/{id}/config:
+    get:
+      operationId: getLeagueConfig
+      summary: "Get all org config entries for a league"
+      tags:
+        - org-config
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "League ID."
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Config entries."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgConfig"
+        "400":
+          description: "Invalid league ID."
+        "503":
+          description: "Org config store unavailable."
+    patch:
+      operationId: updateLeagueConfig
+      summary: "Set one or more config keys for a league"
+      tags:
+        - org-config
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: "League ID."
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+              description: "Map of config key to string value."
+              example:
+                scrim.pop_timeout_minutes: "5"
+                queue.expansion_interval_seconds: "30"
+      responses:
+        "200":
+          description: "Updated config entries."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgConfig"
+        "400":
+          description: "Invalid input."
+        "503":
+          description: "Org config store unavailable."
+
+  # ── Me ─────────────────────────────────────────────────────────────────────
+  /v1/me:
+    get:
+      operationId: getMe
+      summary: "Get the current session principal"
+      tags:
+        - me
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "Current principal."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionPrincipal"
+        "401":
+          description: "Not authenticated."
+
+  /v1/me/eligibility:
+    get:
+      operationId: getMeEligibility
+      summary: "Get eligibility status for the current session player"
+      tags:
+        - me
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: "Eligibility status."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityStatus"
+        "401":
+          description: "Not authenticated."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/me/roster-membership:
+    get:
+      operationId: getMeRosterMembership
+      summary: "Get the active roster membership for a player"
+      tags:
+        - me
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Active roster membership (null if none)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RosterMembership"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/me/queue-bans:
+    get:
+      operationId: getMeQueueBans
+      summary: "Get active queue bans for a player"
+      tags:
+        - me
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Active queue bans."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QueueBan"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/me/queue-entry:
+    get:
+      operationId: getMeQueueEntry
+      summary: "Get the active queue entry for a player"
+      tags:
+        - me
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Active queue entry (null if not queued)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueueEntry"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/me/scrim:
+    get:
+      operationId: getMeScrim
+      summary: "Get the active scrim for a player"
+      tags:
+        - me
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Active scrim (null if none)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scrim"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  /v1/me/result-submissions:
+    get:
+      operationId: getMeResultSubmissions
+      summary: "List result submissions for the current player's team"
+      tags:
+        - me
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: state
+          in: query
+          required: false
+          description: "Filter by submission state."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Result submissions."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResultSubmission"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Hierarchy store unavailable."
+
+  # ── Notifications ──────────────────────────────────────────────────────────
+  /v1/me/notifications:
+    get:
+      operationId: listMeNotifications
+      summary: "List notifications for a player"
+      tags:
+        - notifications
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: unread
+          in: query
+          required: false
+          description: "If 'true', return only unread notifications."
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Notifications."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerNotification"
+        "400":
+          description: "player_id query parameter required."
+        "503":
+          description: "Notifications store unavailable."
+
+  /v1/me/notifications/mark-read:
+    post:
+      operationId: markNotificationsRead
+      summary: "Mark one or more notifications as read"
+      tags:
+        - notifications
+      parameters:
+        - name: player_id
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: integer
+                    format: int64
+                  description: "Specific notification IDs to mark read. Ignored when all is true."
+                all:
+                  type: boolean
+                  description: "If true, mark all notifications for the player as read."
+      responses:
+        "204":
+          description: "Notifications marked as read."
+        "400":
+          description: "player_id query parameter required or invalid request body."
+        "503":
+          description: "Notifications store unavailable."
+
+  # ── API Tokens ─────────────────────────────────────────────────────────────
+  /v1/api-tokens:
+    get:
+      operationId: listAPITokens
+      summary: "List API tokens for the authenticated subject"
+      tags:
+        - api-tokens
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      responses:
+        "200":
+          description: "API tokens (hashed_token never returned)."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/APIToken"
+        "401":
+          description: "Authentication required."
+        "503":
+          description: "API token store unavailable."
+    post:
+      operationId: createAPIToken
+      summary: "Create a new API token"
+      tags:
+        - api-tokens
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - name
+      responses:
+        "201":
+          description: "Created token. The plainTextToken field is only returned in this response."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APITokenCreateResponse"
+        "400":
+          description: "Invalid input."
+        "401":
+          description: "Authentication required."
+        "503":
+          description: "API token store unavailable."
+
+  /v1/api-tokens/{id}:
+    delete:
+      operationId: revokeAPIToken
+      summary: "Revoke an API token by ID"
+      tags:
+        - api-tokens
+      security:
+        - sessionCookie: []
+        - bearerToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: "Revoked token record."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIToken"
+        "400":
+          description: "Invalid token ID."
+        "401":
+          description: "Authentication required."
+        "404":
+          description: "Token not found or does not belong to the caller."
+        "503":
+          description: "API token store unavailable."
+
+tags:
+  - name: health
+    description: "Liveness and readiness probes."
+  - name: auth
+    description: "Authentication, session management, and OAuth flows."
+  - name: hierarchy
+    description: "League hierarchy — leagues, franchises, clubs, teams, players, and roster memberships."
+  - name: roles
+    description: "Role assignment and revocation."
+  - name: platform-accounts
+    description: "External platform account links (Discord, etc.)."
+  - name: eligibility
+    description: "Player eligibility status and projection."
+  - name: queue
+    description: "Queue management — queues, entries, and bans."
+  - name: scrims
+    description: "Scrim lifecycle — creation, state transitions, check-in, metrics, and matchmaking promotion."
+  - name: ratings
+    description: "Player ratings, adjustments, and matchmaking decisions."
+  - name: results
+    description: "Result submissions, ratifications, rejections, and overrides."
+  - name: replay
+    description: "Replay ingestion, parse runs, replay links, and stat extraction."
+  - name: exceptions
+    description: "Exception ticket reporting, triage, resolution, and automation rules."
+  - name: scheduling
+    description: "Seasons, schedule groups, fixtures, and matches."
+  - name: skill-groups
+    description: "Skill group definitions and player transition history."
+  - name: org-config
+    description: "Per-league organisation configuration key-value store."
+  - name: me
+    description: "Session-scoped convenience endpoints for the current player."
+  - name: notifications
+    description: "Player notification delivery and read-tracking."
+  - name: api-tokens
+    description: "API token lifecycle management."

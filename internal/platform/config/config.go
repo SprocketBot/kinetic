@@ -26,6 +26,9 @@ type Config struct {
 	AuthSessionCookie    string
 	AuthSessionTTL       string
 	WebBaseURL           string
+	DiscordClientID      string
+	DiscordClientSecret  string
+	DiscordRedirectURL   string
 }
 
 func Load() Config {
@@ -40,6 +43,9 @@ func Load() Config {
 		AuthSessionCookie:    getOrDefault("AUTH_SESSION_COOKIE", defaultAuthSessionCookie),
 		AuthSessionTTL:       getOrDefault("AUTH_SESSION_TTL", defaultAuthSessionTTL),
 		WebBaseURL:           getOrDefault("WEB_BASE_URL", defaultWebBaseURL),
+		DiscordClientID:      os.Getenv("DISCORD_CLIENT_ID"),
+		DiscordClientSecret:  os.Getenv("DISCORD_CLIENT_SECRET"),
+		DiscordRedirectURL:   os.Getenv("DISCORD_REDIRECT_URL"),
 	}
 }
 

@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
 	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/sprocketbot/sprocket-v3/internal/domain/replaystats"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
 )
 
@@ -339,6 +341,64 @@ func (f *fakeHierarchyStore) ListMatches(_ context.Context) ([]hierarchy.Match, 
 	return f.matchesToList, nil
 }
 
+func (f *fakeHierarchyStore) GetFixture(_ context.Context, _ int64) (hierarchy.Fixture, error) {
+	return hierarchy.Fixture{}, nil
+}
+func (f *fakeHierarchyStore) GetScrim(_ context.Context, _ int64) (hierarchy.Scrim, error) {
+	return hierarchy.Scrim{}, nil
+}
+func (f *fakeHierarchyStore) GetResultSubmission(_ context.Context, _ int64) (hierarchy.ResultSubmission, error) {
+	return hierarchy.ResultSubmission{}, nil
+}
+func (f *fakeHierarchyStore) ListResultSubmissionsFiltered(_ context.Context, _ hierarchy.ListResultSubmissionsInput) ([]hierarchy.ResultSubmission, error) {
+	return nil, nil
+}
+func (f *fakeHierarchyStore) ResetResultSubmission(_ context.Context, _ hierarchy.ResetResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	return hierarchy.ResultSubmission{}, nil
+}
+func (f *fakeHierarchyStore) SetPlayerActive(_ context.Context, _ hierarchy.SetPlayerActiveInput) (hierarchy.Player, error) {
+	return hierarchy.Player{}, nil
+}
+func (f *fakeHierarchyStore) CheckInScrim(_ context.Context, _ hierarchy.CheckInScrimInput) (hierarchy.Scrim, error) {
+	return hierarchy.Scrim{}, nil
+}
+func (f *fakeHierarchyStore) ExecutePopTimeout(_ context.Context, _ hierarchy.ExecutePopTimeoutInput) error {
+	return nil
+}
+func (f *fakeHierarchyStore) GetScrimMetrics(_ context.Context) (hierarchy.ScrimMetrics, error) {
+	return hierarchy.ScrimMetrics{}, nil
+}
+func (f *fakeHierarchyStore) GetActiveRosterMembershipByPlayerID(_ context.Context, _ int64) (*hierarchy.RosterMembership, error) {
+	return nil, nil
+}
+func (f *fakeHierarchyStore) ListActiveQueueBansByPlayerID(_ context.Context, _ int64) ([]hierarchy.QueueBan, error) {
+	return nil, nil
+}
+func (f *fakeHierarchyStore) GetActiveQueueEntryByPlayerID(_ context.Context, _ int64) (*hierarchy.QueueEntry, error) {
+	return nil, nil
+}
+func (f *fakeHierarchyStore) GetActiveScrimByPlayerID(_ context.Context, _ int64) (*hierarchy.Scrim, error) {
+	return nil, nil
+}
+func (f *fakeHierarchyStore) TriggerReplayParse(_ context.Context, _, _ int64, _ string) error {
+	return nil
+}
+
+// fakeReplayStatsStore implements replaystats.Store for tests.
+type fakeReplayStatsStore struct {
+	statsToReturn       []replaystats.PlayerStatLine
+	careerStatsToReturn replaystats.PlayerCareerStats
+	statsErr            error
+	careerStatsErr      error
+}
+
+func (f *fakeReplayStatsStore) ListStatsBySubmission(_ context.Context, _ int64) ([]replaystats.PlayerStatLine, error) {
+	return f.statsToReturn, f.statsErr
+}
+func (f *fakeReplayStatsStore) GetPlayerCareerStats(_ context.Context, _ int64) (replaystats.PlayerCareerStats, error) {
+	return f.careerStatsToReturn, f.careerStatsErr
+}
+
 func TestHealthEndpoint(t *testing.T) {
 	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{})
 
@@ -651,6 +711,7 @@ func TestAssignRoleSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(
 		`{"actorPlayerId":11,"targetPlayerId":22,"role":"gm","clubId":8,"reason":"season staffing"}`,
 	))
+	req.Header.Set("Authorization", "Bearer local:alice:admin")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -712,6 +773,7 @@ func TestRevokeRoleSuccess(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments/revoke", strings.NewReader(
 		`{"actorPlayerId":11,"assignmentId":1,"reason":"role realignment"}`,
 	))
+	req.Header.Set("Authorization", "Bearer local:alice:admin")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -986,6 +1048,7 @@ func TestPromoteQueueToScrimSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions", strings.NewReader(`{"queueId":10}`))
+	req.Header.Set("Authorization", "Bearer local:alice:admin")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1027,6 +1090,7 @@ func TestProcessQueuePromotionsSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions/process", strings.NewReader(`{"queueId":0}`))
+	req.Header.Set("Authorization", "Bearer local:alice:admin")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1189,6 +1253,7 @@ func TestOverrideResultSubmissionSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"league-admin","reason":"manual correction","winningTeamId":30,"losingTeamId":20}`))
+	req.Header.Set("Authorization", "Bearer local:alice:admin")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1384,5 +1449,320 @@ func assertProbePayload(t *testing.T, body io.Reader, expectedStatus string) {
 
 	if payload.Service != "sprocket-v3-api" {
 		t.Fatalf("unexpected service value %q", payload.Service)
+	}
+}
+
+// fakeAPITokenStore is a no-op implementation of apitoken.Store for use in tests.
+type fakeAPITokenStore struct{}
+
+func (f *fakeAPITokenStore) CreateAPIToken(_ context.Context, _ apitoken.CreateAPITokenInput) (apitoken.APIToken, string, error) {
+	return apitoken.APIToken{}, "", nil
+}
+
+func (f *fakeAPITokenStore) ListAPITokens(_ context.Context, _ string) ([]apitoken.APIToken, error) {
+	return []apitoken.APIToken{}, nil
+}
+
+func (f *fakeAPITokenStore) RevokeAPIToken(_ context.Context, _ apitoken.RevokeAPITokenInput) (apitoken.APIToken, error) {
+	return apitoken.APIToken{}, nil
+}
+
+func (f *fakeAPITokenStore) ValidateAPIToken(_ context.Context, _ string) (apitoken.ValidateAPITokenResult, error) {
+	return apitoken.ValidateAPITokenResult{}, nil
+}
+
+// --- Theme 1.2: Scope-aware authorization enforcement tests ---
+
+func TestAssignRoleRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(`{"actorPlayerId":1,"targetPlayerId":2,"role":"gm","reason":"test"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
+	}
+}
+
+func TestAssignRoleForbiddenForPlayerRole(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(`{"actorPlayerId":1,"targetPlayerId":2,"role":"gm","reason":"test"}`))
+	req.Header.Set("Authorization", "Bearer local:bob:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusForbidden, rr.Code, rr.Body.String())
+	}
+}
+
+func TestRevokeRoleRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments/revoke", strings.NewReader(`{"actorPlayerId":1,"assignmentId":1,"reason":"test"}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
+	}
+}
+
+func TestResultOverrideRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"test","reason":"test","winningTeamId":1,"losingTeamId":2}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
+	}
+}
+
+func TestResultOverrideForbiddenForPlayerRole(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"test","reason":"test","winningTeamId":1,"losingTeamId":2}`))
+	req.Header.Set("Authorization", "Bearer local:bob:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusForbidden, rr.Code, rr.Body.String())
+	}
+}
+
+func TestScrimPromotionRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/scrim-promotions", strings.NewReader(`{"queueId":1}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
+	}
+}
+
+func TestFranchiseManagerCanAssignRole(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		roleAssignmentToReturn: hierarchy.RoleAssignment{
+			ID:                      1,
+			PlayerID:                22,
+			Role:                    "captain",
+			AssignedByActorPlayerID: 11,
+			AssignReason:            "team staffing",
+			IsActive:                true,
+			AssignedAt:              now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{
+		HierarchyStore: store,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(`{"actorPlayerId":11,"targetPlayerId":22,"role":"captain","reason":"team staffing"}`))
+	req.Header.Set("Authorization", "Bearer local:alice:fm")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestAuthProvidersEndpoint(t *testing.T) {
+	t.Run("discord enabled when credentials are set", func(t *testing.T) {
+		cfg := config.Config{
+			Port:                "8080",
+			LogLevel:            "info",
+			DiscordClientID:     "test-client-id",
+			DiscordClientSecret: "test-client-secret",
+		}
+		srv := New(cfg, slog.Default(), Dependencies{})
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/auth/providers", nil)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+		}
+
+		var providers []map[string]any
+		if err := json.NewDecoder(rr.Body).Decode(&providers); err != nil {
+			t.Fatalf("failed to decode providers response: %v", err)
+		}
+
+		if len(providers) == 0 {
+			t.Fatal("expected at least one provider in response")
+		}
+
+		var found bool
+		for _, p := range providers {
+			if p["id"] == "discord" {
+				found = true
+				if p["enabled"] != true {
+					t.Fatalf("expected discord to be enabled, got %v", p["enabled"])
+				}
+				if p["name"] != "Discord" {
+					t.Fatalf("expected discord name to be 'Discord', got %v", p["name"])
+				}
+			}
+		}
+		if !found {
+			t.Fatal("expected discord entry in providers list")
+		}
+	})
+
+	t.Run("discord disabled when credentials are absent", func(t *testing.T) {
+		cfg := config.Config{
+			Port:     "8080",
+			LogLevel: "info",
+		}
+		srv := New(cfg, slog.Default(), Dependencies{})
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/auth/providers", nil)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+		}
+
+		var providers []map[string]any
+		if err := json.NewDecoder(rr.Body).Decode(&providers); err != nil {
+			t.Fatalf("failed to decode providers response: %v", err)
+		}
+
+		for _, p := range providers {
+			if p["id"] == "discord" {
+				if p["enabled"] != false {
+					t.Fatalf("expected discord to be disabled when credentials absent, got %v", p["enabled"])
+				}
+				return
+			}
+		}
+		t.Fatal("expected discord entry in providers list")
+	})
+
+	t.Run("rejects non-GET methods", func(t *testing.T) {
+		srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{})
+
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/providers", nil)
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("expected status %d, got %d", http.StatusMethodNotAllowed, rr.Code)
+		}
+	})
+}
+
+func TestAuthLoginDiscordRedirectsWhenConfigured(t *testing.T) {
+	cfg := config.Config{
+		Port:                "8080",
+		LogLevel:            "info",
+		WebBaseURL:          "http://localhost:5173",
+		DiscordClientID:     "test-client-id",
+		DiscordClientSecret: "test-client-secret",
+	}
+	srv := New(cfg, slog.Default(), Dependencies{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/login?provider=discord", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusFound {
+		t.Fatalf("expected redirect %d, got %d body=%s", http.StatusFound, rr.Code, rr.Body.String())
+	}
+
+	location := rr.Result().Header.Get("Location")
+	if !strings.Contains(location, "discord.com/api/oauth2/authorize") {
+		t.Fatalf("expected redirect to discord authorize URL, got %s", location)
+	}
+	if !strings.Contains(location, "client_id=test-client-id") {
+		t.Fatalf("expected client_id in discord URL, got %s", location)
+	}
+	if !strings.Contains(location, "state=") {
+		t.Fatalf("expected state parameter in discord URL, got %s", location)
+	}
+
+	// Verify state cookie was set.
+	var stateCookie *http.Cookie
+	for _, c := range rr.Result().Cookies() {
+		if c.Name == "oauth_state" {
+			stateCookie = c
+			break
+		}
+	}
+	if stateCookie == nil {
+		t.Fatal("expected oauth_state cookie to be set")
+	}
+	if stateCookie.MaxAge != 600 {
+		t.Fatalf("expected oauth_state cookie max-age 600, got %d", stateCookie.MaxAge)
+	}
+}
+
+func TestAuthLoginDiscordReturns501WhenNotConfigured(t *testing.T) {
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/login?provider=discord", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNotImplemented {
+		t.Fatalf("expected status %d, got %d", http.StatusNotImplemented, rr.Code)
+	}
+}
+
+func TestAuthLoginUnknownProviderReturns400(t *testing.T) {
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/login?provider=github", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rr.Code)
+	}
+}
+
+func TestAuthCallbackDiscordMissingStateReturns400(t *testing.T) {
+	srv := New(config.Config{
+		Port:                "8080",
+		LogLevel:            "info",
+		DiscordClientID:     "test-client-id",
+		DiscordClientSecret: "test-client-secret",
+	}, slog.Default(), Dependencies{})
+
+	// Call callback with a code but no state cookie set (state validation should fail).
+	req := httptest.NewRequest(http.MethodGet, "/v1/auth/callback?provider=discord&code=somecode&state=mismatch", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusBadRequest, rr.Code, rr.Body.String())
 	}
 }

@@ -36,6 +36,11 @@ type Store interface {
 	ListScrims(ctx context.Context) ([]Scrim, error)
 	PromoteQueueToScrim(ctx context.Context, input PromoteQueueToScrimInput) (Scrim, error)
 	ProcessQueuePromotions(ctx context.Context, input ProcessQueuePromotionsInput) (ProcessQueuePromotionsResult, error)
+	CheckInScrim(ctx context.Context, input CheckInScrimInput) (Scrim, error)
+	// ExecutePopTimeout cancels a popped scrim that has timed out, applies queue bans to non-checking-in
+	// teams' players, and writes player notifications. It is a no-op if the scrim is no longer in popped state.
+	ExecutePopTimeout(ctx context.Context, input ExecutePopTimeoutInput) error
+	GetScrimMetrics(ctx context.Context) (ScrimMetrics, error)
 	ListPromotionProcessingRuns(ctx context.Context) ([]PromotionProcessingRun, error)
 	ListPlayerRatings(ctx context.Context) ([]PlayerRating, error)
 	AdjustPlayerRating(ctx context.Context, input AdjustPlayerRatingInput) (PlayerRating, error)
@@ -51,6 +56,9 @@ type Store interface {
 	ListReplayEvidence(ctx context.Context) ([]ReplayEvidence, error)
 	ListReplayParseRuns(ctx context.Context) ([]ReplayParseRun, error)
 	ListResultSubmissionReplayLinks(ctx context.Context) ([]ResultSubmissionReplayLink, error)
+	// TriggerReplayParse launches a background stub parse of the given replay evidence,
+	// creating round and player stat line records linked to the associated result submission.
+	TriggerReplayParse(ctx context.Context, evidenceID, contextID int64, contextType string) error
 	ReportException(ctx context.Context, input ReportExceptionInput) (ExceptionTicket, error)
 	ListOperatorInbox(ctx context.Context) ([]ExceptionTicket, error)
 	TriageException(ctx context.Context, input TriageExceptionInput) (ExceptionTicket, error)
@@ -66,6 +74,17 @@ type Store interface {
 	ListScheduleGroups(ctx context.Context) ([]ScheduleGroup, error)
 	CreateFixture(ctx context.Context, input CreateFixtureInput) (Fixture, error)
 	ListFixtures(ctx context.Context) ([]Fixture, error)
+	GetFixture(ctx context.Context, fixtureID int64) (Fixture, error)
 	CreateMatch(ctx context.Context, input CreateMatchInput) (Match, error)
 	ListMatches(ctx context.Context) ([]Match, error)
+	GetScrim(ctx context.Context, scrimID int64) (Scrim, error)
+	GetResultSubmission(ctx context.Context, submissionID int64) (ResultSubmission, error)
+	ListResultSubmissionsFiltered(ctx context.Context, input ListResultSubmissionsInput) ([]ResultSubmission, error)
+	ResetResultSubmission(ctx context.Context, input ResetResultSubmissionInput) (ResultSubmission, error)
+	SetPlayerActive(ctx context.Context, input SetPlayerActiveInput) (Player, error)
+	// Me-scoped helpers: return nil (not an error) when the player simply has no active record.
+	GetActiveRosterMembershipByPlayerID(ctx context.Context, playerID int64) (*RosterMembership, error)
+	ListActiveQueueBansByPlayerID(ctx context.Context, playerID int64) ([]QueueBan, error)
+	GetActiveQueueEntryByPlayerID(ctx context.Context, playerID int64) (*QueueEntry, error)
+	GetActiveScrimByPlayerID(ctx context.Context, playerID int64) (*Scrim, error)
 }
