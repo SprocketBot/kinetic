@@ -42,6 +42,15 @@ Planning source of truth:
 ## Quick Commands
 
 ```bash
+# start the supported local k8s-backed dev path
+./tools/start-dev.sh
+
+# start local k8s-backed dev path and web client together
+./tools/start-dev.sh --with-web
+
+# seed sample data after the API is reachable on localhost:8080
+./tools/seed-dev.sh
+
 # quality gate (fmt + vet + test + build)
 ./tools/quality-gate.sh
 
@@ -60,6 +69,23 @@ Planning source of truth:
 # final roadmap verification
 ./tools/week14-smoke.sh
 ```
+
+## Local K8s Dev
+
+Supported local testing path:
+
+1. `minikube start`
+2. `kubectl config use-context minikube`
+3. `./tools/start-dev.sh`
+4. In a second shell, `./tools/seed-dev.sh`
+5. Optional web UI: `./tools/start-dev.sh --with-web`
+
+Notes:
+
+- `tools/start-dev.sh` deploys the API and an in-cluster Postgres to Minikube using `deploy/k8s-local-dev`.
+- The API is port-forwarded to `http://localhost:8080`.
+- The web client still runs on the host via Vite; it is not deployed to Kubernetes in this repo.
+- Clean up Minikube dev resources with `kubectl delete -k deploy/k8s-local-dev`.
 
 Current onboarding guides:
 

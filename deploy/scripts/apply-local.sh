@@ -2,7 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-IMAGE="sprocket-v3-api:dev-$(date +%s)"
+NAMESPACE="${K8S_NAMESPACE:-sprocket-v3}"
+KUSTOMIZE_DIR="${KUSTOMIZE_DIR:-$ROOT_DIR/deploy/k8s}"
+IMAGE_REPO="${IMAGE_REPO:-sprocket-v3-api}"
+IMAGE_TAG="${IMAGE_TAG:-dev-$(date +%s)}"
+IMAGE="${IMAGE_REPO}:${IMAGE_TAG}"
 
 current_ctx="$(kubectl config current-context 2>/dev/null || true)"
 if [[ "$current_ctx" != "minikube" ]]; then
@@ -11,17 +15,28 @@ if [[ "$current_ctx" != "minikube" ]]; then
   exit 1
 fi
 
-echo "Building local image: $IMAGE"
-docker build -t "$IMAGE" "$ROOT_DIR"
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  echo "Minikube cluster is not reachable." >&2
+  echo "Run: minikube start" >&2
+  exit 1
+fi
 
-echo "Loading image into minikube"
-minikube image load "$IMAGE"
+echo "Building image in minikube: $IMAGE"
+(
+  cd "$ROOT_DIR"
+  minikube image build -t "$IMAGE" -f Dockerfile .
+)
 
-echo "Applying Kubernetes manifests"
-kubectl apply -k "$ROOT_DIR/deploy/k8s"
+if ! minikube ssh -- docker image inspect "$IMAGE" >/dev/null 2>&1; then
+  echo "Built image is not present in minikube: $IMAGE" >&2
+  exit 1
+fi
+
+echo "Applying Kubernetes manifests from ${KUSTOMIZE_DIR}"
+kubectl apply -k "$KUSTOMIZE_DIR"
 
 echo "Setting deployment image to $IMAGE"
-kubectl -n sprocket-v3 set image deploy/sprocket-v3-api api="$IMAGE"
-kubectl -n sprocket-v3 rollout status deploy/sprocket-v3-api --timeout=180s
+kubectl -n "$NAMESPACE" set image deploy/sprocket-v3-api api="$IMAGE"
+kubectl -n "$NAMESPACE" rollout status deploy/sprocket-v3-api --timeout=180s
 
 echo "Sprocket v3 local deploy is healthy."

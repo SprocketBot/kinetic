@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sprocket-v3-pg-dev
+  namespace: sprocket-v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sprocket-v3-pg-dev
+  template:
+    metadata:
+      labels:
+        app: sprocket-v3-pg-dev
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: postgres
+            - name: POSTGRES_DB
+              value: sprocket
+          ports:
+            - containerPort: 5432
+              name: pg
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U postgres -d sprocket
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sprocket-v3-pg-dev
+  namespace: sprocket-v3
+spec:
+  selector:
+    app: sprocket-v3-pg-dev
+  ports:
+    - name: pg
+      port: 5432
+      targetPort: 5432

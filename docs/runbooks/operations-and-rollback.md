@@ -10,6 +10,7 @@ Then verify rollout:
 
 ```bash
 kubectl -n sprocket-v3 rollout status deploy/sprocket-v3-api --timeout=180s
+kubectl -n sprocket-v3 port-forward svc/sprocket-v3-api 8080:80
 curl -sSf http://localhost:8080/healthz
 ```
 
