@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
 	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
@@ -54,7 +53,6 @@ func main() {
 
 	tokenValidator := auth.NewLocalTokenValidator("local")
 	var evaluator authz.Evaluator
-	var hierarchyStore hierarchy.Store
 	deps := httpserver.Dependencies{
 		TokenValidator: tokenValidator,
 	}
@@ -66,7 +64,21 @@ func main() {
 		}
 		logger.Info("loaded authz policies from database")
 		evaluator = dbEvaluator
-		hierarchyStore = db.NewHierarchyStore(conn)
+		stores := db.NewStores(conn)
+		deps.HierarchyStore = stores.HierarchyStore
+		deps.LeagueStore = stores.LeagueStore
+		deps.PlayerStore = stores.PlayerStore
+		deps.RosterStore = stores.RosterStore
+		deps.RoleStore = stores.RoleStore
+		deps.QueueStore = stores.QueueStore
+		deps.PlatformStore = stores.PlatformStore
+		deps.EligibilityStore = stores.EligibilityStore
+		deps.ScrimStore = stores.ScrimStore
+		deps.RatingStore = stores.RatingStore
+		deps.ResultStore = stores.ResultStore
+		deps.ReplayStore = stores.ReplayStore
+		deps.ExceptionStore = stores.ExceptionStore
+		deps.SchedulingStore = stores.SchedulingStore
 		deps.SkillGroupStore = db.NewSkillGroupStore(conn)
 		deps.OrgConfigStore = db.NewOrgConfigStore(conn)
 		deps.NotificationsStore = db.NewNotificationsStore(conn)
@@ -78,7 +90,6 @@ func main() {
 		logger.Warn("using static in-memory authz policy set; database not required in current mode")
 	}
 	deps.Evaluator = evaluator
-	deps.HierarchyStore = hierarchyStore
 
 	srv := httpserver.New(cfg, logger, deps)
 

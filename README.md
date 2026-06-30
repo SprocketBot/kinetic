@@ -33,6 +33,10 @@ Planning source of truth:
 - `test/`: integration/functional test assets
 - `tools/`: development tooling scripts
 
+HTTP handlers are split by route area under `internal/platform/http`. PostgreSQL-backed store wiring is assembled through `internal/platform/db.NewStores`, with capability interfaces declared in `internal/domain/hierarchy/store.go`.
+
+Configuration variables are documented in `docs/runbooks/configuration.md`.
+
 ## Working Agreement
 
 - Ship vertical slices weekly.

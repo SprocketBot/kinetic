@@ -31,6 +31,32 @@ type Config struct {
 	DiscordRedirectURL   string
 }
 
+type Variable struct {
+	Name        string
+	Default     string
+	Required    bool
+	Secret      bool
+	Description string
+}
+
+func Variables() []Variable {
+	return []Variable{
+		{Name: "PORT", Default: defaultPort, Description: "HTTP listen port inside the process."},
+		{Name: "LOG_LEVEL", Default: defaultLogLevel, Description: "Structured log level: debug, info, warn, or error."},
+		{Name: "DATABASE_URL", Default: defaultDatabaseURL, Secret: true, Description: "PostgreSQL connection URL used by the API and migrator."},
+		{Name: "MIGRATIONS_DIR", Default: defaultMigrationsDir, Description: "Directory containing *.up.sql migration files."},
+		{Name: "RUN_MIGRATIONS_ON_START", Default: defaultRunMigrationsOnStart, Description: "When true, the API applies pending migrations during startup."},
+		{Name: "REQUIRE_DATABASE", Default: defaultRequireDatabase, Description: "When true, startup fails unless the database is reachable and stores can be initialized."},
+		{Name: "AUTH_SESSION_SECRET", Default: defaultAuthSessionSecret, Secret: true, Description: "HMAC secret used to sign browser session cookies."},
+		{Name: "AUTH_SESSION_COOKIE", Default: defaultAuthSessionCookie, Description: "Cookie name for browser sessions."},
+		{Name: "AUTH_SESSION_TTL", Default: defaultAuthSessionTTL, Description: "Session lifetime parsed with Go duration syntax."},
+		{Name: "WEB_BASE_URL", Default: defaultWebBaseURL, Description: "Allowed web origin and default post-login redirect base URL."},
+		{Name: "DISCORD_CLIENT_ID", Description: "Discord OAuth client ID. Discord login is disabled when unset."},
+		{Name: "DISCORD_CLIENT_SECRET", Secret: true, Description: "Discord OAuth client secret. Discord login is disabled when unset."},
+		{Name: "DISCORD_REDIRECT_URL", Description: "Optional explicit Discord OAuth callback URL."},
+	}
+}
+
 func Load() Config {
 	return Config{
 		Port:                 getOrDefault("PORT", defaultPort),

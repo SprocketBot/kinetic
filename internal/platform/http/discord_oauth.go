@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	discordTokenURL   = "https://discord.com/api/oauth2/token"
-	discordUserURL    = "https://discord.com/api/users/@me"
+	discordTokenURL     = "https://discord.com/api/oauth2/token"
+	discordUserURL      = "https://discord.com/api/users/@me"
 	discordAuthorizeURL = "https://discord.com/api/oauth2/authorize"
 )
 
