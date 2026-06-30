@@ -3,23 +3,23 @@ package replaystats
 import "time"
 
 type Round struct {
-	ID          int64     `json:"id"`
-	SubmissionID int64    `json:"submissionId"`
-	RoundNumber int32     `json:"roundNumber"`
-	Duration    int32     `json:"duration"` // seconds
-	CreatedAt   time.Time `json:"createdAt"`
+	ID           int64     `json:"id"`
+	SubmissionID int64     `json:"submissionId"`
+	RoundNumber  int32     `json:"roundNumber"`
+	Duration     int32     `json:"duration"` // seconds
+	CreatedAt    time.Time `json:"createdAt"`
 }
 
 type PlayerStatLine struct {
-	ID             int64   `json:"id"`
-	RoundID        int64   `json:"roundId"`
-	PlayerID       *int64  `json:"playerId,omitempty"`
-	ReplayIdentity string  `json:"replayIdentity"`
-	Goals          int32   `json:"goals"`
-	Assists        int32   `json:"assists"`
-	Saves          int32   `json:"saves"`
-	Shots          int32   `json:"shots"`
-	Score          int32   `json:"score"`
+	ID             int64  `json:"id"`
+	RoundID        int64  `json:"roundId"`
+	PlayerID       *int64 `json:"playerId,omitempty"`
+	ReplayIdentity string `json:"replayIdentity"`
+	Goals          int32  `json:"goals"`
+	Assists        int32  `json:"assists"`
+	Saves          int32  `json:"saves"`
+	Shots          int32  `json:"shots"`
+	Score          int32  `json:"score"`
 	// Computed performance indices (Theme 5E)
 	OPI float64 `json:"opi"` // (goals + 0.75*assists + 0.3*shots) / rounds_played
 	DPI float64 `json:"dpi"` // saves / rounds_played
@@ -27,12 +27,12 @@ type PlayerStatLine struct {
 }
 
 type TeamStatLine struct {
-	ID      int64 `json:"id"`
-	RoundID int64 `json:"roundId"`
+	ID      int64  `json:"id"`
+	RoundID int64  `json:"roundId"`
 	TeamID  *int64 `json:"teamId,omitempty"`
-	Goals   int32 `json:"goals"`
-	Shots   int32 `json:"shots"`
-	Saves   int32 `json:"saves"`
+	Goals   int32  `json:"goals"`
+	Shots   int32  `json:"shots"`
+	Saves   int32  `json:"saves"`
 }
 
 type ParseReplayInput struct {

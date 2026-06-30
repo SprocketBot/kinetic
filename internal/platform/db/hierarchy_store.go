@@ -4317,9 +4317,9 @@ RETURNING id;`
 		// data without importing math/rand.
 		for pos := int32(0); pos < int32(playersPerTeam*2); pos++ {
 			seed := submissionID*100 + int64(roundNum)*10 + int64(pos)
-			goals := int32(seed%3)   // 0–2
-			assists := int32(seed%2) // 0–1
-			saves := int32(seed%4)   // 0–3
+			goals := int32(seed % 3)   // 0–2
+			assists := int32(seed % 2) // 0–1
+			saves := int32(seed % 4)   // 0–3
 			shots := goals + int32(seed%3)
 			score := goals*100 + assists*50 + saves*30 + shots*20
 

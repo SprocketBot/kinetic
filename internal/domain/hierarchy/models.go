@@ -132,27 +132,27 @@ type EligibilityStatus struct {
 }
 
 type Scrim struct {
-	ID               int64      `json:"id"`
-	QueueID          int64      `json:"queueId"`
-	HomeTeamID       int64      `json:"homeTeamId"`
-	AwayTeamID       int64      `json:"awayTeamId"`
-	State            string     `json:"state"`
-	LobbyName        *string    `json:"lobbyName,omitempty"`
-	LobbyPassword    *string    `json:"lobbyPassword,omitempty"`
-	PoppedAt         *time.Time `json:"poppedAt,omitempty"`
-	HomeCheckedInAt  *time.Time `json:"homeCheckedInAt,omitempty"`
-	AwayCheckedInAt  *time.Time `json:"awayCheckedInAt,omitempty"`
-	CreatedAt        time.Time  `json:"createdAt"`
-	StartedAt        *time.Time `json:"startedAt,omitempty"`
-	EndedAt          *time.Time `json:"endedAt,omitempty"`
+	ID              int64      `json:"id"`
+	QueueID         int64      `json:"queueId"`
+	HomeTeamID      int64      `json:"homeTeamId"`
+	AwayTeamID      int64      `json:"awayTeamId"`
+	State           string     `json:"state"`
+	LobbyName       *string    `json:"lobbyName,omitempty"`
+	LobbyPassword   *string    `json:"lobbyPassword,omitempty"`
+	PoppedAt        *time.Time `json:"poppedAt,omitempty"`
+	HomeCheckedInAt *time.Time `json:"homeCheckedInAt,omitempty"`
+	AwayCheckedInAt *time.Time `json:"awayCheckedInAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	StartedAt       *time.Time `json:"startedAt,omitempty"`
+	EndedAt         *time.Time `json:"endedAt,omitempty"`
 }
 
 type ScrimMetrics struct {
-	PlayersQueued      int32   `json:"playersQueued"`
-	TeamsInScrim       int32   `json:"teamsInScrim"`
-	OpenScrims         int32   `json:"openScrims"`
-	ScrimsClosedToday  int32   `json:"scrimsClosedToday"`
-	AvgWaitSecondsP50  float64 `json:"avgWaitSecondsP50"`
+	PlayersQueued     int32   `json:"playersQueued"`
+	TeamsInScrim      int32   `json:"teamsInScrim"`
+	OpenScrims        int32   `json:"openScrims"`
+	ScrimsClosedToday int32   `json:"scrimsClosedToday"`
+	AvgWaitSecondsP50 float64 `json:"avgWaitSecondsP50"`
 }
 
 type PlayerRating struct {
