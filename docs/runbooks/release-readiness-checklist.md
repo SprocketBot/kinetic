@@ -14,9 +14,10 @@ Use this checklist before cutting or promoting any release candidate.
 ./tools/ci-verify.sh
 ./tools/week14-smoke.sh
 ./tools/week14-k8s-smoke.sh
+./tools/release-evidence.sh
 ```
 
-All three must pass.
+All four must pass. `release-evidence.sh` writes an artifact-backed proof bundle under `artifacts/release-validation/<environment>/<timestamp>/`.
 
 ## 3) Operational readiness
 
@@ -34,6 +35,7 @@ kubectl -n sprocket-v3 rollout undo deploy/sprocket-v3-api
 - key behaviors shipped
 - migration IDs introduced
 - validation commands used
+- release evidence artifact path
 - known limitations and next-slice follow-ups
 
 ## 5) Post-release validation

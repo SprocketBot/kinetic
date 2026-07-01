@@ -14,6 +14,7 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 	sessionTTL := r.sessionTTL
 	sessionCookieName := r.sessionCookieName
 	sessionSecret := r.sessionSecret
+	authLocalLogin := r.authLocalLogin
 	webBaseURL := r.webBaseURL
 	discordClientID := r.discordClientID
 	discordClientSecret := r.discordClientSecret
@@ -94,6 +95,10 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 			}
 			http.Redirect(w, r, discordBuildAuthorizeURL(discordClientID, redirectURL, state), http.StatusFound)
 		case "", "local":
+			if !authLocalLogin {
+				http.Error(w, "local authentication disabled", http.StatusNotFound)
+				return
+			}
 			// Local/dev flow: redirect straight to callback with query params forwarded.
 			callbackURL := "/v1/auth/callback?" + buildAuthCallbackQuery(r.URL.Query(), webBaseURL)
 			http.Redirect(w, r, callbackURL, http.StatusFound)
@@ -177,7 +182,11 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 			})
 			http.Redirect(w, r, normalizeRedirectURL(query.Get("redirect"), webBaseURL), http.StatusFound)
 
-		default:
+		case "", "local":
+			if !authLocalLogin {
+				http.Error(w, "local authentication disabled", http.StatusNotFound)
+				return
+			}
 			// Local/dev flow: build session directly from query parameters.
 			principal := auth.SessionPrincipal{
 				Subject:     firstNonEmpty(strings.TrimSpace(query.Get("subject")), "local-player"),
@@ -205,6 +214,8 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 				SameSite: http.SameSiteLaxMode,
 			})
 			http.Redirect(w, r, normalizeRedirectURL(query.Get("redirect"), webBaseURL), http.StatusFound)
+		default:
+			http.Error(w, "unknown provider", http.StatusBadRequest)
 		}
 	})
 

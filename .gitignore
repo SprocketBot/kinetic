@@ -18,5 +18,6 @@ coverage.out
 .kube/
 
 # Generated artifacts
+artifacts/
 dist/
 build/

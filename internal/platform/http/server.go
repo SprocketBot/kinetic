@@ -56,10 +56,11 @@ func New(cfg config.Config, logger *slog.Logger, deps Dependencies) *Server {
 	mux := http.NewServeMux()
 	routes := newRouteRegistrar(cfg, logger, deps)
 	routes.register(mux)
+	handler := corsMiddleware(routes.corsAllowedOrigins, mux)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

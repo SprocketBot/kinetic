@@ -19,7 +19,9 @@ type routeRegistrar struct {
 	sessionTTL          time.Duration
 	sessionCookieName   string
 	sessionSecret       string
+	authLocalLogin      bool
 	webBaseURL          string
+	corsAllowedOrigins  []string
 	discordClientID     string
 	discordClientSecret string
 	discordRedirectURL  string
@@ -42,6 +44,11 @@ func newRouteRegistrar(cfg config.Config, logger *slog.Logger, deps Dependencies
 		sessionSecret = "dev-insecure-session-secret"
 	}
 
+	authLocalLogin := cfg.AuthLocalLogin
+	if !cfg.AuthLocalLoginSet {
+		authLocalLogin = true
+	}
+
 	webBaseURL := strings.TrimRight(strings.TrimSpace(cfg.WebBaseURL), "/")
 	if webBaseURL == "" {
 		webBaseURL = "http://localhost:5173"
@@ -60,7 +67,9 @@ func newRouteRegistrar(cfg config.Config, logger *slog.Logger, deps Dependencies
 		sessionTTL:          parseSessionTTL(cfg.AuthSessionTTL),
 		sessionCookieName:   sessionCookieName,
 		sessionSecret:       sessionSecret,
+		authLocalLogin:      authLocalLogin,
 		webBaseURL:          webBaseURL,
+		corsAllowedOrigins:  parseCORSAllowedOrigins(cfg.CORSAllowedOrigins, webBaseURL),
 		discordClientID:     strings.TrimSpace(cfg.DiscordClientID),
 		discordClientSecret: strings.TrimSpace(cfg.DiscordClientSecret),
 		discordRedirectURL:  strings.TrimSpace(cfg.DiscordRedirectURL),

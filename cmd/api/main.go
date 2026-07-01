@@ -21,6 +21,11 @@ import (
 func main() {
 	cfg := config.Load()
 	logger := newLogger(cfg.LogLevel)
+	if err := config.ValidateRuntimeSafety(cfg); err != nil {
+		logger.Error("unsafe runtime configuration", "error", err)
+		os.Exit(1)
+	}
+
 	ctx := context.Background()
 	var conn *sql.DB
 
