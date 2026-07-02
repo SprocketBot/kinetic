@@ -1,25 +1,28 @@
-# Sprocket v3
+# Kinetic
 
-Sprocket v3 is a reimagining of the platform as a statically typed, compiled backend (Go) with Kubernetes-native operations.
+Kinetic is the next-generation league operations platform for Minor League Esports.
+It carries forward the mechanical identity of Sprocket while marking a clean product reboot: a statically typed Go backend, a React/TypeScript web client, Kubernetes-native operations, multi-game workflow foundations, and artifact-backed release gates for the workflows that matter most.
+
+Kinetic is built to make league administration, scrim operations, evidence intake, roster governance, and player-facing workflows reliable enough to ship without the support loop that accumulated in earlier platform iterations.
 
 ## Current Status
 
-Weeks 1-12 are complete, including:
+Core platform slices are complete, including:
 
 - league hierarchy, roster, queue, scrim, and scheduled match foundations
 - deterministic queue promotion processing with observability
 - result submission + ratification lifecycle
 - replay evidence ingestion MVP with parser provenance + dedupe
 - local and minikube smoke automation for weekly slices
+- browser/API release evidence covering credentialed CORS, session identity, privilege isolation, and replay intake behavior
 
-Weeks 13-14 complete handoff hardening and CI quality-gate enforcement.
-Current active strategy is Pareto Recovery focused on exception automation:
+Handoff hardening and CI quality-gate enforcement are in place. Current active strategy is Pareto Recovery focused on exception automation:
 
-- `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
+- `plans/pareto-recovery-plan.md`
 
 Planning source of truth:
 
-- `/Users/jacbaile/Sprocket-v3/plans/v3-execution-board.md`
+- `plans/v3-execution-board.md`
 
 ## Repository Layout
 
@@ -42,6 +45,7 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 - Ship vertical slices weekly.
 - Every shipped slice includes code + tests + docs.
 - Keep architecture simple: modular monolith first, split later only with evidence.
+- Treat release evidence as a required promotion artifact, not an optional smoke test.
 
 ## Quick Commands
 
@@ -61,6 +65,9 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 # web quality gate (lint + typecheck + test + build)
 ./tools/web-quality-gate.sh
 
+# release evidence gate (local DB + API + real browser/API-mode checks)
+./tools/release-evidence.sh
+
 # full local behavior smoke (latest slice)
 ./tools/week12-smoke.sh
 
@@ -73,6 +80,9 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 # final roadmap verification
 ./tools/week14-smoke.sh
 ```
+
+`tools/release-evidence.sh` writes proof bundles under `artifacts/release-validation/<environment>/<timestamp>/`.
+Generated artifacts are ignored by git, but release notes should record the artifact path used for promotion.
 
 ## Local K8s Dev
 
@@ -93,23 +103,23 @@ Notes:
 
 Current onboarding guides:
 
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week1.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week2.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week3.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week4.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week5.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week6.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week7.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week8.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week9.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week10.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week11.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week12.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week13.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/week14.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-phase0.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-support-ops.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-player-core.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-scheduling-admin.md`
-- `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-roster-and-governance.md`
+- `docs/onboarding/week1.md`
+- `docs/onboarding/week2.md`
+- `docs/onboarding/week3.md`
+- `docs/onboarding/week4.md`
+- `docs/onboarding/week5.md`
+- `docs/onboarding/week6.md`
+- `docs/onboarding/week7.md`
+- `docs/onboarding/week8.md`
+- `docs/onboarding/week9.md`
+- `docs/onboarding/week10.md`
+- `docs/onboarding/week11.md`
+- `docs/onboarding/week12.md`
+- `docs/onboarding/week13.md`
+- `docs/onboarding/week14.md`
+- `docs/onboarding/pareto-p1-p6.md`
+- `docs/onboarding/web-phase0.md`
+- `docs/onboarding/web-support-ops.md`
+- `docs/onboarding/web-player-core.md`
+- `docs/onboarding/web-scheduling-admin.md`
+- `docs/onboarding/web-roster-and-governance.md`
