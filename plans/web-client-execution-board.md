@@ -1,8 +1,8 @@
-# Sprocket v3 Web Client Execution Board
+# Kinetic v3 Web Client Execution Board
 
 Last updated: 2026-02-15  
 Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery  
-Source plan: `/Users/jacbaile/Sprocket-v3/plans/web-client-delivery-plan.md`
+Source plan: `/Users/jacbaile/Kinetic-v3/plans/web-client-delivery-plan.md`
 
 ## Program Objective
 

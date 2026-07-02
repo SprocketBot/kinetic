@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
+	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 )
 
 func Authentication(validator TokenValidator, next http.Handler) http.Handler {

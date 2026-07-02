@@ -50,7 +50,7 @@ API tasks:
 
 Service tasks:
 
-- [ ] Route parsing through version-pinned `sprocket-rl-parser` adapter.
+- [ ] Route parsing through version-pinned `kinetic-rl-parser` adapter.
 - [ ] Persist parser metadata and config digest on every parse attempt.
 
 Testing tasks:

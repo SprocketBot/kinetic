@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
 	"net/http"
 	"strings"
 	"time"
@@ -23,7 +23,7 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, healthResponse{
 			Status:    "ok",
-			Service:   "sprocket-v3-api",
+			Service:   "kinetic-v3-api",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		})
 	})
@@ -31,7 +31,7 @@ func (r routeRegistrar) registerAuthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, healthResponse{
 			Status:    "ready",
-			Service:   "sprocket-v3-api",
+			Service:   "kinetic-v3-api",
 			Timestamp: time.Now().UTC().Format(time.RFC3339),
 		})
 	})

@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
 )
 
 type routeRegistrar struct {
@@ -36,7 +36,7 @@ func newRouteRegistrar(cfg config.Config, logger *slog.Logger, deps Dependencies
 
 	sessionCookieName := strings.TrimSpace(cfg.AuthSessionCookie)
 	if sessionCookieName == "" {
-		sessionCookieName = "sprocket_session"
+		sessionCookieName = "kinetic_session"
 	}
 
 	sessionSecret := strings.TrimSpace(cfg.AuthSessionSecret)

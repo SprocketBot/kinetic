@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NAMESPACE="${K8S_NAMESPACE:-sprocket-v3}"
+NAMESPACE="${K8S_NAMESPACE:-kinetic-v3}"
 KUSTOMIZE_DIR="${ROOT_DIR}/deploy/k8s-local-dev"
 API_PORT="${API_PORT:-8080}"
 WEB_PORT="${WEB_PORT:-5173}"
@@ -64,25 +64,25 @@ cd "$ROOT_DIR"
 echo "Deploying local dev overlay to minikube"
 KUSTOMIZE_DIR="$KUSTOMIZE_DIR" K8S_NAMESPACE="$NAMESPACE" ./deploy/scripts/apply-local.sh
 
-SERVICE_PORT="$(kubectl -n "$NAMESPACE" get svc sprocket-v3-api -o jsonpath='{.spec.ports[0].port}')"
+SERVICE_PORT="$(kubectl -n "$NAMESPACE" get svc kinetic-v3-api -o jsonpath='{.spec.ports[0].port}')"
 if [[ -z "${SERVICE_PORT}" ]]; then
-  echo "Unable to determine service port for ${NAMESPACE}/sprocket-v3-api" >&2
+  echo "Unable to determine service port for ${NAMESPACE}/kinetic-v3-api" >&2
   exit 1
 fi
 
 echo "Starting API port-forward on localhost:${API_PORT}"
-kubectl -n "$NAMESPACE" port-forward svc/sprocket-v3-api "${API_PORT}:${SERVICE_PORT}" >/tmp/sprocket_v3_start_dev_pf.log 2>&1 &
+kubectl -n "$NAMESPACE" port-forward svc/kinetic-v3-api "${API_PORT}:${SERVICE_PORT}" >/tmp/kinetic_v3_start_dev_pf.log 2>&1 &
 PF_PID=$!
 
 for i in $(seq 1 40); do
-  code="$(curl -s -o /tmp/sprocket_v3_start_dev_healthz.json -w '%{http_code}' "http://localhost:${API_PORT}/healthz" || true)"
+  code="$(curl -s -o /tmp/kinetic_v3_start_dev_healthz.json -w '%{http_code}' "http://localhost:${API_PORT}/healthz" || true)"
   if [[ "$code" == "200" ]]; then
     break
   fi
   sleep 1
   if [[ "$i" -eq 40 ]]; then
     echo "API did not become reachable via port-forward in time" >&2
-    cat /tmp/sprocket_v3_start_dev_pf.log >&2 || true
+    cat /tmp/kinetic_v3_start_dev_pf.log >&2 || true
     exit 1
   fi
 done

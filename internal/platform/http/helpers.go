@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/skillgroup"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/skillgroup"
 )
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

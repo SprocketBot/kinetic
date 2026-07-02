@@ -23,7 +23,7 @@
             "NotificationsModule",
             "EventsModule",
             "CommandsModule",
-            "SprocketEventsModule"
+            "KineticEventsModule"
           ],
           "providers": [
             "GlobalModule",
@@ -365,19 +365,19 @@
     ]
   },
   {
-    "file": "clients/discord-bot/src/commands/administrator-commands/sprocket-configuration.marshal.ts",
+    "file": "clients/discord-bot/src/commands/administrator-commands/kinetic-configuration.marshal.ts",
     "workspace": "clients/discord-bot",
     "fileType": "marshal",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketConfigurationMarshal",
+        "name": "KineticConfigurationMarshal",
         "decorators": [],
         "dependencies": [],
         "properties": [],
         "methods": [
           {
-            "name": "getSprocketConfig",
+            "name": "getKineticConfig",
             "decorators": [
               "Command"
             ],
@@ -404,13 +404,13 @@
     ]
   },
   {
-    "file": "clients/discord-bot/src/commands/administrator-commands/sprocket-status.marshal.ts",
+    "file": "clients/discord-bot/src/commands/administrator-commands/kinetic-status.marshal.ts",
     "workspace": "clients/discord-bot",
     "fileType": "marshal",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketStatusMarshal",
+        "name": "KineticStatusMarshal",
         "decorators": [],
         "dependencies": [],
         "properties": [],
@@ -1898,13 +1898,13 @@
     ]
   },
   {
-    "file": "clients/discord-bot/src/sprocket-events/sprocket-events.module.ts",
+    "file": "clients/discord-bot/src/kinetic-events/kinetic-events.module.ts",
     "workspace": "clients/discord-bot",
     "fileType": "module",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketEventsModule",
+        "name": "KineticEventsModule",
         "decorators": [
           "Module"
         ],
@@ -1918,20 +1918,20 @@
             "EventsModule"
           ],
           "providers": [
-            "SprocketEventsService"
+            "KineticEventsService"
           ]
         }
       }
     ]
   },
   {
-    "file": "clients/discord-bot/src/sprocket-events/sprocket-events.service.ts",
+    "file": "clients/discord-bot/src/kinetic-events/kinetic-events.service.ts",
     "workspace": "clients/discord-bot",
     "fileType": "service",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketEventsService",
+        "name": "KineticEventsService",
         "decorators": [
           "Injectable"
         ],
@@ -1968,7 +1968,7 @@
           {
             "name": "onSkillGroupChange",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -1984,7 +1984,7 @@
           {
             "name": "onTeamChange",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -4853,7 +4853,7 @@
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketEventMarshal",
+        "name": "KineticEventMarshal",
         "decorators": [
           "Injectable"
         ],
@@ -6282,7 +6282,7 @@
         "name": "CoreEndpoint",
         "members": [
           "GetDiscordIdByUser",
-          "GetSprocketConfiguration",
+          "GetKineticConfiguration",
           "GetOrganizationProfile",
           "GetUserByAuthAccount",
           "GetMember",
@@ -6514,13 +6514,13 @@
     ]
   },
   {
-    "file": "common/src/service-connectors/core/schemas/GetSprocketConfiguration.schema.ts",
+    "file": "common/src/service-connectors/core/schemas/GetKineticConfiguration.schema.ts",
     "workspace": "common",
     "fileType": "schema",
     "entities": [
       {
         "kind": "enum",
-        "name": "SprocketConfigurationKey",
+        "name": "KineticConfigurationKey",
         "members": [
           "DISABLE_DISCORD_DMS"
         ]
@@ -8783,7 +8783,7 @@
             "MledbInterfaceModule",
             "FranchiseModule",
             "ImageGenerationModule",
-            "SprocketRatingModule",
+            "KineticRatingModule",
             "UtilModule",
             "EloModule",
             "SubmissionModule",
@@ -8815,15 +8815,15 @@
           "providers": [
             "OrganizationConfigurationResolver",
             "OrganizationConfigurationService",
-            "SprocketConfigurationResolver",
-            "SprocketConfigurationService"
+            "KineticConfigurationResolver",
+            "KineticConfigurationService"
           ],
           "exports": [
             "OrganizationConfigurationService"
           ],
           "controllers": [
             "OrganizationConfigurationController",
-            "SprocketConfigurationController"
+            "KineticConfigurationController"
           ]
         }
       }
@@ -9208,20 +9208,20 @@
     ]
   },
   {
-    "file": "core/src/configuration/sprocket-configuration/sprocket-configuration.controller.ts",
+    "file": "core/src/configuration/kinetic-configuration/kinetic-configuration.controller.ts",
     "workspace": "core",
     "fileType": "controller",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketConfigurationController",
+        "name": "KineticConfigurationController",
         "decorators": [
           "Controller"
         ],
         "dependencies": [
           {
-            "name": "sprocketConfigService",
-            "type": "SprocketConfigurationService",
+            "name": "kineticConfigService",
+            "type": "KineticConfigurationService",
             "optional": false,
             "modifiers": [
               "PrivateKeyword",
@@ -9232,7 +9232,7 @@
         "properties": [],
         "methods": [
           {
-            "name": "getSprocketConfiguration",
+            "name": "getKineticConfiguration",
             "decorators": [
               "MessagePattern"
             ],
@@ -9246,7 +9246,7 @@
                 ]
               }
             ],
-            "returns": "Promise<SprocketConfiguration[]>",
+            "returns": "Promise<KineticConfiguration[]>",
             "async": true
           }
         ],
@@ -9255,20 +9255,20 @@
     ]
   },
   {
-    "file": "core/src/configuration/sprocket-configuration/sprocket-configuration.resolver.ts",
+    "file": "core/src/configuration/kinetic-configuration/kinetic-configuration.resolver.ts",
     "workspace": "core",
     "fileType": "resolver",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketConfigurationResolver",
+        "name": "KineticConfigurationResolver",
         "decorators": [
           "Resolver"
         ],
         "dependencies": [
           {
             "name": "service",
-            "type": "SprocketConfigurationService",
+            "type": "KineticConfigurationService",
             "optional": false,
             "modifiers": [
               "PrivateKeyword",
@@ -9279,7 +9279,7 @@
         "properties": [],
         "methods": [
           {
-            "name": "getSprocketConfiguration",
+            "name": "getKineticConfiguration",
             "decorators": [
               "Query"
             ],
@@ -9293,7 +9293,7 @@
                 ]
               }
             ],
-            "returns": "Promise<SprocketConfiguration[]>",
+            "returns": "Promise<KineticConfiguration[]>",
             "async": true
           }
         ],
@@ -9302,20 +9302,20 @@
     ]
   },
   {
-    "file": "core/src/configuration/sprocket-configuration/sprocket-configuration.service.ts",
+    "file": "core/src/configuration/kinetic-configuration/kinetic-configuration.service.ts",
     "workspace": "core",
     "fileType": "service",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketConfigurationService",
+        "name": "KineticConfigurationService",
         "decorators": [
           "Injectable"
         ],
         "dependencies": [
           {
-            "name": "sprocketConfigurationRepository",
-            "type": "Repository<SprocketConfiguration>",
+            "name": "kineticConfigurationRepository",
+            "type": "Repository<KineticConfiguration>",
             "optional": false,
             "modifiers": [
               "PrivateKeyword"
@@ -9325,7 +9325,7 @@
         "properties": [],
         "methods": [
           {
-            "name": "getSprocketConfiguration",
+            "name": "getKineticConfiguration",
             "decorators": [],
             "params": [
               {
@@ -9335,7 +9335,7 @@
                 "decorators": []
               }
             ],
-            "returns": "Promise<SprocketConfiguration[]>",
+            "returns": "Promise<KineticConfiguration[]>",
             "async": true
           }
         ],
@@ -10241,13 +10241,13 @@
     ]
   },
   {
-    "file": "core/src/database/configuration/sprocket_configuration/sprocket_configuration.model.ts",
+    "file": "core/src/database/configuration/kinetic_configuration/kinetic_configuration.model.ts",
     "workspace": "core",
     "fileType": "model",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketConfiguration",
+        "name": "KineticConfiguration",
         "decorators": [
           "Entity",
           "ObjectType"
@@ -12493,7 +12493,7 @@
             "readonly": false
           },
           {
-            "name": "sprocketFixtureId",
+            "name": "kineticFixtureId",
             "type": "number",
             "decorators": [
               "Column"
@@ -12647,7 +12647,7 @@
             "readonly": false
           },
           {
-            "name": "sprocketPlayerId",
+            "name": "kineticPlayerId",
             "type": "number",
             "decorators": [
               "Column"
@@ -19979,7 +19979,7 @@
             ]
           },
           {
-            "name": "sprocketMemberService",
+            "name": "kineticMemberService",
             "type": "MemberService",
             "optional": false,
             "modifiers": [
@@ -21444,7 +21444,7 @@
             "decorators": [],
             "params": [
               {
-                "name": "sprocketPlayerId",
+                "name": "kineticPlayerId",
                 "type": "number",
                 "optional": false,
                 "decorators": []
@@ -21678,7 +21678,7 @@
             "async": true
           },
           {
-            "name": "getMlePlayerBySprocketPlayer",
+            "name": "getMlePlayerByKineticPlayer",
             "decorators": [],
             "params": [
               {
@@ -24519,7 +24519,7 @@
             "DatabaseModule",
             "GameModule",
             "MatchmakingModule",
-            "SprocketRatingModule",
+            "KineticRatingModule",
             "UtilModule",
             "forwardRef(...)",
             "forwardRef(...)",
@@ -24651,7 +24651,7 @@
             ]
           },
           {
-            "name": "sprocketMatchService",
+            "name": "kineticMatchService",
             "type": "MatchService",
             "optional": false,
             "modifiers": [
@@ -24720,7 +24720,7 @@
             "decorators": [],
             "params": [
               {
-                "name": "sprocketMatchId",
+                "name": "kineticMatchId",
                 "type": "number",
                 "optional": false,
                 "decorators": []
@@ -25124,7 +25124,7 @@
             "async": true
           },
           {
-            "name": "getMlePlayerBySprocketUser",
+            "name": "getMlePlayerByKineticUser",
             "decorators": [],
             "params": [
               {
@@ -25180,7 +25180,7 @@
             "async": true
           },
           {
-            "name": "getSprocketUserByPlatformInformation",
+            "name": "getKineticUserByPlatformInformation",
             "decorators": [],
             "params": [
               {
@@ -25200,7 +25200,7 @@
             "async": true
           },
           {
-            "name": "getSprocketPlayerByPlatformInformation",
+            "name": "getKineticPlayerByPlatformInformation",
             "decorators": [],
             "params": [
               {
@@ -25322,8 +25322,8 @@
             ]
           },
           {
-            "name": "sprocketRatingService",
-            "type": "SprocketRatingService",
+            "name": "kineticRatingService",
+            "type": "KineticRatingService",
             "optional": false,
             "modifiers": [
               "PrivateKeyword",
@@ -26328,7 +26328,7 @@
             ],
             "params": [
               {
-                "name": "sprocketUserId",
+                "name": "kineticUserId",
                 "type": "string",
                 "optional": false,
                 "decorators": [
@@ -26781,7 +26781,7 @@
             "decorators": [],
             "params": [
               {
-                "name": "sprocketUserId",
+                "name": "kineticUserId",
                 "type": "number",
                 "optional": false,
                 "decorators": []
@@ -27641,8 +27641,8 @@
             ]
           },
           {
-            "name": "sprocketRatingService",
-            "type": "SprocketRatingService",
+            "name": "kineticRatingService",
+            "type": "KineticRatingService",
             "optional": false,
             "modifiers": [
               "PrivateKeyword",
@@ -27989,7 +27989,7 @@
             "async": true
           },
           {
-            "name": "_getSprocketRating",
+            "name": "_getKineticRating",
             "decorators": [],
             "params": [
               {
@@ -28011,7 +28011,7 @@
                 "decorators": []
               }
             ],
-            "returns": "SprocketRating",
+            "returns": "KineticRating",
             "async": false
           }
         ],
@@ -28351,7 +28351,7 @@
             "AnalyticsModule",
             "FranchiseModule",
             "IdentityModule",
-            "SprocketRatingModule",
+            "KineticRatingModule",
             "EloModule",
             "EloConnectorModule",
             "SchedulingModule",
@@ -34079,13 +34079,13 @@
     ]
   },
   {
-    "file": "core/src/sprocket-rating/sprocket-rating.module.ts",
+    "file": "core/src/kinetic-rating/kinetic-rating.module.ts",
     "workspace": "core",
     "fileType": "module",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketRatingModule",
+        "name": "KineticRatingModule",
         "decorators": [
           "Module"
         ],
@@ -34094,23 +34094,23 @@
         "methods": [],
         "moduleMetadata": {
           "providers": [
-            "SprocketRatingService"
+            "KineticRatingService"
           ],
           "exports": [
-            "SprocketRatingService"
+            "KineticRatingService"
           ]
         }
       }
     ]
   },
   {
-    "file": "core/src/sprocket-rating/sprocket-rating.service.ts",
+    "file": "core/src/kinetic-rating/kinetic-rating.service.ts",
     "workspace": "core",
     "fileType": "service",
     "entities": [
       {
         "kind": "class",
-        "name": "SprocketRatingService",
+        "name": "KineticRatingService",
         "decorators": [
           "Injectable"
         ],
@@ -34118,45 +34118,45 @@
         "properties": [],
         "methods": [
           {
-            "name": "calcSprocketRating",
+            "name": "calcKineticRating",
             "decorators": [],
             "params": [
               {
                 "name": "core",
-                "type": "SprocketRatingInput",
+                "type": "KineticRatingInput",
                 "optional": false,
                 "decorators": []
               }
             ],
-            "returns": "SprocketRating",
+            "returns": "KineticRating",
             "async": false
           },
           {
-            "name": "calcSprocketRating2s",
+            "name": "calcKineticRating2s",
             "decorators": [],
             "params": [
               {
                 "name": "core",
-                "type": "SprocketRatingInput",
+                "type": "KineticRatingInput",
                 "optional": false,
                 "decorators": []
               }
             ],
-            "returns": "SprocketRating",
+            "returns": "KineticRating",
             "async": false
           },
           {
-            "name": "calcSprocketRating3s",
+            "name": "calcKineticRating3s",
             "decorators": [],
             "params": [
               {
                 "name": "core",
-                "type": "SprocketRatingInput",
+                "type": "KineticRatingInput",
                 "optional": false,
                 "decorators": []
               }
             ],
-            "returns": "SprocketRating",
+            "returns": "KineticRating",
             "async": false
           }
         ],
@@ -34165,13 +34165,13 @@
     ]
   },
   {
-    "file": "core/src/sprocket-rating/sprocket-rating.types.ts",
+    "file": "core/src/kinetic-rating/kinetic-rating.types.ts",
     "workspace": "core",
     "fileType": "types",
     "entities": [
       {
         "kind": "interface",
-        "name": "SprocketRatingInput",
+        "name": "KineticRatingInput",
         "extends": [],
         "members": [
           {
@@ -34220,7 +34220,7 @@
       },
       {
         "kind": "interface",
-        "name": "SprocketRating",
+        "name": "KineticRating",
         "extends": [],
         "members": [
           {
@@ -35018,8 +35018,8 @@
       },
       {
         "kind": "type",
-        "name": "SprocketData",
-        "type": "z.infer<typeof sprocketDataSchema>"
+        "name": "KineticData",
+        "type": "z.infer<typeof kineticDataSchema>"
       }
     ]
   },
@@ -36891,7 +36891,7 @@
           {
             "name": "sendReportCard",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -36980,7 +36980,7 @@
           {
             "name": "sendQueueBanNotification",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37277,7 +37277,7 @@
           {
             "name": "sendSkillGroupChanged",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37376,7 +37376,7 @@
           {
             "name": "sendScrimCreatedNotifications",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37392,7 +37392,7 @@
           {
             "name": "sendQueuePoppedNotifications",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37408,7 +37408,7 @@
           {
             "name": "sendLobbyNotifications",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37424,7 +37424,7 @@
           {
             "name": "sendReportCard",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37547,7 +37547,7 @@
           {
             "name": "sendSubmissionRatifyingNotifications",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {
@@ -37563,7 +37563,7 @@
           {
             "name": "sendSubmissionRejectedNotifications",
             "decorators": [
-              "SprocketEvent"
+              "KineticEvent"
             ],
             "params": [
               {

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
+	"github.com/kineticbot/kinetic-v3/internal/domain/apitoken"
+	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
 )
 
 func parseSessionTTL(raw string) time.Duration {

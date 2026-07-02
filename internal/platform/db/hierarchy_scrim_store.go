@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/notifications"
 )
 
 const scrimCols = `id, queue_id, home_team_id, away_team_id, state,

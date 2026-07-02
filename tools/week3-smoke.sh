@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PG_NAME="sprocket-v3-pg-week3-smoke"
+PG_NAME="kinetic-v3-pg-week3-smoke"
 PG_PORT="${PG_PORT:-55432}"
-DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/sprocket?sslmode=disable"
+DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/kinetic?sslmode=disable"
 API_PID=""
 
 cleanup() {
@@ -25,12 +25,12 @@ cd "$ROOT_DIR"
 docker run --name "$PG_NAME" \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=sprocket \
+  -e POSTGRES_DB=kinetic \
   -p "${PG_PORT}:5432" \
   -d postgres:16 >/dev/null
 
 for i in $(seq 1 40); do
-  if docker exec "$PG_NAME" pg_isready -U postgres -d sprocket >/dev/null 2>&1; then
+  if docker exec "$PG_NAME" pg_isready -U postgres -d kinetic >/dev/null 2>&1; then
     break
   fi
   sleep 1
@@ -41,10 +41,10 @@ for i in $(seq 1 40); do
 done
 
 echo "Running migrations"
-DATABASE_URL="$DB_URL" MIGRATIONS_DIR="./migrations" go run ./cmd/migrate >/tmp/sprocket_v3_week3_migrate.log
+DATABASE_URL="$DB_URL" MIGRATIONS_DIR="./migrations" go run ./cmd/migrate >/tmp/kinetic_v3_week3_migrate.log
 
 echo "Starting API in DB-required mode"
-DATABASE_URL="$DB_URL" REQUIRE_DATABASE=true go run ./cmd/api >/tmp/sprocket_v3_week3_api.log 2>&1 &
+DATABASE_URL="$DB_URL" REQUIRE_DATABASE=true go run ./cmd/api >/tmp/kinetic_v3_week3_api.log 2>&1 &
 API_PID=$!
 sleep 1
 

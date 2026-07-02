@@ -8,8 +8,8 @@ import { exceptionMetricsSchema } from "../../../lib/api/schemas";
 
 const opsLinks = [
   { label: "Grafana", href: "https://grafana.example.internal" },
-  { label: "GitHub Actions", href: "https://github.com/SprocketBot/sprocket-v3/actions" },
-  { label: "GHCR Packages", href: "https://github.com/orgs/SprocketBot/packages" },
+  { label: "GitHub Actions", href: "https://github.com/KineticBot/kinetic-v3/actions" },
+  { label: "GHCR Packages", href: "https://github.com/orgs/KineticBot/packages" },
 ];
 
 async function getExceptionMetrics() {
@@ -23,7 +23,7 @@ export function PlatformOpsPage() {
   });
 
   return (
-    <AppShell title="Sprocket Web Client">
+    <AppShell title="Kinetic Web Client">
       <h2>Platform Operations</h2>
       <p>Operational links and key exception metrics.</p>
 

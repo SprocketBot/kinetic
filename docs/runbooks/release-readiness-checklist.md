@@ -24,7 +24,7 @@ All four must pass. `release-evidence.sh` writes an artifact-backed proof bundle
 - rollback command verified:
 
 ```bash
-kubectl -n sprocket-v3 rollout undo deploy/sprocket-v3-api
+kubectl -n kinetic-v3 rollout undo deploy/kinetic-v3-api
 ```
 
 - latest runbooks reflect current endpoint and smoke behavior

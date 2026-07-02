@@ -1,4 +1,4 @@
-# Sprocket Level 1 Spec: clients/web
+# Kinetic Level 1 Spec: clients/web
 
 Low-level public API inventory for the web client.
 

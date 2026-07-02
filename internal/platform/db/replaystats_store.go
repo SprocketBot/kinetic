@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/replaystats"
+	"github.com/kineticbot/kinetic-v3/internal/domain/replaystats"
 )
 
 // ReplayStatsStore implements replaystats.Store backed by a PostgreSQL database.
@@ -116,7 +116,7 @@ WHERE player_id = $1;`
 	stats.TotalSaves = int32(totalSaves)
 	stats.TotalShots = int32(totalShots)
 
-	// Compute per-game averages using the SprocketRating formula
+	// Compute per-game averages using the KineticRating formula
 	g := float64(totalGames)
 	stats.AvgOPI = (float64(totalGoals) + 0.75*float64(totalAssists) + 0.3*float64(totalShots)) / g
 	stats.AvgDPI = float64(totalSaves) / g

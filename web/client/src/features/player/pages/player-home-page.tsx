@@ -199,7 +199,7 @@ export function PlayerHomePage() {
   });
 
   return (
-    <AppShell title="Sprocket Web Client">
+    <AppShell title="Kinetic Web Client">
       <h2>Player</h2>
       <p>Queue, scrim, replay submission, and ratification workflows.</p>
 
@@ -352,7 +352,7 @@ function SubmissionActions({
   const [contextType, setContextType] = useState<"scrim" | "match">("scrim");
   const [contextId, setContextId] = useState(1);
   const [replayBody, setReplayBody] = useState("placeholder-replay");
-  const [parserName, setParserName] = useState("sprocket-rl-parser");
+  const [parserName, setParserName] = useState("kinetic-rl-parser");
   const [parserVersion, setParserVersion] = useState("v1");
   const [parserConfigDigest, setParserConfigDigest] = useState("default");
 

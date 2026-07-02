@@ -27,7 +27,7 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("PORT", "9090")
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("AUTH_LOCAL_LOGIN_ENABLED", "false")
-	t.Setenv("CORS_ALLOWED_ORIGINS", "https://sprocket.mlesports.gg")
+	t.Setenv("CORS_ALLOWED_ORIGINS", "https://kinetic.mlesports.gg")
 
 	cfg := Load()
 
@@ -51,7 +51,7 @@ func TestLoadOverrides(t *testing.T) {
 		t.Fatal("expected local login to be marked as configured by Load")
 	}
 
-	if cfg.CORSAllowedOrigins != "https://sprocket.mlesports.gg" {
+	if cfg.CORSAllowedOrigins != "https://kinetic.mlesports.gg" {
 		t.Fatalf("expected CORS override, got %s", cfg.CORSAllowedOrigins)
 	}
 }
@@ -112,7 +112,7 @@ func TestValidateRuntimeSafetyRejectsProductionLocalAuth(t *testing.T) {
 		DeploymentEnv:     "production",
 		AuthLocalLogin:    true,
 		AuthSessionSecret: "real-secret",
-		WebBaseURL:        "https://sprocket.mlesports.gg",
+		WebBaseURL:        "https://kinetic.mlesports.gg",
 	}
 
 	if err := ValidateRuntimeSafety(cfg); err == nil {
@@ -125,7 +125,7 @@ func TestValidateRuntimeSafetyRejectsProductionDefaultSecret(t *testing.T) {
 		DeploymentEnv:     "staging",
 		AuthLocalLogin:    false,
 		AuthSessionSecret: defaultAuthSessionSecret,
-		WebBaseURL:        "https://staging.sprocket.mlesports.gg",
+		WebBaseURL:        "https://staging.kinetic.mlesports.gg",
 	}
 
 	if err := ValidateRuntimeSafety(cfg); err == nil {
@@ -138,8 +138,8 @@ func TestValidateRuntimeSafetyRejectsProductionWildcardCORS(t *testing.T) {
 		DeploymentEnv:      "prod",
 		AuthLocalLogin:     false,
 		AuthSessionSecret:  "real-secret",
-		WebBaseURL:         "https://sprocket.mlesports.gg",
-		CORSAllowedOrigins: "https://sprocket.mlesports.gg,*",
+		WebBaseURL:         "https://kinetic.mlesports.gg",
+		CORSAllowedOrigins: "https://kinetic.mlesports.gg,*",
 	}
 
 	if err := ValidateRuntimeSafety(cfg); err == nil {

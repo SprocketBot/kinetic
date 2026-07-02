@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
 
 // startPopTimeoutWatcher launches a goroutine that cancels a popped scrim if it hasn't

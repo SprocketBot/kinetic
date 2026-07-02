@@ -8,8 +8,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/notifications"
 )
 
 func (s *HierarchyStore) ListPlayerRatings(ctx context.Context) ([]hierarchy.PlayerRating, error) {

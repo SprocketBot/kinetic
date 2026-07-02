@@ -9,10 +9,10 @@ export async function signInAs(page: Page, role: Role) {
     roles: [role],
   };
   await page.addInitScript((session) => {
-    localStorage.setItem("sprocket.mockSession", JSON.stringify(session));
+    localStorage.setItem("kinetic.mockSession", JSON.stringify(session));
   }, principal);
   await page.evaluate((session) => {
-    localStorage.setItem("sprocket.mockSession", JSON.stringify(session));
+    localStorage.setItem("kinetic.mockSession", JSON.stringify(session));
   }, principal).catch(() => {});
 }
 
@@ -210,7 +210,7 @@ export async function installCUJApi(page: Page) {
       parseRun: {
         id: nextId++,
         replayEvidenceId: nextId++,
-        parserName: "sprocket-rl-parser",
+        parserName: "kinetic-rl-parser",
         parserVersion: "v1",
         parserConfigDigest: "default",
         status: "parsed",

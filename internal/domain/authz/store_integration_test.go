@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
+	"github.com/kineticbot/kinetic-v3/internal/platform/db"
 )
 
 func TestLoadPermissionsFromDatabase(t *testing.T) {

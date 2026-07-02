@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
+	"github.com/kineticbot/kinetic-v3/internal/domain/apitoken"
 )
 
 // APITokenStore implements apitoken.Store backed by PostgreSQL.

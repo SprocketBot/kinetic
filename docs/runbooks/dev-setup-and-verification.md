@@ -74,9 +74,9 @@ What this validates:
 ## Troubleshooting quick checks
 
 - `kubectl config current-context` should be `minikube`
-- `kubectl -n sprocket-v3 get deploy,svc,pods`
-- `kubectl -n sprocket-v3 get pods`
-- `kubectl -n sprocket-v3 logs deploy/sprocket-v3-api --tail=200`
-- `kubectl -n sprocket-v3 logs deploy/sprocket-v3-pg-dev --tail=200`
+- `kubectl -n kinetic-v3 get deploy,svc,pods`
+- `kubectl -n kinetic-v3 get pods`
+- `kubectl -n kinetic-v3 logs deploy/kinetic-v3-api --tail=200`
+- `kubectl -n kinetic-v3 logs deploy/kinetic-v3-pg-dev --tail=200`
 - verify service port discovery in smoke script logs
 - stop only local processes with `Ctrl+C`; remove dev cluster resources with `kubectl delete -k deploy/k8s-local-dev`

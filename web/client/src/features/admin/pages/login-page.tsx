@@ -41,8 +41,8 @@ export function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-page__card">
-        <img alt="Sprocket" className="login-page__brand" src="/img/logo-horizontal.svg" />
-        <h1>Sprocket Sign In</h1>
+        <img alt="Kinetic" className="login-page__brand" src="/img/logo-horizontal.svg" />
+        <h1>Kinetic Sign In</h1>
         {env.authMode === "mock" ? (
           <>
             <p>Mock login is enabled for local development.</p>

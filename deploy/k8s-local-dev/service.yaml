@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: sprocket-v3-api
-  namespace: sprocket-v3
+  name: kinetic-v3-api
+  namespace: kinetic-v3
 spec:
   selector:
-    app: sprocket-v3-api
+    app: kinetic-v3-api
   ports:
     - protocol: TCP
       port: 80

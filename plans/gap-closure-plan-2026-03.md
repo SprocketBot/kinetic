@@ -1,8 +1,8 @@
-# Sprocket v3 Gap Closure Plan
+# Kinetic v3 Gap Closure Plan
 
 Date: 2026-03-01
 Status: Draft
-Inputs: `docs/sprocket-v1-analysis/`, `/Users/jacbaile/Workspace/MLE/RocketLeague/sprocket_dev`, `plans/web-client-delivery-plan.md`, gap analysis (2026-03-01)
+Inputs: `docs/kinetic-v1-analysis/`, `/Users/jacbaile/Workspace/MLE/RocketLeague/kinetic_dev`, `plans/web-client-delivery-plan.md`, gap analysis (2026-03-01)
 
 ---
 
@@ -256,7 +256,7 @@ Replay bytes are **not persisted** after stat extraction is complete. The raw by
 The replay evidence endpoint currently accepts `parse_output_json` inline. Change this:
 
 - `POST /v1/replay-evidence` accepts raw replay bytes (multipart), buffers them in memory (or a temp column), sets `parse_status = queued`.
-- A worker goroutine processes `queued` evidence by calling `sprocket-rl-parser` as a subprocess or HTTP service.
+- A worker goroutine processes `queued` evidence by calling `kinetic-rl-parser` as a subprocess or HTTP service.
 - On parse success: write stat lines (4.3), null out `raw_bytes`, set `parse_status = parsed`.
 - On failure: set `parse_status = failed`, write error JSON, raise exception ticket.
 - `GET /v1/replay-evidence/{id}` returns current parse status.
@@ -315,14 +315,14 @@ CREATE TABLE team_stat_lines (
 Endpoints:
 - `GET /v1/result-submissions/{id}/stats` — returns rounds + player_stat_lines + team_stat_lines for a finalized submission.
 
-**4.4 — SprocketRating calculation**
+**4.4 — KineticRating calculation**
 
 Add `opi`, `dpi`, `gpi` computed columns (or a derived endpoint) from stat lines, using the v1 formula:
 - `opi = (goals + 0.75 * assists + 0.3 * shots) / rounds_played`
 - `dpi = saves / rounds_played`
 - `gpi = opi + dpi`
 
-Expose via `GET /v1/player-ratings?include_sprocket_rating=true` or as fields on the rating response.
+Expose via `GET /v1/player-ratings?include_kinetic_rating=true` or as fields on the rating response.
 
 ---
 
@@ -330,7 +330,7 @@ Expose via `GET /v1/player-ratings?include_sprocket_rating=true` or as fields on
 
 ### Context
 
-The [v2 unified matchmaking proposal](https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/sprocket-v2-unified-matchmaking-proposal/) defines the rating model v3 should implement. The core principle: **all players share one continuous Elo pool (0–3000+) regardless of which league they compete in**. Skill groups are configurable labeled brackets along this continuum, not isolated rating pools. ADR-010 in v3 already commits to this model; Theme 5 is its implementation.
+The [v2 unified matchmaking proposal](https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/) defines the rating model v3 should implement. The core principle: **all players share one continuous Elo pool (0–3000+) regardless of which league they compete in**. Skill groups are configurable labeled brackets along this continuum, not isolated rating pools. ADR-010 in v3 already commits to this model; Theme 5 is its implementation.
 
 ### 5A: Skill Group Entities
 
@@ -425,7 +425,7 @@ Cross-group matches are semantically valid because all players share the same ra
 
 Record the expansion stage and cross-group flag on `matchmaking_decisions` (both columns already exist from the v3 foundation work).
 
-### 5E: SprocketRating performance indices
+### 5E: KineticRating performance indices
 
 After stat lines are extracted (Theme 4.3), compute per-player performance indices from the v1 formula:
 
@@ -545,7 +545,7 @@ Theme 2 (me/* endpoints, lobby credentials) ────────────
 Theme 3 (scrim state machine) ─────────────────────────────► Theme 2 (me/scrim)
 Theme 6 (org config) ──────────────────────────────────────► Theme 3 (pop timeout config), Theme 5A (threshold seeds)
 Theme 5B/5C/5D (Glicko-2 + transitions + expansion) ──────► Theme 5A prereq
-Theme 4 (replay parsing + stat extraction) ────────────────► Theme 5E (SprocketRating uses stat lines)
+Theme 4 (replay parsing + stat extraction) ────────────────► Theme 5E (KineticRating uses stat lines)
 Theme 7.1–7.6 (API completeness) ──────────────────────────► Web Phase 1–5
 ```
 
@@ -558,7 +558,7 @@ Theme 7.1–7.6 (API completeness) ───────────────
 | Phase 2 (Player Scrim Core) | Theme 2 (me/* endpoints), Theme 3 (scrim state machine + check-in), Theme 5A (skill groups visible to players) |
 | Phase 3 (League Admin) | Theme 6 (org config + skill group thresholds), Theme 7.5 (eligibility with skill group context) |
 | Phase 4 (Roster + Roles) | Theme 1.2–1.3 (scope enforcement + approval), Theme 5B/5C/5D (automated rating + transitions), Theme 7.3 (activation) |
-| Phase 5 (Account + Eligibility + Overrides) | Theme 4 (replay pipeline + stat extraction), Theme 5E (SprocketRating), Theme 1.4 (API tokens), Theme 7.6 (OpenAPI) |
+| Phase 5 (Account + Eligibility + Overrides) | Theme 4 (replay pipeline + stat extraction), Theme 5E (KineticRating), Theme 1.4 (API tokens), Theme 7.6 (OpenAPI) |
 
 ---
 

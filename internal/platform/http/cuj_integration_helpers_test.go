@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/platform/db"
 )
 
 type cujApp struct {

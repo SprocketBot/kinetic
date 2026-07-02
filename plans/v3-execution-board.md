@@ -1,4 +1,4 @@
-# Sprocket v3 Execution Board
+# Kinetic v3 Execution Board
 
 Last updated: 2026-02-15
 Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
@@ -70,16 +70,16 @@ Owner capacity: 10 hrs/week gross, 8 hrs/week planned delivery
 
 ## Post-Roadmap Priority (Pareto Recovery)
 
-- Plan of record: `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
-- Charter: `/Users/jacbaile/Sprocket-v3/docs/reports/pareto-recovery-charter-2026-02-15.md`
+- Plan of record: `/Users/jacbaile/Kinetic-v3/plans/pareto-recovery-plan.md`
+- Charter: `/Users/jacbaile/Kinetic-v3/docs/reports/pareto-recovery-charter-2026-02-15.md`
 - Objective: cut operator admin hours by automating exception-heavy workflows first.
 
 ## Pareto Track Status
 
-- Execution plan: `/Users/jacbaile/Sprocket-v3/plans/pareto-recovery-plan.md`
-- Baseline report: `/Users/jacbaile/Sprocket-v3/docs/reports/pareto-baseline-2026-02-15.md`
-- Onboarding: `/Users/jacbaile/Sprocket-v3/docs/onboarding/pareto-p1-p6.md`
-- ADR: `/Users/jacbaile/Sprocket-v3/docs/adr/020-operator-inbox-and-exception-automation-mvp.md`
+- Execution plan: `/Users/jacbaile/Kinetic-v3/plans/pareto-recovery-plan.md`
+- Baseline report: `/Users/jacbaile/Kinetic-v3/docs/reports/pareto-baseline-2026-02-15.md`
+- Onboarding: `/Users/jacbaile/Kinetic-v3/docs/onboarding/pareto-p1-p6.md`
+- ADR: `/Users/jacbaile/Kinetic-v3/docs/adr/020-operator-inbox-and-exception-automation-mvp.md`
 
 ## 14-Week Macro Plan
 

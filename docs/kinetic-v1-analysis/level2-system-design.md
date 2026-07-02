@@ -1,4 +1,4 @@
-# Sprocket Level 2 Spec: Subsystem Design and Behavior
+# Kinetic Level 2 Spec: Subsystem Design and Behavior
 
 This level collapses the Level 1 class/module inventory into subsystem intent and runtime behavior.
 
@@ -25,7 +25,7 @@ Primary source anchors:
 
 ## 1. System Topology
 
-Sprocket is a NestJS-based distributed system with one primary GraphQL/API core plus specialized RMQ microservices.
+Kinetic is a NestJS-based distributed system with one primary GraphQL/API core plus specialized RMQ microservices.
 
 Major transport layers:
 - GraphQL over HTTP/WebSocket: web client to `core`
@@ -54,7 +54,7 @@ Owns:
 Behavior:
 - `*Service.send(...)` wrappers parse input/output, apply timeout, and normalize success/error envelopes.
 - Event publishing/subscription validates payloads on both publish and consume paths.
-- `SprocketEventMarshal` auto-wires event handlers by decorator metadata, making event consumers declarative.
+- `KineticEventMarshal` auto-wires event handlers by decorator metadata, making event consumers declarative.
 
 ## 3. Core Platform Service (`core`)
 
@@ -157,7 +157,7 @@ Intent:
 - Keep compatibility with legacy MLEDB schema, generate report cards, and run Elo/salary workflows.
 
 Behavior:
-- MLEDB services map Sprocket fixtures/matches/scrims to legacy entities and stakeholders.
+- MLEDB services map Kinetic fixtures/matches/scrims to legacy entities and stakeholders.
 - Image generation controller exposes `GenerateReportCard` and uses template SQL + image-generation microservice.
 - Elo connector schedules external Elo jobs and handles completion/failure callbacks with analytics emission.
 
@@ -232,14 +232,14 @@ Intent:
 Behavior:
 - Exposes bot transport RMQ handlers used by notification-service and core notification calls.
 - Runs command marshal manager for prefixed text commands.
-- Listens to Sprocket domain events to synchronize Discord roles and nicknames across guilds.
+- Listens to Kinetic domain events to synchronize Discord roles and nicknames across guilds.
 - Supports guild sync workflows (`syncme`, guild member add/update synchronization).
 
 Primary anchors:
 - `clients/discord-bot/src/notifications/notifications.service.ts`
 - `clients/discord-bot/src/discord/discord.service.ts`
 - `clients/discord-bot/src/marshal/commands/command-manager.service.ts`
-- `clients/discord-bot/src/sprocket-events/sprocket-events.service.ts`
+- `clients/discord-bot/src/kinetic-events/kinetic-events.service.ts`
 - `clients/discord-bot/src/events/discord-sync.marshal.ts`
 
 ## 8. Image Generation Service (`microservices/image-generation-service`)
@@ -248,7 +248,7 @@ Intent:
 - Render template SVG + data into report card assets.
 
 Behavior:
-- Loads SVG templates from MinIO, applies `data-sprocket` transformations (text/image/fill/stroke), embeds font data, outputs SVG+PNG to MinIO.
+- Loads SVG templates from MinIO, applies `data-kinetic` transformations (text/image/fill/stroke), embeds font data, outputs SVG+PNG to MinIO.
 - Supports both typed endpoint (`GenerateImage`) and legacy `media-gen.img.create` pattern.
 
 Primary anchors:
@@ -364,7 +364,7 @@ Primary anchors:
 ### Flow C: Player Rank/Team Change Notification and Sync
 1. Core player operations publish `PlayerSkillGroupChanged` or `PlayerTeamChanged`.
 2. Notification-service emits transaction webhook/user notifications.
-3. Discord-bot sprocket-events consumer updates guild roles/nickname based on event payload.
+3. Discord-bot kinetic-events consumer updates guild roles/nickname based on event payload.
 
 ## 13. Design Characteristics and Invariants
 

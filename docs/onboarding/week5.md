@@ -16,7 +16,7 @@ Hierarchy + roster chain is now:
 ## Run migrations
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 MIGRATIONS_DIR="./migrations" \
 go run ./cmd/migrate
 ```
@@ -24,7 +24,7 @@ go run ./cmd/migrate
 ## Start API with DB required
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 REQUIRE_DATABASE=true \
 go run ./cmd/api
 ```

@@ -1,4 +1,4 @@
-module github.com/sprocketbot/sprocket-v3
+module github.com/kineticbot/kinetic-v3
 
 go 1.24.6
 

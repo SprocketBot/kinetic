@@ -1,4 +1,4 @@
-# Sprocket v3 Web Client Delivery Plan
+# Kinetic v3 Web Client Delivery Plan
 
 Date: 2026-02-15  
 Status: Draft  
@@ -16,7 +16,7 @@ Inputs: `docs/interface-design.md`, `internal/platform/http/server.go`, `docs/ad
 
 ## Non-Goals (Initial Web Client Track)
 
-- Rebuilding Grafana/GitHub Actions dashboards inside Sprocket.
+- Rebuilding Grafana/GitHub Actions dashboards inside Kinetic.
 - Full replay parser admin consoles beyond existing ingestion/review flows.
 - Replacing the current static Evidence publishing workflow.
 
@@ -46,7 +46,7 @@ Inputs: `docs/interface-design.md`, `internal/platform/http/server.go`, `docs/ad
 5. Evidence integration
 - Treat Evidence as source of truth for read-only analytics pages.
 - Embed Evidence pages in web client for standings, static reports, and historical dashboards.
-- Build native Sprocket UI only for actions/CRUD that Evidence does not support.
+- Build native Kinetic UI only for actions/CRUD that Evidence does not support.
 
 ## Role Surface Plan
 

@@ -343,7 +343,7 @@ export function AdminHomePage() {
   });
 
   return (
-    <AppShell title="Sprocket Web Client">
+    <AppShell title="Kinetic Web Client">
       <h2>League Admin</h2>
       <p>Schedule lifecycle management and roster administration.</p>
       <p>Role delegation grants/revokes are now API-backed with scoped server enforcement.</p>

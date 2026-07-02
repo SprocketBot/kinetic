@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
 
 func (s *HierarchyStore) IngestReplayEvidence(ctx context.Context, input hierarchy.IngestReplayEvidenceInput) (hierarchy.ReplayIngestionResult, error) {

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/orgconfig"
+	"github.com/kineticbot/kinetic-v3/internal/domain/orgconfig"
 )
 
 type OrgConfigStore struct {

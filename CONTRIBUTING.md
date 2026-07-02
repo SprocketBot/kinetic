@@ -1,4 +1,4 @@
-# Contributing To Sprocket v3
+# Contributing To Kinetic v3
 
 This project is optimized for part-time contributors and deterministic delivery.
 Use the checklist-driven workflow below so changes are easy to review, verify, and hand off.

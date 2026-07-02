@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
+	"github.com/kineticbot/kinetic-v3/internal/domain/notifications"
 )
 
 type NotificationsStore struct {

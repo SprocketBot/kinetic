@@ -705,7 +705,7 @@ func TestValidateIngestReplayEvidenceInput(t *testing.T) {
 		ContextID:          1,
 		SubmittedByTeamID:  10,
 		ReplayBody:         "fake-replay-bytes",
-		ParserName:         "sprocket-rl-parser",
+		ParserName:         "kinetic-rl-parser",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-001",
 		ResultSubmissionID: &submissionID,
@@ -719,7 +719,7 @@ func TestValidateIngestReplayEvidenceInput(t *testing.T) {
 		ContextID:          1,
 		SubmittedByTeamID:  10,
 		ReplayBody:         "",
-		ParserName:         "sprocket-rl-parser",
+		ParserName:         "kinetic-rl-parser",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-001",
 	})

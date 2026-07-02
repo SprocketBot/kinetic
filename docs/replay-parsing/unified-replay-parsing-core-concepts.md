@@ -2,11 +2,11 @@
 
 Date: 2026-02-14  
 Status: Draft  
-Source Parser: <https://github.com/SprocketBot/sprocket-rl-parser>
+Source Parser: <https://github.com/KineticBot/kinetic-rl-parser>
 
 ## Purpose
 
-Define the core concepts behind Sprocket's replay ingestion and identity-resolution model so product, engineering, and operations share the same contract.
+Define the core concepts behind Kinetic's replay ingestion and identity-resolution model so product, engineering, and operations share the same contract.
 
 ## Problem Statement
 
@@ -44,7 +44,7 @@ A single player can own multiple platform accounts, but each active platform acc
 
 - Replay files are uploaded from scrim/match workflows
 - Raw bytes are fingerprinted and stored as immutable evidence
-- Parsing is delegated to `sprocket-rl-parser`
+- Parsing is delegated to `kinetic-rl-parser`
 - Parsed output is normalized into a canonical internal schema (JSON and/or protobuf backed)
 - Parser provenance (name/version/config) is persisted for reproducibility
 
@@ -93,7 +93,7 @@ The system must expose enough detail for operators and users to understand:
 
 ## Non-Goals (For This Concept Doc)
 
-- rewriting or replacing `sprocket-rl-parser` internals
+- rewriting or replacing `kinetic-rl-parser` internals
 - anti-cheat or game integrity enforcement policy
 - full UI/UX specifications for all replay-management screens
 - final schema-level migration sequencing for every downstream table

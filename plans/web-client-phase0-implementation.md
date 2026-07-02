@@ -1,7 +1,7 @@
 # Web Client Phase 0 Implementation Spec
 
 Date: 2026-02-15  
-Scope: `WEB-F0-*` tickets in `/Users/jacbaile/Sprocket-v3/plans/web-client-execution-board.md`
+Scope: `WEB-F0-*` tickets in `/Users/jacbaile/Kinetic-v3/plans/web-client-execution-board.md`
 
 ## Phase 0 Goal
 
@@ -169,7 +169,7 @@ Expected `package.json` scripts:
 
 ## CI Integration Plan
 
-Add new job to `/Users/jacbaile/Sprocket-v3/.github/workflows/ci.yml`:
+Add new job to `/Users/jacbaile/Kinetic-v3/.github/workflows/ci.yml`:
 
 - Job name: `web-client`
 - Runs on: `ubuntu-latest`
@@ -189,7 +189,7 @@ Wire dependency:
 
 ## Frontend Quality Gate Script
 
-Add `/Users/jacbaile/Sprocket-v3/tools/web-quality-gate.sh`:
+Add `/Users/jacbaile/Kinetic-v3/tools/web-quality-gate.sh`:
 - runs lint, typecheck, unit tests, and build in `web/client`.
 - Keep this separate from Go quality gate to preserve backend iteration speed.
 
@@ -201,7 +201,7 @@ Usage:
 
 ## Onboarding Updates
 
-Update `/Users/jacbaile/Sprocket-v3/README.md` and add `/Users/jacbaile/Sprocket-v3/docs/onboarding/web-phase0.md` with:
+Update `/Users/jacbaile/Kinetic-v3/README.md` and add `/Users/jacbaile/Kinetic-v3/docs/onboarding/web-phase0.md` with:
 - Node/npm prerequisites
 - install/run commands
 - auth mock mode usage

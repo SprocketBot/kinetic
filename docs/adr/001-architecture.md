@@ -6,13 +6,13 @@
 
 ## Context
 
-Sprocket v1/v2 accumulated complexity from dynamic runtime behavior and distributed infrastructure patterns that were expensive to operate and hard for new contributors to reason about.
+Kinetic v1/v2 accumulated complexity from dynamic runtime behavior and distributed infrastructure patterns that were expensive to operate and hard for new contributors to reason about.
 
 The v3 goal is to maximize maintainability, correctness, and handoff readiness under hobby-project constraints (10h/week gross).
 
 ## Decision
 
-Sprocket v3 will start as a Go modular monolith, deployed on Kubernetes, with PostgreSQL as the primary system of record.
+Kinetic v3 will start as a Go modular monolith, deployed on Kubernetes, with PostgreSQL as the primary system of record.
 
 ### Core decisions
 

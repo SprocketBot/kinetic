@@ -11,8 +11,8 @@ This runbook gets a new contributor from clone to a running API in under 30 minu
 ## 1) Clone and test baseline
 
 ```bash
-git clone <repo-url> Sprocket-v3
-cd Sprocket-v3
+git clone <repo-url> Kinetic-v3
+cd Kinetic-v3
 go test ./...
 ```
 
@@ -36,10 +36,10 @@ Expected: JSON responses with `status: ok` and `status: ready`.
 ## 3) Start local Postgres (optional, for DB work)
 
 ```bash
-docker run --name sprocket-v3-pg \
+docker run --name kinetic-v3-pg \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=sprocket \
+  -e POSTGRES_DB=kinetic \
   -p 55432:5432 \
   -d postgres:16
 ```
@@ -47,7 +47,7 @@ docker run --name sprocket-v3-pg \
 ## 4) Run migrations
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 MIGRATIONS_DIR="./migrations" \
 go run ./cmd/migrate
 ```
@@ -57,7 +57,7 @@ Expected: migration command exits successfully and reports applied count.
 ## 5) Run API with required DB connectivity
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 REQUIRE_DATABASE=true \
 go run ./cmd/api
 ```

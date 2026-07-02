@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
 
 func TestHierarchyStoreCreateAndList(t *testing.T) {
@@ -1804,7 +1804,7 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		ContextID:          scrim.ID,
 		SubmittedByTeamID:  teamA.ID,
 		ReplayBody:         "week12-replay-body",
-		ParserName:         "sprocket-rl-parser",
+		ParserName:         "kinetic-rl-parser",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-week12",
 		ParseOutputJSON:    []byte(`{"goals":4}`),
@@ -1822,7 +1822,7 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		ContextID:          scrim.ID,
 		SubmittedByTeamID:  teamA.ID,
 		ReplayBody:         "week12-replay-body",
-		ParserName:         "sprocket-rl-parser",
+		ParserName:         "kinetic-rl-parser",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-week12",
 		ParseOutputJSON:    []byte(`{"goals":4}`),

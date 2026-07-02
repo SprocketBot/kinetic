@@ -2,11 +2,11 @@
 
 Date: 2026-02-14  
 Status: Draft  
-Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/sprocket-v2-unified-matchmaking-proposal/>
+Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/>
 
 ## Purpose
 
-Define the core concepts behind Sprocket's unified matchmaking and rating design so product, engineering, and operations share the same model.
+Define the core concepts behind Kinetic's unified matchmaking and rating design so product, engineering, and operations share the same model.
 
 ## Problem Statement
 

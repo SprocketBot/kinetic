@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-NAMESPACE="${K8S_NAMESPACE:-sprocket-v3}"
+NAMESPACE="${K8S_NAMESPACE:-kinetic-v3}"
 PF_PORT="${PF_PORT:-18080}"
 API_BASE="http://localhost:${PF_PORT}"
-PG_APP="sprocket-v3-pg-smoke"
+PG_APP="kinetic-v3-pg-smoke"
 PG_SVC="${PG_APP}"
 PF_PID=""
 SERVICE_PORT=""
@@ -19,8 +19,8 @@ cleanup() {
   kubectl -n "${NAMESPACE}" delete deployment "${PG_APP}" --ignore-not-found >/dev/null 2>&1 || true
   kubectl -n "${NAMESPACE}" delete service "${PG_SVC}" --ignore-not-found >/dev/null 2>&1 || true
 
-  kubectl -n "${NAMESPACE}" set env deploy/sprocket-v3-api DATABASE_URL- REQUIRE_DATABASE- RUN_MIGRATIONS_ON_START- >/dev/null 2>&1 || true
-  kubectl -n "${NAMESPACE}" rollout status deploy/sprocket-v3-api --timeout=180s >/dev/null 2>&1 || true
+  kubectl -n "${NAMESPACE}" set env deploy/kinetic-v3-api DATABASE_URL- REQUIRE_DATABASE- RUN_MIGRATIONS_ON_START- >/dev/null 2>&1 || true
+  kubectl -n "${NAMESPACE}" rollout status deploy/kinetic-v3-api --timeout=180s >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -77,7 +77,7 @@ spec:
             - name: POSTGRES_PASSWORD
               value: postgres
             - name: POSTGRES_DB
-              value: sprocket
+              value: kinetic
           ports:
             - containerPort: 5432
               name: pg
@@ -86,7 +86,7 @@ spec:
               command:
                 - /bin/sh
                 - -c
-                - pg_isready -U postgres -d sprocket
+                - pg_isready -U postgres -d kinetic
             initialDelaySeconds: 5
             periodSeconds: 5
 ---
@@ -106,20 +106,20 @@ SQL
 kubectl -n "${NAMESPACE}" rollout status deployment/"${PG_APP}" --timeout=180s
 
 echo "Configuring API deployment for DB-required mode"
-kubectl -n "${NAMESPACE}" set env deploy/sprocket-v3-api \
-  DATABASE_URL="postgres://postgres:postgres@${PG_SVC}:5432/sprocket?sslmode=disable" \
+kubectl -n "${NAMESPACE}" set env deploy/kinetic-v3-api \
+  DATABASE_URL="postgres://postgres:postgres@${PG_SVC}:5432/kinetic?sslmode=disable" \
   REQUIRE_DATABASE=true \
   RUN_MIGRATIONS_ON_START=true
-kubectl -n "${NAMESPACE}" rollout status deploy/sprocket-v3-api --timeout=180s
+kubectl -n "${NAMESPACE}" rollout status deploy/kinetic-v3-api --timeout=180s
 
-SERVICE_PORT="$(kubectl -n "$NAMESPACE" get svc sprocket-v3-api -o jsonpath='{.spec.ports[0].port}')"
+SERVICE_PORT="$(kubectl -n "$NAMESPACE" get svc kinetic-v3-api -o jsonpath='{.spec.ports[0].port}')"
 if [[ -z "${SERVICE_PORT}" ]]; then
-  echo "Unable to determine service port for ${NAMESPACE}/sprocket-v3-api" >&2
+  echo "Unable to determine service port for ${NAMESPACE}/kinetic-v3-api" >&2
   exit 1
 fi
 
 echo "Starting port-forward on ${PF_PORT}"
-kubectl -n "$NAMESPACE" port-forward svc/sprocket-v3-api "${PF_PORT}:${SERVICE_PORT}" >/tmp/sprocket_v3_week11_k8s_pf.log 2>&1 &
+kubectl -n "$NAMESPACE" port-forward svc/kinetic-v3-api "${PF_PORT}:${SERVICE_PORT}" >/tmp/kinetic_v3_week11_k8s_pf.log 2>&1 &
 PF_PID=$!
 
 for i in $(seq 1 40); do
@@ -130,7 +130,7 @@ for i in $(seq 1 40); do
   sleep 1
   if [[ "$i" -eq 40 ]]; then
     echo "k8s API did not become reachable via port-forward in time" >&2
-    cat /tmp/sprocket_v3_week11_k8s_pf.log >&2 || true
+    cat /tmp/kinetic_v3_week11_k8s_pf.log >&2 || true
     exit 1
   fi
 done

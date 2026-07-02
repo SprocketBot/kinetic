@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
 
 func (s *HierarchyStore) CreateResultSubmission(ctx context.Context, input hierarchy.CreateResultSubmissionInput) (hierarchy.ResultSubmission, error) {

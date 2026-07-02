@@ -23,7 +23,7 @@ Week 12 adds replay-ingestion primitives with idempotent evidence identity and p
 ## Run migrations
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 MIGRATIONS_DIR="./migrations" \
 go run ./cmd/migrate
 ```
@@ -31,7 +31,7 @@ go run ./cmd/migrate
 ## Start API with DB required
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 REQUIRE_DATABASE=true \
 go run ./cmd/api
 ```
@@ -43,7 +43,7 @@ Ingest replay evidence:
 ```bash
 curl -s -X POST http://localhost:8080/v1/replay-evidence \
   -H 'content-type: application/json' \
-  -d '{"contextType":"scrim","contextId":1,"submittedByTeamId":1,"replayBody":"sample-replay-bytes","parserName":"sprocket-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-week12","resultSubmissionId":1,"parseOutputJson":{"goals":4}}'
+  -d '{"contextType":"scrim","contextId":1,"submittedByTeamId":1,"replayBody":"sample-replay-bytes","parserName":"kinetic-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-week12","resultSubmissionId":1,"parseOutputJson":{"goals":4}}'
 ```
 
 Duplicate ingest of same replay body:
@@ -51,7 +51,7 @@ Duplicate ingest of same replay body:
 ```bash
 curl -s -X POST http://localhost:8080/v1/replay-evidence \
   -H 'content-type: application/json' \
-  -d '{"contextType":"scrim","contextId":1,"submittedByTeamId":1,"replayBody":"sample-replay-bytes","parserName":"sprocket-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-week12","resultSubmissionId":1,"parseOutputJson":{"goals":4}}'
+  -d '{"contextType":"scrim","contextId":1,"submittedByTeamId":1,"replayBody":"sample-replay-bytes","parserName":"kinetic-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-week12","resultSubmissionId":1,"parseOutputJson":{"goals":4}}'
 ```
 
 List replay evidence:

@@ -1,7 +1,7 @@
 import { env } from "../lib/config/env";
 import type { SessionPrincipal } from "./types";
 
-const MOCK_SESSION_KEY = "sprocket.mockSession";
+const MOCK_SESSION_KEY = "kinetic.mockSession";
 
 function parseMockSession(raw: string | null): SessionPrincipal | null {
   if (!raw) {

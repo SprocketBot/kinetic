@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
 
 func (s *HierarchyStore) CreatePlayer(ctx context.Context, input hierarchy.CreatePlayerInput) (hierarchy.Player, error) {

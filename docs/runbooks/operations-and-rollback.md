@@ -9,8 +9,8 @@
 Then verify rollout:
 
 ```bash
-kubectl -n sprocket-v3 rollout status deploy/sprocket-v3-api --timeout=180s
-kubectl -n sprocket-v3 port-forward svc/sprocket-v3-api 8080:80
+kubectl -n kinetic-v3 rollout status deploy/kinetic-v3-api --timeout=180s
+kubectl -n kinetic-v3 port-forward svc/kinetic-v3-api 8080:80
 curl -sSf http://localhost:8080/healthz
 ```
 
@@ -25,8 +25,8 @@ curl -sSf http://localhost:8080/healthz
 Primary rollback command:
 
 ```bash
-kubectl -n sprocket-v3 rollout undo deploy/sprocket-v3-api
-kubectl -n sprocket-v3 rollout status deploy/sprocket-v3-api --timeout=180s
+kubectl -n kinetic-v3 rollout undo deploy/kinetic-v3-api
+kubectl -n kinetic-v3 rollout status deploy/kinetic-v3-api --timeout=180s
 ```
 
 If rollback is needed due to migration-related runtime breakage:
@@ -42,8 +42,8 @@ If rollback is needed due to migration-related runtime breakage:
 3. Gather API logs and event stream:
 
 ```bash
-kubectl -n sprocket-v3 logs deploy/sprocket-v3-api --tail=300
-kubectl -n sprocket-v3 get events --sort-by=.lastTimestamp | tail -n 50
+kubectl -n kinetic-v3 logs deploy/kinetic-v3-api --tail=300
+kubectl -n kinetic-v3 get events --sort-by=.lastTimestamp | tail -n 50
 ```
 
 4. Reproduce with local smoke (`week12-smoke.sh`) if possible.

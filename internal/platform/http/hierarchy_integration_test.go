@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/platform/db"
 )
 
 func TestHierarchyAPICreateAndConstraints(t *testing.T) {
@@ -363,7 +363,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  teamID,
 		"replayBody":         "week12-replay-body",
-		"parserName":         "sprocket-rl-parser",
+		"parserName":         "kinetic-rl-parser",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 		"resultSubmissionId": submissionID,
@@ -380,7 +380,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  teamID,
 		"replayBody":         "week12-replay-body",
-		"parserName":         "sprocket-rl-parser",
+		"parserName":         "kinetic-rl-parser",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 		"resultSubmissionId": submissionID,
@@ -656,7 +656,7 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"contextId":          int64(1),
 		"submittedByTeamId":  int64(1),
 		"replayBody":         "",
-		"parserName":         "sprocket-rl-parser",
+		"parserName":         "kinetic-rl-parser",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 	}, http.StatusBadRequest)

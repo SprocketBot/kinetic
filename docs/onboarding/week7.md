@@ -30,7 +30,7 @@ Week 7 does not implement ADR-010/ADR-011; those ADRs define the upcoming matchm
 ## Run migrations
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 MIGRATIONS_DIR="./migrations" \
 go run ./cmd/migrate
 ```
@@ -38,7 +38,7 @@ go run ./cmd/migrate
 ## Start API with DB required
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 REQUIRE_DATABASE=true \
 go run ./cmd/api
 ```

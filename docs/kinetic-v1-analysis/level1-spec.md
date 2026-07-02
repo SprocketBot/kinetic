@@ -1,4 +1,4 @@
-# Sprocket Level 1 Spec: Module/Class/API Surface
+# Kinetic Level 1 Spec: Module/Class/API Surface
 
 This document captures exported classes/modules and their public API surface from TypeScript source in backend/runtime workspaces.
 
@@ -17,14 +17,14 @@ This document captures exported classes/modules and their public API surface fro
 ### Module Definitions
 
 - **AppModule** (core/src/app.module.ts)
-  - imports: GraphQLModule.forRoot(...), BullModule.forRoot(...), OrganizationModule, IdentityModule, DatabaseModule, ConfigurationModule, GameModule, ReplayParseModule, ScrimModule, AuthModule, SchedulingModule, MledbInterfaceModule, FranchiseModule, ImageGenerationModule, SprocketRatingModule, UtilModule, EloModule, SubmissionModule, NotificationModule
+  - imports: GraphQLModule.forRoot(...), BullModule.forRoot(...), OrganizationModule, IdentityModule, DatabaseModule, ConfigurationModule, GameModule, ReplayParseModule, ScrimModule, AuthModule, SchedulingModule, MledbInterfaceModule, FranchiseModule, ImageGenerationModule, KineticRatingModule, UtilModule, EloModule, SubmissionModule, NotificationModule
   - providers: none
   - controllers: none
   - exports: none
 - **ConfigurationModule** (core/src/configuration/configuration.module.ts)
   - imports: DatabaseModule, forwardRef(...)
-  - providers: OrganizationConfigurationResolver, OrganizationConfigurationService, SprocketConfigurationResolver, SprocketConfigurationService
-  - controllers: OrganizationConfigurationController, SprocketConfigurationController
+  - providers: OrganizationConfigurationResolver, OrganizationConfigurationService, KineticConfigurationResolver, KineticConfigurationService
+  - controllers: OrganizationConfigurationController, KineticConfigurationController
   - exports: OrganizationConfigurationService
 - **AuthorizationModule** (core/src/database/authorization/authorization.module.ts)
   - imports: ormModule
@@ -132,7 +132,7 @@ This document captures exported classes/modules and their public API surface fro
   - controllers: ImageGenerationController
   - exports: ImageGenerationService
 - **MledbInterfaceModule** (core/src/mledb/mledb-interface.module.ts)
-  - imports: DatabaseModule, GameModule, MatchmakingModule, SprocketRatingModule, UtilModule, forwardRef(...), forwardRef(...), forwardRef(...), forwardRef(...)
+  - imports: DatabaseModule, GameModule, MatchmakingModule, KineticRatingModule, UtilModule, forwardRef(...), forwardRef(...), forwardRef(...), forwardRef(...)
   - providers: MledbPlayerService, MledbPlayerAccountService, MledbFinalizationService, MledbMatchService
   - controllers: MledbMatchController, MledbPlayerController
   - exports: MledbMatchService, MledbPlayerService, MledbPlayerAccountService, MledbFinalizationService
@@ -147,7 +147,7 @@ This document captures exported classes/modules and their public API surface fro
   - controllers: OrganizationController, MemberController
   - exports: MemberResolver, MemberService, MemberPlatformAccountService, MemberRestrictionService, QueueBanGuard, OrganizationService
 - **ReplayParseModule** (core/src/replay-parse/replay-parse.module.ts)
-  - imports: SubmissionModule, CeleryModule, MinioModule, RedisModule, MatchmakingModule, ScrimModule, EventsModule, DatabaseModule, MledbInterfaceModule, AnalyticsModule, FranchiseModule, IdentityModule, SprocketRatingModule, EloModule, EloConnectorModule, SchedulingModule, UtilModule, OrganizationModule
+  - imports: SubmissionModule, CeleryModule, MinioModule, RedisModule, MatchmakingModule, ScrimModule, EventsModule, DatabaseModule, MledbInterfaceModule, AnalyticsModule, FranchiseModule, IdentityModule, KineticRatingModule, EloModule, EloConnectorModule, SchedulingModule, UtilModule, OrganizationModule
   - providers: ReplayParseModResolver, ReplayParseService, {...}, ReplaySubmissionResolver, SubmissionRejectionResolver, BallchasingConverterService, CarballConverterService, FinalizationSubscriber, RocketLeagueFinalizationService
   - controllers: none
   - exports: none
@@ -161,11 +161,11 @@ This document captures exported classes/modules and their public API surface fro
   - providers: ScrimModuleResolver, ScrimModuleResolverPublic, {...}, ScrimConsumer, ScrimService, ScrimResolver, MatchService, RoundService, ScrimMetricsResolver, ScrimMetaCrudService, ScrimManagementResolver, ScrimToggleService, ScrimToggleResolver
   - controllers: ScrimController
   - exports: ScrimService
-- **SprocketRatingModule** (core/src/sprocket-rating/sprocket-rating.module.ts)
+- **KineticRatingModule** (core/src/kinetic-rating/kinetic-rating.module.ts)
   - imports: none
-  - providers: SprocketRatingService
+  - providers: KineticRatingService
   - controllers: none
-  - exports: SprocketRatingService
+  - exports: KineticRatingService
 - **SubmissionModule** (core/src/submission/submission.module.ts)
   - imports: CommonSubmissionModule
   - providers: SubmissionManagementResolver, SubmissionService
@@ -193,18 +193,18 @@ This document captures exported classes/modules and their public API surface fro
   - decorators: Injectable
   - dependencies: organizationRepository: Repository<Organization>, keyRepository: Repository<OrganizationConfigurationKey>, allowedValueRepository: Repository<OrganizationConfigurationAllowedValue>, valueRepository: Repository<OrganizationConfigurationValue>
   - public methods: getOrganizationConfigurations(organizationId: number, code?: OrganizationConfigurationKeyCode): Promise<OrganizationConfiguration[]>, getOrganizationConfigurationKeys(): Promise<OrganizationConfigurationKey[]>, getOrganizationConfigurationAllowedValues(code: OrganizationConfigurationKeyCode): Promise<OrganizationConfigurationAllowedValue[]>, getOrganizationConfigurationValue(organizationId: number, code: OrganizationConfigurationKeyCode): Promise<T>, findOrganizationConfigurationValue(value: string, options?: FindOneOptions<OrganizationConfigurationValue>): Promise<OrganizationConfigurationValue>, createOrganizationConfigurationValue(organizationId: number, code: OrganizationConfigurationKeyCode, value: string): Promise<OrganizationConfigurationValue>, updateOrganizationConfigurationValue(organizationId: number, code: OrganizationConfigurationKeyCode, newValue: string): Promise<OrganizationConfigurationValue>, validateValue(value: string, allowedValues: OrganizationConfigurationAllowedValue[]): boolean, parseValue(key: OrganizationConfigurationKey, value: string): OrganizationConfigurationKeyTypes[keyof OrganizationConfigurationKeyTypes]
-- **SprocketConfigurationController** (controller; core/src/configuration/sprocket-configuration/sprocket-configuration.controller.ts)
+- **KineticConfigurationController** (controller; core/src/configuration/kinetic-configuration/kinetic-configuration.controller.ts)
   - decorators: Controller
-  - dependencies: sprocketConfigService: SprocketConfigurationService
-  - public methods: getSprocketConfiguration(payload: unknown): Promise<SprocketConfiguration[]> [MessagePattern]
-- **SprocketConfigurationResolver** (resolver; core/src/configuration/sprocket-configuration/sprocket-configuration.resolver.ts)
+  - dependencies: kineticConfigService: KineticConfigurationService
+  - public methods: getKineticConfiguration(payload: unknown): Promise<KineticConfiguration[]> [MessagePattern]
+- **KineticConfigurationResolver** (resolver; core/src/configuration/kinetic-configuration/kinetic-configuration.resolver.ts)
   - decorators: Resolver
-  - dependencies: service: SprocketConfigurationService
-  - public methods: getSprocketConfiguration(key?: string): Promise<SprocketConfiguration[]> [Query]
-- **SprocketConfigurationService** (service; core/src/configuration/sprocket-configuration/sprocket-configuration.service.ts)
+  - dependencies: service: KineticConfigurationService
+  - public methods: getKineticConfiguration(key?: string): Promise<KineticConfiguration[]> [Query]
+- **KineticConfigurationService** (service; core/src/configuration/kinetic-configuration/kinetic-configuration.service.ts)
   - decorators: Injectable
-  - dependencies: sprocketConfigurationRepository: Repository<SprocketConfiguration>
-  - public methods: getSprocketConfiguration(key?: string): Promise<SprocketConfiguration[]>
+  - dependencies: kineticConfigurationRepository: Repository<KineticConfiguration>
+  - public methods: getKineticConfiguration(key?: string): Promise<KineticConfiguration[]>
 - **VerbiageService** (service; core/src/configuration/verbiage/verbiage.service.ts)
   - decorators: Injectable
   - dependencies: verbiageRepository: Repository<Verbiage>, verbiageCodeRepository: Repository<VerbiageCode>, organizationService: OrganizationService
@@ -256,7 +256,7 @@ This document captures exported classes/modules and their public API surface fro
   - public methods: profile(root: Franchise): Promise<FranchiseProfile> [ResolveField], organization(root: Franchise): Promise<Organization> [ResolveField]
 - **FranchiseService** (service; core/src/franchise/franchise/franchise.service.ts)
   - decorators: Injectable
-  - dependencies: franchiseRepository: Repository<Franchise>, mledbPlayerService: MledbPlayerService, sprocketMemberService: MemberService, franchiseProfileRepository: Repository<FranchiseProfile>
+  - dependencies: franchiseRepository: Repository<Franchise>, mledbPlayerService: MledbPlayerService, kineticMemberService: MemberService, franchiseProfileRepository: Repository<FranchiseProfile>
   - public methods: getFranchiseProfile(franchiseId: number): Promise<FranchiseProfile>, getFranchiseById(franchiseId: number): Promise<Franchise>, getFranchise(query: FindOneOptions<Franchise>): Promise<Franchise>, getFranchiseByName(name: string): Promise<Franchise>, getPlayerFranchisesByUserId(userId: number): Promise<CoreOutput<CoreEndpoint.GetPlayerFranchises>>
 - **GameSkillGroupController** (controller; core/src/franchise/game-skill-group/game-skill-group.controller.ts)
   - decorators: Controller
@@ -289,7 +289,7 @@ This document captures exported classes/modules and their public API surface fro
 - **PlayerService** (service; core/src/franchise/player/player.service.ts)
   - decorators: Injectable
   - dependencies: playerRepository: Repository<Player>, userRepository: Repository<User>, userProfileRepository: Repository<UserProfile>, memberRepository: Repository<Member>, memberProfileRepository: Repository<MemberProfile>, userAuthRepository: Repository<UserAuthenticationAccount>, organizationRepository: Repository<Organization>, ptpRepo: Repository<PlayerToPlayer>, mle_playerRepository: Repository<MLE_Player>, memberService: MemberService, organizationService: OrganizationService, skillGroupService: GameSkillGroupService, eventsService: EventsService, notificationService: NotificationService, jwtService: JwtService, dataSource: DataSource, eloConnectorService: EloConnectorService, platformService: PlatformService, analyticsService: AnalyticsService
-  - public methods: getPlayer(query: FindOneOptions<Player>): Promise<Player>, getPlayerById(id: number): Promise<Player>, getPlayerByOrganizationAndGame(userId: number, organizationId: number, gameId: number): Promise<Player>, getPlayerByOrganizationAndGameMode(userId: number, organizationId: number, gameModeId: number): Promise<Player>, getPlayers(query?: FindManyOptions<Player>): Promise<Player[]>, createPlayer(memberOrId: number | Member, skillGroupId: number, salary: number, runner?: QueryRunner): Promise<Player>, checkAndCreateMlePlayer(player: Player, userId: number, skillGroupId: number, runner?: QueryRunner): Promise<void>, updatePlayer(mleid: number, name: string, skillGroupId: number, salary: number, platform: string, timezone: Timezone, modePreference: ModePreference): Promise<Player>, mle_updatePlayer(player: MLE_Player, name: string, league: League, salary: number, platform: string, timezone: Timezone, preference: ModePreference, runner?: QueryRunner): Promise<MLE_Player>, mle_createPlayer(sprocketPlayerId: number, discordId: string, name: string, salary: number, league: League, platform: string, timezone: Timezone, preference: ModePreference, runner?: QueryRunner): Promise<MLE_Player>, updatePlayerStanding(playerId: number, salary: number, skillGroupId?: number): Promise<Player>, buildRankdownNotification(userId: number, discordId: string, orgId: number, orgName: string, oldSkillGroupName: string, newSkillGroupName: string, salary: number): NotificationInput<NotificationEndpoint.SendNotification>, saveSalaries(payload: SalaryPayloadItem[][]): Promise<void>, mle_nextLeague(league: League, dir: -1 | 1): League, mle_movePlayerToLeague(sprocPlayerId: number, salary: number, skillGroupId: number): Promise<MLE_Player>, mle_rankDownPlayer(sprocPlayerId: number, salary: number): Promise<MLE_Player>, mle_rankUpPlayer(sprocPlayerId: number, salary: number): Promise<MLE_Player>, getMlePlayerBySprocketPlayer(playerId: number): Promise<MLE_Player>, getPlayerByGameAndPlatform(gameId: number, platformId: number, platformAccountId: string, relations?: FindOptionsRelations<Player>): Promise<Player>, getPlayerByGameAndPlatformPayload(data: { platform: string; platformId: string; gameId: number; }): Promise<CoreOutput<CoreEndpoint.GetPlayerByPlatformId>>, intakeUser(name: string, d_id: string, ptl: CreatePlayerTuple[]): Promise<string | Player | User>, swapDiscordAccounts(newAcct: string, oldAcct: string): Promise<void>, forcePlayerToTeam(mleid: number, newTeam: string): Promise<void>, changePlayerName(mleid: number, newName: string): Promise<void>
+  - public methods: getPlayer(query: FindOneOptions<Player>): Promise<Player>, getPlayerById(id: number): Promise<Player>, getPlayerByOrganizationAndGame(userId: number, organizationId: number, gameId: number): Promise<Player>, getPlayerByOrganizationAndGameMode(userId: number, organizationId: number, gameModeId: number): Promise<Player>, getPlayers(query?: FindManyOptions<Player>): Promise<Player[]>, createPlayer(memberOrId: number | Member, skillGroupId: number, salary: number, runner?: QueryRunner): Promise<Player>, checkAndCreateMlePlayer(player: Player, userId: number, skillGroupId: number, runner?: QueryRunner): Promise<void>, updatePlayer(mleid: number, name: string, skillGroupId: number, salary: number, platform: string, timezone: Timezone, modePreference: ModePreference): Promise<Player>, mle_updatePlayer(player: MLE_Player, name: string, league: League, salary: number, platform: string, timezone: Timezone, preference: ModePreference, runner?: QueryRunner): Promise<MLE_Player>, mle_createPlayer(kineticPlayerId: number, discordId: string, name: string, salary: number, league: League, platform: string, timezone: Timezone, preference: ModePreference, runner?: QueryRunner): Promise<MLE_Player>, updatePlayerStanding(playerId: number, salary: number, skillGroupId?: number): Promise<Player>, buildRankdownNotification(userId: number, discordId: string, orgId: number, orgName: string, oldSkillGroupName: string, newSkillGroupName: string, salary: number): NotificationInput<NotificationEndpoint.SendNotification>, saveSalaries(payload: SalaryPayloadItem[][]): Promise<void>, mle_nextLeague(league: League, dir: -1 | 1): League, mle_movePlayerToLeague(sprocPlayerId: number, salary: number, skillGroupId: number): Promise<MLE_Player>, mle_rankDownPlayer(sprocPlayerId: number, salary: number): Promise<MLE_Player>, mle_rankUpPlayer(sprocPlayerId: number, salary: number): Promise<MLE_Player>, getMlePlayerByKineticPlayer(playerId: number): Promise<MLE_Player>, getPlayerByGameAndPlatform(gameId: number, platformId: number, platformAccountId: string, relations?: FindOptionsRelations<Player>): Promise<Player>, getPlayerByGameAndPlatformPayload(data: { platform: string; platformId: string; gameId: number; }): Promise<CoreOutput<CoreEndpoint.GetPlayerByPlatformId>>, intakeUser(name: string, d_id: string, ptl: CreatePlayerTuple[]): Promise<string | Player | User>, swapDiscordAccounts(newAcct: string, oldAcct: string): Promise<void>, forcePlayerToTeam(mleid: number, newTeam: string): Promise<void>, changePlayerName(mleid: number, newName: string): Promise<void>
 - **TeamService** (service; core/src/franchise/team/team.service.ts)
   - decorators: Injectable
   - dependencies: teamRepo: Repository<Team>
@@ -412,8 +412,8 @@ This document captures exported classes/modules and their public API surface fro
   - public methods: getMleMatchInfoAndStakeholders(payload: unknown): Promise<CoreOutput<CoreEndpoint.GetMleMatchInfoAndStakeholders>> [MessagePattern]
 - **MledbMatchService** (service; core/src/mledb/mledb-match/mledb-match.service.ts)
   - decorators: Injectable
-  - dependencies: fixtureRepo: Repository<MLE_Fixture>, teamRepo: Repository<MLE_Team>, seriesRepo: Repository<MLE_Series>, seriesReplayRepo: Repository<MLE_SeriesReplay>, teamCaptainRepo: Repository<MLE_TeamToCaptain>, sprocketMatchService: MatchService, popService: PopulateService
-  - public methods: getMleSeries(awayName: string, homeName: string, matchStart: Date, seasonStart: Date, mode: LegacyGameMode, league: League): Promise<MLE_Series>, getMleMatchInfoAndStakeholders(sprocketMatchId: number): Promise<CoreOutput<CoreEndpoint.GetMleMatchInfoAndStakeholders>>, markSeriesNcp(seriesId: number, isNcp: boolean, winningTeamName?: string): Promise<string>, markReplaysNcp(replayIds: number[], isNcp: boolean, winningTeam?: MLE_Team): Promise<string>
+  - dependencies: fixtureRepo: Repository<MLE_Fixture>, teamRepo: Repository<MLE_Team>, seriesRepo: Repository<MLE_Series>, seriesReplayRepo: Repository<MLE_SeriesReplay>, teamCaptainRepo: Repository<MLE_TeamToCaptain>, kineticMatchService: MatchService, popService: PopulateService
+  - public methods: getMleSeries(awayName: string, homeName: string, matchStart: Date, seasonStart: Date, mode: LegacyGameMode, league: League): Promise<MLE_Series>, getMleMatchInfoAndStakeholders(kineticMatchId: number): Promise<CoreOutput<CoreEndpoint.GetMleMatchInfoAndStakeholders>>, markSeriesNcp(seriesId: number, isNcp: boolean, winningTeamName?: string): Promise<string>, markReplaysNcp(replayIds: number[], isNcp: boolean, winningTeam?: MLE_Team): Promise<string>
 - **MledbPlayerAccountService** (service; core/src/mledb/mledb-player-account/mledb-player-account.service.ts)
   - decorators: Injectable
   - dependencies: playerAccountRepository: Repository<MLE_PlayerAccount>
@@ -429,10 +429,10 @@ This document captures exported classes/modules and their public API surface fro
 - **MledbPlayerService** (service; core/src/mledb/mledb-player/mledb-player.service.ts)
   - decorators: Injectable
   - dependencies: playerRepository: Repository<MLE_Player>, playerAccountRepository: Repository<MLE_PlayerAccount>, playerToOrgRepository: Repository<MLE_PlayerToOrg>, teamRepo: Repository<MLE_Team>, teamToCaptainRepo: Repository<MLE_TeamToCaptain>, userService: UserService, gameService: GameService
-  - public methods: getPlayerByDiscordId(id: string): Promise<MLE_Player>, getPlayerOrgs(player: MLE_Player): Promise<MLE_PlayerToOrg[]>, getPlayerByPlatformId(platform: MLE_Platform, platformId: string): Promise<MLE_Player>, getMlePlayerBySprocketUser(userId: number): Promise<MLE_Player>, getPlayerFranchise(id: number): Promise<MLE_Team>, playerIsCaptain(id: number): Promise<boolean>, getTeamsWherePlayerIsStaff(playerId: number): Promise<MLE_Team[]>, getSprocketUserByPlatformInformation(platform: MLE_Platform, platformId: string): Promise<User>, getSprocketPlayerByPlatformInformation(platform: MLE_Platform, platformId: string): Promise<Player>
+  - public methods: getPlayerByDiscordId(id: string): Promise<MLE_Player>, getPlayerOrgs(player: MLE_Player): Promise<MLE_PlayerToOrg[]>, getPlayerByPlatformId(platform: MLE_Platform, platformId: string): Promise<MLE_Player>, getMlePlayerByKineticUser(userId: number): Promise<MLE_Player>, getPlayerFranchise(id: number): Promise<MLE_Team>, playerIsCaptain(id: number): Promise<boolean>, getTeamsWherePlayerIsStaff(playerId: number): Promise<MLE_Team[]>, getKineticUserByPlatformInformation(platform: MLE_Platform, platformId: string): Promise<User>, getKineticPlayerByPlatformInformation(platform: MLE_Platform, platformId: string): Promise<Player>
 - **MledbFinalizationService** (service; core/src/mledb/mledb-scrim/mledb-finalization.service.ts)
   - decorators: Injectable
-  - dependencies: mleSeriesReplayRepository: Repository<MLE_SeriesReplay>, mlePlayerAccountRepository: Repository<MLE_PlayerAccount>, mlePlayerRepository: Repository<MLE_Player>, skillGroupService: GameSkillGroupService, gameModeService: GameModeService, userService: UserService, sprocketRatingService: SprocketRatingService, mleMatchService: MledbMatchService
+  - dependencies: mleSeriesReplayRepository: Repository<MLE_SeriesReplay>, mlePlayerAccountRepository: Repository<MLE_PlayerAccount>, mlePlayerRepository: Repository<MLE_Player>, skillGroupService: GameSkillGroupService, gameModeService: GameModeService, userService: UserService, kineticRatingService: KineticRatingService, mleMatchService: MledbMatchService
   - public methods: getLeagueAndMode(scrim: Scrim): Promise<{mode: GameMode; group: GameSkillGroup;}>, saveMatch(submission: MatchReplaySubmission, submissionId: string, em: EntityManager): Promise<MLE_Series>, saveScrim(submission: ScrimReplaySubmission | LFSReplaySubmission, submissionId: string, em: EntityManager, scrimObject: Scrim): Promise<MLE_Scrim>, saveSeries(submission: ReplaySubmission, submissionId: string, em: EntityManager, series: MLE_Series): Promise<number>, getScrimIdByBallchasingId(ballchasingId: string): Promise<number>, getMlePlayerByBallchasingPlayer(p: BallchasingPlayer): Promise<MLE_Player>
 
 #### Context: notification
@@ -479,7 +479,7 @@ This document captures exported classes/modules and their public API surface fro
 - **MemberModResolver** (resolver; core/src/organization/member/member.mod.resolver.ts)
   - decorators: Resolver
   - dependencies: memberPlatformAccountService: MemberPlatformAccountService, platformService: PlatformService, mledbPlayerService: MledbPlayerService, mledbPlayerAccountService: MledbPlayerAccountService, memberFixService: MemberFixService, dataSource: DataSource, analyticsService: AnalyticsService
-  - public methods: reportMemberPlatformAccount(cu: UserPayload, userId: number, organizationId: number, tracker: string, platform: string, platformId: string): Promise<string> [Mutation, UseGuards], relinkPlatformAccount(sprocketUserId: string, platformId: string): Promise<string> [Mutation]
+  - public methods: reportMemberPlatformAccount(cu: UserPayload, userId: number, organizationId: number, tracker: string, platform: string, platformId: string): Promise<string> [Mutation, UseGuards], relinkPlatformAccount(kineticUserId: string, platformId: string): Promise<string> [Mutation]
 - **MemberResolver** (resolver; core/src/organization/member/member.resolver.ts)
   - decorators: Resolver
   - dependencies: memberService: MemberService, popService: PopulateService
@@ -487,7 +487,7 @@ This document captures exported classes/modules and their public API surface fro
 - **MemberFixService** (service; core/src/organization/member/member.service.ts)
   - decorators: Injectable
   - dependencies: dataSource: DataSource, memberRepository: Repository<Member>, memberPlatformAccountRepository: Repository<MemberPlatformAccount>, userAuthRepository: Repository<UserAuthenticationAccount>, playerRepository: Repository<MLE_Player>, playerAccountRepository: Repository<MLE_PlayerAccount>
-  - public methods: updateMemberAndPlayerIds(sprocketUserId: number, platformId: string)
+  - public methods: updateMemberAndPlayerIds(kineticUserId: number, platformId: string)
 - **MemberService** (service; core/src/organization/member/member.service.ts)
   - decorators: Injectable
   - dependencies: memberRepository: Repository<Member>, memberProfileRepository: Repository<MemberProfile>, organizationService: OrganizationService, userService: UserService, eventsService: EventsService, playerService: PlayerService, pubsub: PubSub
@@ -521,8 +521,8 @@ This document captures exported classes/modules and their public API surface fro
   - public methods: onApplicationBootstrap(): void
 - **RocketLeagueFinalizationService** (service; core/src/replay-parse/finalization/rocket-league/rocket-league-finalization.service.ts)
   - decorators: Injectable
-  - dependencies: playerService: PlayerService, matchService: MatchService, sprocketRatingService: SprocketRatingService, mledbPlayerService: MledbPlayerService, teamService: TeamService, ballchasingConverter: BallchasingConverterService, carballConverter: CarballConverterService, mledbFinalizationService: MledbFinalizationService, eligibilityService: EligibilityService, gameSkillGroupService: GameSkillGroupService, dataSource: DataSource
-  - public methods: finalizeLFS(submission: LFSReplaySubmission, scrim: Scrim): Promise<SaveScrimFinalizationReturn>, finalizeScrim(submission: ScrimReplaySubmission, scrim: Scrim): Promise<SaveScrimFinalizationReturn>, finalizeMatch(submission: MatchReplaySubmission): Promise<SaveMatchFinalizationReturn>, saveMatchDependents(submission: ReplaySubmission, match: Match, eligibility: boolean, em: EntityManager): Promise<Player[]>, _createRound(match: Match, homeWon: boolean, replay: BallchasingResponse, parser: {type: Parser; version: number;}, outputPath: string): Round, _getBallchasingPlayers(ballchasing: BallchasingResponse): Promise<{ blue: Array<{player: Player; rawPlayer: BallchasingPlayer;}>; orange: Array<{player: Player; rawPlayer: BallchasingPlayer;}>; }>, _createTeamStatLine(rawTeam: BallchasingTeam, round: Round, teamName: string, em: EntityManager, team?: Team): Promise<TeamStatLine>, _createEligibility(points: number, player: Player, matchParent: MatchParent, em: EntityManager): EligibilityData, _createPlayerStatLine(rawPlayer: BallchasingPlayer, player: Player, opposingTeam: BallchasingTeam, teamStats: TeamStatLine, gameMode: GameMode, isHome: boolean, round: Round, em: EntityManager): Promise<PlayerStatLine>, _getSprocketRating(rawPlayer: BallchasingPlayer, opposingTeam: BallchasingTeam, gameMode: GameMode): SprocketRating
+  - dependencies: playerService: PlayerService, matchService: MatchService, kineticRatingService: KineticRatingService, mledbPlayerService: MledbPlayerService, teamService: TeamService, ballchasingConverter: BallchasingConverterService, carballConverter: CarballConverterService, mledbFinalizationService: MledbFinalizationService, eligibilityService: EligibilityService, gameSkillGroupService: GameSkillGroupService, dataSource: DataSource
+  - public methods: finalizeLFS(submission: LFSReplaySubmission, scrim: Scrim): Promise<SaveScrimFinalizationReturn>, finalizeScrim(submission: ScrimReplaySubmission, scrim: Scrim): Promise<SaveScrimFinalizationReturn>, finalizeMatch(submission: MatchReplaySubmission): Promise<SaveMatchFinalizationReturn>, saveMatchDependents(submission: ReplaySubmission, match: Match, eligibility: boolean, em: EntityManager): Promise<Player[]>, _createRound(match: Match, homeWon: boolean, replay: BallchasingResponse, parser: {type: Parser; version: number;}, outputPath: string): Round, _getBallchasingPlayers(ballchasing: BallchasingResponse): Promise<{ blue: Array<{player: Player; rawPlayer: BallchasingPlayer;}>; orange: Array<{player: Player; rawPlayer: BallchasingPlayer;}>; }>, _createTeamStatLine(rawTeam: BallchasingTeam, round: Round, teamName: string, em: EntityManager, team?: Team): Promise<TeamStatLine>, _createEligibility(points: number, player: Player, matchParent: MatchParent, em: EntityManager): EligibilityData, _createPlayerStatLine(rawPlayer: BallchasingPlayer, player: Player, opposingTeam: BallchasingTeam, teamStats: TeamStatLine, gameMode: GameMode, isHome: boolean, round: Round, em: EntityManager): Promise<PlayerStatLine>, _getKineticRating(rawPlayer: BallchasingPlayer, opposingTeam: BallchasingTeam, gameMode: GameMode): KineticRating
 - **ReplayParseModResolver** (resolver; core/src/replay-parse/replay-parse.mod.resolver.ts)
   - decorators: Resolver, UseGuards
   - dependencies: rpService: ReplayParseService, submissionService: SubmissionService, finalizationSub: FinalizationSubscriber, redisService: RedisService, scrimService: ScrimService, pubsub: PubSub
@@ -654,12 +654,12 @@ This document captures exported classes/modules and their public API surface fro
   - dependencies: matchmakingService: MatchmakingService, eventsService: EventsService, gameSkillGroupService: GameSkillGroupService, memberService: MemberService, franchiseService: FranchiseService, mleScrimService: MledbFinalizationService, pubsub: PubSub, playerStatLineRepository: Repository<PlayerStatLine>
   - public methods: metricsSubTopic(): string, pendingScrimsSubTopic(): string, allActiveScrimsSubTopic(): string, lfsScrimsSubTopic(): string, getAllScrims(skillGroupId?: number): Promise<IScrim[]>, getScrimMetrics(): Promise<IScrimMetrics>, getScrimByPlayer(playerId: number): Promise<IScrim | null>, getScrimBySubmissionId(submissionId: string): Promise<IScrim | null>, getScrimById(scrimId: string): Promise<IScrim | null>, createScrim(data: CreateScrimOptions): Promise<IScrim>, createLFSScrim(data: CreateLFSScrimRequest): Promise<IScrim>, joinScrim(data: JoinScrimOptions): Promise<boolean>, leaveScrim(playerId: number, scrimId: string): Promise<boolean>, checkIn(playerId: number, scrimId: string): Promise<boolean>, cancelScrim(scrimId: string): Promise<IScrim>, setScrimLocked(scrimId: string, locked: boolean): Promise<boolean>, getLatestScrimIdByUserId(userId: number, organizationId: number): Promise<number>, getRelevantWebhooks(scrim: CoreInput<CoreEndpoint.GetScrimReportCardWebhooks>): Promise<CoreOutput<CoreEndpoint.GetScrimReportCardWebhooks>>, enableSubscription(): Promise<void>
 
-#### Context: sprocket-rating
+#### Context: kinetic-rating
 
-- **SprocketRatingService** (service; core/src/sprocket-rating/sprocket-rating.service.ts)
+- **KineticRatingService** (service; core/src/kinetic-rating/kinetic-rating.service.ts)
   - decorators: Injectable
   - dependencies: none
-  - public methods: calcSprocketRating(core: SprocketRatingInput): SprocketRating, calcSprocketRating2s(core: SprocketRatingInput): SprocketRating, calcSprocketRating3s(core: SprocketRatingInput): SprocketRating
+  - public methods: calcKineticRating(core: KineticRatingInput): KineticRating, calcKineticRating2s(core: KineticRatingInput): KineticRating, calcKineticRating3s(core: KineticRatingInput): KineticRating
 
 #### Context: submission
 
@@ -736,7 +736,7 @@ This document captures exported classes/modules and their public API surface fro
   - OrganizationConfigurationValue (core/src/database/configuration/organization_configuration_value/organization_configuration_value.model.ts)
     - public properties: value: string, organization: Organization, key: OrganizationConfigurationKey
     - public methods: none
-  - SprocketConfiguration (core/src/database/configuration/sprocket_configuration/sprocket_configuration.model.ts)
+  - KineticConfiguration (core/src/database/configuration/kinetic_configuration/kinetic_configuration.model.ts)
     - public properties: key: string, value: string
     - public methods: none
   - VerbiageCode (core/src/database/configuration/verbiage_code/verbiage_code.model.ts)
@@ -842,7 +842,7 @@ This document captures exported classes/modules and their public API surface fro
     - public properties: id: number, divison: string, franchiseGroupId: number
     - public methods: none
   - FixtureToFixture (core/src/database/mledb-bridge/fixture_to_fixture.model.ts)
-    - public properties: id: number, mleFixtureId: number, sprocketFixtureId: number
+    - public properties: id: number, mleFixtureId: number, kineticFixtureId: number
     - public methods: none
   - LeagueToSkillGroup (core/src/database/mledb-bridge/league_to_skill_group.model.ts)
     - public properties: id: number, league: string, skillGroupId: number
@@ -851,7 +851,7 @@ This document captures exported classes/modules and their public API surface fro
     - public properties: id: number, matchId: number, weekScheduleGroupId: number
     - public methods: none
   - PlayerToPlayer (core/src/database/mledb-bridge/player_to_player.model.ts)
-    - public properties: id: number, mledPlayerId: number, sprocketPlayerId: number
+    - public properties: id: number, mledPlayerId: number, kineticPlayerId: number
     - public methods: none
   - PlayerToUser (core/src/database/mledb-bridge/player_to_user.model.ts)
     - public properties: id: number, playerId: number, userId: number
@@ -1253,11 +1253,11 @@ This document captures exported classes/modules and their public API surface fro
     - public properties: players: ScrimPlayer[]
     - public methods: none
 
-#### Context: sprocket-rating
+#### Context: kinetic-rating
 
 - interfaces:
-  - SprocketRating (core/src/sprocket-rating/sprocket-rating.types.ts) -> opi: number, dpi: number, gpi: number
-  - SprocketRatingInput (core/src/sprocket-rating/sprocket-rating.types.ts) -> goals: number, assists: number, shots: number, saves: number, goals_against: number, shots_against: number, team_size?: number
+  - KineticRating (core/src/kinetic-rating/kinetic-rating.types.ts) -> opi: number, dpi: number, gpi: number
+  - KineticRatingInput (core/src/kinetic-rating/kinetic-rating.types.ts) -> goals: number, assists: number, shots: number, saves: number, goals_against: number, shots_against: number, team_size?: number
 
 #### Context: util
 
@@ -1456,7 +1456,7 @@ This document captures exported classes/modules and their public API surface fro
 #### Context: events
 
 - classes:
-  - SprocketEventMarshal (common/src/events/marshal/marshal.ts)
+  - KineticEventMarshal (common/src/events/marshal/marshal.ts)
     - public properties: logger
     - public methods: onApplicationBootstrap(): Promise<void>
 - interfaces:
@@ -1534,10 +1534,10 @@ This document captures exported classes/modules and their public API surface fro
   - BotEndpoint (common/src/service-connectors/bot/bot.types.ts) -> SendGuildTextMessage, SendDirectMessage, SendWebhookMessage
   - ButtonComponentStyle (common/src/service-connectors/bot/types/Component.ts) -> PRIMARY, SECONDARY, SUCCESS, DANGER, LINK
   - ComponentType (common/src/service-connectors/bot/types/Component.ts) -> ACTION_ROW, BUTTON, SELECT_MENU, TEXT_INPUT
-  - CoreEndpoint (common/src/service-connectors/core/core.types.ts) -> GetDiscordIdByUser, GetSprocketConfiguration, GetOrganizationProfile, GetUserByAuthAccount, GetMember, GetPlayerByPlatformId, GetPlayersByPlatformIds, GetOrganizationDiscordGuildsByGuild, GenerateReportCard, GetOrganizationConfigurationValue, GetOrganizationByDiscordGuild, GetFranchiseProfile, GetGameSkillGroupProfile, GetScrimReportCardWebhooks, GetMatchReportCardWebhooks, GetUsersLatestScrim, GetMleMatchInfoAndStakeholders, GetGuildsByOrganizationId, GetMatchBySubmissionId, GetMatchById, GetFranchiseStaff, GetPlayerFranchises, GetTransactionsDiscordWebhook, GetSkillGroupWebhooks, GetMatchInformationAndStakeholders, GetGameModeById, GetGameByGameMode, GetNicknameByDiscordUser
+  - CoreEndpoint (common/src/service-connectors/core/core.types.ts) -> GetDiscordIdByUser, GetKineticConfiguration, GetOrganizationProfile, GetUserByAuthAccount, GetMember, GetPlayerByPlatformId, GetPlayersByPlatformIds, GetOrganizationDiscordGuildsByGuild, GenerateReportCard, GetOrganizationConfigurationValue, GetOrganizationByDiscordGuild, GetFranchiseProfile, GetGameSkillGroupProfile, GetScrimReportCardWebhooks, GetMatchReportCardWebhooks, GetUsersLatestScrim, GetMleMatchInfoAndStakeholders, GetGuildsByOrganizationId, GetMatchBySubmissionId, GetMatchById, GetFranchiseStaff, GetPlayerFranchises, GetTransactionsDiscordWebhook, GetSkillGroupWebhooks, GetMatchInformationAndStakeholders, GetGameModeById, GetGameByGameMode, GetNicknameByDiscordUser
   - GenerateReportCardType (common/src/service-connectors/core/schemas/GenerateReportCard.schema.ts) -> SCRIM, SERIES
   - OrganizationConfigurationKeyCode (common/src/service-connectors/core/schemas/GetOrganizationConfiguration.ts) -> SCRIM_QUEUE_BAN_CHECKIN_TIMEOUT_MINUTES, SCRIM_QUEUE_BAN_INITIAL_DURATION_MINUTES, SCRIM_QUEUE_BAN_DURATION_MODIFIER, SCRIM_QUEUE_BAN_MODIFIER_FALL_OFF_DAYS, PRIMARY_DISCORD_GUILD_SNOWFLAKE, ALTERNATE_DISCORD_GUILD_SNOWFLAKES, REPORT_CARD_DISCORD_WEBHOOK_URL, SCRIM_REQUIRED_RATIFICATIONS
-  - SprocketConfigurationKey (common/src/service-connectors/core/schemas/GetSprocketConfiguration.schema.ts) -> DISABLE_DISCORD_DMS
+  - KineticConfigurationKey (common/src/service-connectors/core/schemas/GetKineticConfiguration.schema.ts) -> DISABLE_DISCORD_DMS
   - MemberRestrictionType (common/src/service-connectors/core/schemas/MemberRestriction.schema.ts) -> QUEUE_BAN, RATIFICATION_BAN
   - ImageGenerationEndpoint (common/src/service-connectors/image-generation/image-generation.types.ts) -> GenerateImage
   - MatchmakingEndpoint (common/src/service-connectors/matchmaking/matchmaking.types.ts) -> GetScrim, GetScrimByPlayer, GetScrimBySubmissionId, GetAllScrims, GetScrimMetrics, CreateLFSScrim, CreateScrim, JoinScrim, LeaveScrim, CheckInToScrim, CompleteScrim, CancelScrim, SetScrimLocked, UpdateLFSScrimPlayers
@@ -2017,14 +2017,14 @@ This document captures exported classes/modules and their public API surface fro
 - **MatchService** (service; microservices/notification-service/src/match/match.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, botService: BotService, coreService: CoreService
-  - public methods: sendReportCard(databaseIds: MatchDatabaseIds): Promise<void> [SprocketEvent]
+  - public methods: sendReportCard(databaseIds: MatchDatabaseIds): Promise<void> [KineticEvent]
 
 #### Context: member
 
 - **MemberService** (service; microservices/notification-service/src/member/member.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, botService: BotService, coreService: CoreService
-  - public methods: sendQueueBanNotification(restriction: MemberRestriction): Promise<void> [SprocketEvent]
+  - public methods: sendQueueBanNotification(restriction: MemberRestriction): Promise<void> [KineticEvent]
 
 #### Context: notification
 
@@ -2042,21 +2042,21 @@ This document captures exported classes/modules and their public API surface fro
 - **PlayerService** (service; microservices/notification-service/src/player/player.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, botService: BotService, coreService: CoreService
-  - public methods: sendSkillGroupChanged(sgChangedPayload: PlayerSkillGroupChangedType): Promise<void> [SprocketEvent]
+  - public methods: sendSkillGroupChanged(sgChangedPayload: PlayerSkillGroupChangedType): Promise<void> [KineticEvent]
 
 #### Context: scrim
 
 - **ScrimService** (service; microservices/notification-service/src/scrim/scrim.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, botService: BotService, coreService: CoreService, matchmakingService: MatchmakingService
-  - public methods: sendScrimCreatedNotifications(scrim: Scrim): Promise<void> [SprocketEvent], sendQueuePoppedNotifications(scrim: Scrim): Promise<void> [SprocketEvent], sendLobbyNotifications(scrim: Scrim): Promise<void> [SprocketEvent], sendReportCard(scrim: Scrim & {databaseIds: ScrimDatabaseIds;}): Promise<void> [SprocketEvent], getScrim(scrimId: string): Promise<Scrim | null>
+  - public methods: sendScrimCreatedNotifications(scrim: Scrim): Promise<void> [KineticEvent], sendQueuePoppedNotifications(scrim: Scrim): Promise<void> [KineticEvent], sendLobbyNotifications(scrim: Scrim): Promise<void> [KineticEvent], sendReportCard(scrim: Scrim & {databaseIds: ScrimDatabaseIds;}): Promise<void> [KineticEvent], getScrim(scrimId: string): Promise<Scrim | null>
 
 #### Context: submission
 
 - **SubmissionService** (service; microservices/notification-service/src/submission/submission.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, botService: BotService, coreService: CoreService, redisService: RedisService, matchmakingService: MatchmakingService
-  - public methods: sendSubmissionRatifyingNotifications(payload: EventPayload<EventTopic.SubmissionRatifying>): Promise<void> [SprocketEvent], sendSubmissionRejectedNotifications(payload: EventPayload<EventTopic.SubmissionRejected>): Promise<void> [SprocketEvent], sendScrimSubmissionRatifyingNotifications(submission: ScrimReplaySubmission | LFSReplaySubmission): Promise<void>, sendMatchSubmissionRatifyingNotifications(submission: MatchReplaySubmission): Promise<void>, sendScrimSubmissionRejectedNotifications(submission: ScrimReplaySubmission): Promise<void>, sendMatchSubmissionRejectedNotifications(submission: MatchReplaySubmission & {id: string;}): Promise<void>
+  - public methods: sendSubmissionRatifyingNotifications(payload: EventPayload<EventTopic.SubmissionRatifying>): Promise<void> [KineticEvent], sendSubmissionRejectedNotifications(payload: EventPayload<EventTopic.SubmissionRejected>): Promise<void> [KineticEvent], sendScrimSubmissionRatifyingNotifications(submission: ScrimReplaySubmission | LFSReplaySubmission): Promise<void>, sendMatchSubmissionRatifyingNotifications(submission: MatchReplaySubmission): Promise<void>, sendScrimSubmissionRejectedNotifications(submission: ScrimReplaySubmission): Promise<void>, sendMatchSubmissionRejectedNotifications(submission: MatchReplaySubmission & {id: string;}): Promise<void>
 
 ### Data Contracts and Interfaces
 
@@ -2113,7 +2113,7 @@ This document captures exported classes/modules and their public API surface fro
 - type aliases:
   - Dimension (microservices/image-generation-service/src/image-generation/types.ts) -> z.infer<typeof dimensionSchema>
   - ImageTransformationsOptions (microservices/image-generation-service/src/image-generation/types.ts) -> z.infer<typeof imageTransformationOptions>
-  - SprocketData (microservices/image-generation-service/src/image-generation/types.ts) -> z.infer<typeof sprocketDataSchema>
+  - KineticData (microservices/image-generation-service/src/image-generation/types.ts) -> z.infer<typeof kineticDataSchema>
   - TextTransformationOptions (microservices/image-generation-service/src/image-generation/types.ts) -> z.infer<typeof textTransformationOptions>
 
 #### Context: prototype.types.ts
@@ -2176,7 +2176,7 @@ This document captures exported classes/modules and their public API surface fro
 ### Module Definitions
 
 - **AppModule** (clients/discord-bot/src/app.module.ts)
-  - imports: GlobalModule, CoreModule, MarshalModule, DiscordModule, EmbedModule, NotificationsModule, EventsModule, CommandsModule, SprocketEventsModule
+  - imports: GlobalModule, CoreModule, MarshalModule, DiscordModule, EmbedModule, NotificationsModule, EventsModule, CommandsModule, KineticEventsModule
   - providers: GlobalModule, EmbedService
   - controllers: none
   - exports: none
@@ -2230,9 +2230,9 @@ This document captures exported classes/modules and their public API surface fro
   - providers: NotificationsService
   - controllers: NotificationsController
   - exports: NotificationsService
-- **SprocketEventsModule** (clients/discord-bot/src/sprocket-events/sprocket-events.module.ts)
+- **KineticEventsModule** (clients/discord-bot/src/kinetic-events/kinetic-events.module.ts)
   - imports: DiscordModule, CoreModule, EventsModule
-  - providers: SprocketEventsService
+  - providers: KineticEventsService
   - controllers: none
   - exports: none
 
@@ -2260,11 +2260,11 @@ This document captures exported classes/modules and their public API surface fro
   - decorators: none
   - dependencies: none
   - public methods: ping(m: Message): Promise<void> [Command], error(m: Message, context: MarshalCommandContext): Promise<void> [Command], embed(m: Message, c: MarshalCommandContext): Promise<void> [Command]
-- **SprocketConfigurationMarshal** (marshal; clients/discord-bot/src/commands/administrator-commands/sprocket-configuration.marshal.ts)
+- **KineticConfigurationMarshal** (marshal; clients/discord-bot/src/commands/administrator-commands/kinetic-configuration.marshal.ts)
   - decorators: none
   - dependencies: none
-  - public methods: getSprocketConfig(m: Message, context: MarshalCommandContext): Promise<void> [Command]
-- **SprocketStatusMarshal** (marshal; clients/discord-bot/src/commands/administrator-commands/sprocket-status.marshal.ts)
+  - public methods: getKineticConfig(m: Message, context: MarshalCommandContext): Promise<void> [Command]
+- **KineticStatusMarshal** (marshal; clients/discord-bot/src/commands/administrator-commands/kinetic-status.marshal.ts)
   - decorators: none
   - dependencies: none
   - public methods: status(m: Message): Promise<void> [Command]
@@ -2316,12 +2316,12 @@ This document captures exported classes/modules and their public API surface fro
   - dependencies: discordClient: Client, embedService: EmbedService, minioService: MinioService, coreService: CoreService
   - public methods: downloadAttachment(attachment: Attachment | string): Promise<MessageAttachment>, sendGuildTextMessage(channelId: string, content: MessageContent, brandingOptions?: BrandingOptions): Promise<boolean>, sendDirectMessage(userId: string, content: MessageContent, brandingOptions?: BrandingOptions): Promise<boolean>, sendWebhookMessage(webhookUrl: string, content: MessageContent & WebhookMessageOptions, brandingOptions?: BrandingOptions): Promise<boolean>
 
-#### Context: sprocket-events
+#### Context: kinetic-events
 
-- **SprocketEventsService** (service; clients/discord-bot/src/sprocket-events/sprocket-events.service.ts)
+- **KineticEventsService** (service; clients/discord-bot/src/kinetic-events/kinetic-events.service.ts)
   - decorators: Injectable
   - dependencies: eventsService: EventsService, discordClient: Client, coreService: CoreService
-  - public methods: onSkillGroupChange(payload: PlayerSkillGroupChangedType): Promise<void> [SprocketEvent], onTeamChange(payload: PlayerTeamChanged): Promise<void> [SprocketEvent]
+  - public methods: onSkillGroupChange(payload: PlayerSkillGroupChangedType): Promise<void> [KineticEvent], onTeamChange(payload: PlayerTeamChanged): Promise<void> [KineticEvent]
 
 ### Data Contracts and Interfaces
 

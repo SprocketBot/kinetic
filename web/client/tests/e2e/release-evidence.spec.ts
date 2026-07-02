@@ -38,7 +38,7 @@ async function readBrowserSession(page: import("@playwright/test").Page): Promis
 
 test("release evidence: browser auth keeps actor identity isolated over credentialed CORS", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Sprocket Sign In" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kinetic Sign In" })).toBeVisible();
 
   await page.getByRole("button", { name: "Continue as player" }).click();
   await expect(page).toHaveURL(/\/app\/player$/);

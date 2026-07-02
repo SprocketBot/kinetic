@@ -31,7 +31,7 @@ This runbook covers `/app/admin` scheduling workflows:
 ## Verification
 
 ```bash
-cd /Users/jacbaile/Sprocket-v3/web/client
+cd /Users/jacbaile/Kinetic-v3/web/client
 npm run lint
 npm run typecheck
 npm run test

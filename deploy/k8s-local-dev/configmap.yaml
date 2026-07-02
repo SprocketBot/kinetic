@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sprocket-v3-config
-  namespace: sprocket-v3
+  name: kinetic-v3-config
+  namespace: kinetic-v3
 data:
   PORT: "8080"
   LOG_LEVEL: "info"
   MIGRATIONS_DIR: "/app/migrations"
-  DATABASE_URL: "postgres://postgres:postgres@sprocket-v3-pg-dev:5432/sprocket?sslmode=disable"
+  DATABASE_URL: "postgres://postgres:postgres@kinetic-v3-pg-dev:5432/kinetic?sslmode=disable"
   REQUIRE_DATABASE: "true"
   RUN_MIGRATIONS_ON_START: "true"
   WEB_BASE_URL: "http://localhost:5173"

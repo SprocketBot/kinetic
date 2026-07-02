@@ -1,10 +1,10 @@
 openapi: "3.1.0"
 
 info:
-  title: "Sprocket v3 API"
+  title: "Kinetic v3 API"
   version: "0.1.0"
   description: |
-    REST API for the Sprocket v3 Rocket League esports league management platform.
+    REST API for the Kinetic v3 Rocket League esports league management platform.
 
     ## Authentication
     Most read endpoints are publicly accessible. Write and sensitive operations
@@ -32,7 +32,7 @@ components:
     sessionCookie:
       type: apiKey
       in: cookie
-      name: sprocket_session
+      name: kinetic_session
       description: "Signed session token set by the OAuth login flow."
     bearerToken:
       type: http
@@ -57,7 +57,7 @@ components:
           example: "ok"
         service:
           type: string
-          example: "sprocket-v3-api"
+          example: "kinetic-v3-api"
         timestamp:
           type: string
           format: date-time

@@ -1,7 +1,7 @@
 # Kinetic
 
 Kinetic is the next-generation league operations platform for Minor League Esports.
-It carries forward the mechanical identity of Sprocket while marking a clean product reboot: a statically typed Go backend, a React/TypeScript web client, Kubernetes-native operations, multi-game workflow foundations, and artifact-backed release gates for the workflows that matter most.
+It carries forward the mechanical identity of Kinetic while marking a clean product reboot: a statically typed Go backend, a React/TypeScript web client, Kubernetes-native operations, multi-game workflow foundations, and artifact-backed release gates for the workflows that matter most.
 
 Kinetic is built to make league administration, scrim operations, evidence intake, roster governance, and player-facing workflows reliable enough to ship without the support loop that accumulated in earlier platform iterations.
 

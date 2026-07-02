@@ -1,4 +1,4 @@
-# Sprocket v3 Roadmap Summary (Through Week 14)
+# Kinetic v3 Roadmap Summary (Through Week 14)
 
 Date: 2026-02-15
 

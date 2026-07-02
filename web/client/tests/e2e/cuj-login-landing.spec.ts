@@ -6,7 +6,7 @@ test("CUJ 1: login redirects anonymous users and player landing shows scrim stat
   await installCUJApi(page);
 
   await page.goto("/app/player");
-  await expect(page.getByRole("heading", { name: "Sprocket Sign In" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kinetic Sign In" })).toBeVisible();
 
   await signInAs(page, "player");
   await page.goto("/app/player");

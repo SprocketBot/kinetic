@@ -4,13 +4,13 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-007 (queue enrollment), ADR-008 (scheduled match vs scrim), ADR-009 (scheduled competition slice)
-- Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/sprocket-v2-unified-matchmaking-proposal/>
+- Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/>
 - Detailed Reference: `docs/matchmaking/unified-matchmaking-core-concepts.md`
 
 ## Context
 
 Segmented matchmaking/rating pools by skill group create avoidable queue fragmentation, rating comparability gaps, and unstable boundary behavior.
-Sprocket v3 needs one coherent model that preserves skill-group identity while matching and rating players on a shared scale.
+Kinetic v3 needs one coherent model that preserves skill-group identity while matching and rating players on a shared scale.
 
 ## Decision
 

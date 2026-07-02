@@ -18,7 +18,7 @@ extract_id() {
   sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' "$1" | tail -n1
 }
 
-echo "Seeding Sprocket v3 dev data"
+echo "Seeding Kinetic v3 dev data"
 echo "Waiting for API to be ready at ${API_BASE}/healthz"
 for i in $(seq 1 30); do
   if curl -s -f "${API_BASE}/healthz" >/dev/null; then

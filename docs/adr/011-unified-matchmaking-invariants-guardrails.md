@@ -4,7 +4,7 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-010 (unified matchmaking and rating model)
-- Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/sprocket-v2-unified-matchmaking-proposal/>
+- Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/>
 - Detailed References: `docs/matchmaking/unified-matchmaking-invariants-and-guardrails.md`, `docs/matchmaking/unified-matchmaking-implementation-checklist.md`
 
 ## Context

@@ -174,7 +174,7 @@ export function SupportDashboardPage() {
   });
 
   return (
-    <AppShell title="Sprocket Web Client">
+    <AppShell title="Kinetic Web Client">
       <h2>League Support</h2>
       <p>Inbox triage workspace for active exception operations.</p>
 

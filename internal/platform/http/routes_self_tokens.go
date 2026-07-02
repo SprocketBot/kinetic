@@ -2,9 +2,9 @@ package http
 
 import (
 	"errors"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/notifications"
+	"github.com/kineticbot/kinetic-v3/internal/domain/apitoken"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/notifications"
 	"net/http"
 	"strconv"
 	"strings"

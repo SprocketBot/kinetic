@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/auth"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/db"
-	httpserver "github.com/sprocketbot/sprocket-v3/internal/platform/http"
+	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/platform/db"
+	httpserver "github.com/kineticbot/kinetic-v3/internal/platform/http"
 )
 
 func main() {

@@ -164,7 +164,7 @@ async function mockPlayerEndpoints(page: import("@playwright/test").Page) {
         parseRun: {
           id: 99,
           replayEvidenceId: 10,
-          parserName: "sprocket-rl-parser",
+          parserName: "kinetic-rl-parser",
           parserVersion: "v1",
           parserConfigDigest: "default",
           status: "parsed",
@@ -401,14 +401,14 @@ async function mockAdminEndpoints(page: import("@playwright/test").Page) {
 
 test("redirects unauthenticated users to login", async ({ page }) => {
   await page.goto("/app/player");
-  await expect(page.getByRole("heading", { name: "Sprocket Sign In" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Kinetic Sign In" })).toBeVisible();
 });
 
 test("allows authorized mock users into scoped route", async ({ page }) => {
   await mockPlayerEndpoints(page);
   await page.addInitScript(() => {
     localStorage.setItem(
-      "sprocket.mockSession",
+      "kinetic.mockSession",
       JSON.stringify({
         subject: "player-1",
         displayName: "Player One",
@@ -425,7 +425,7 @@ test("runs player queue and submission actions", async ({ page }) => {
   await mockPlayerEndpoints(page);
   await page.addInitScript(() => {
     localStorage.setItem(
-      "sprocket.mockSession",
+      "kinetic.mockSession",
       JSON.stringify({
         subject: "player-1",
         displayName: "Player One",
@@ -449,7 +449,7 @@ test("renders admin scheduling workspace and creates entities", async ({ page })
   await mockAdminEndpoints(page);
   await page.addInitScript(() => {
     localStorage.setItem(
-      "sprocket.mockSession",
+      "kinetic.mockSession",
       JSON.stringify({
         subject: "admin-1",
         displayName: "League Admin",
@@ -586,7 +586,7 @@ test("renders support inbox workspace and submits triage", async ({ page }) => {
 
   await page.addInitScript(() => {
     localStorage.setItem(
-      "sprocket.mockSession",
+      "kinetic.mockSession",
       JSON.stringify({
         subject: "support-1",
         displayName: "Support One",

@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sprocketbot/sprocket-v3/internal/domain/apitoken"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/replaystats"
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/domain/apitoken"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/replaystats"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
 )
 
 type probeResponse struct {
@@ -432,7 +432,7 @@ func TestSessionLifecycleViaLoginAndCallback(t *testing.T) {
 		Port:              "8080",
 		LogLevel:          "info",
 		AuthSessionSecret: "test-secret",
-		AuthSessionCookie: "sprocket_session",
+		AuthSessionCookie: "kinetic_session",
 		AuthSessionTTL:    "1h",
 		WebBaseURL:        "http://localhost:5173",
 	}
@@ -461,7 +461,7 @@ func TestSessionLifecycleViaLoginAndCallback(t *testing.T) {
 
 	var sessionCookie *http.Cookie
 	for _, cookie := range callbackRR.Result().Cookies() {
-		if cookie.Name == "sprocket_session" {
+		if cookie.Name == "kinetic_session" {
 			sessionCookie = cookie
 			break
 		}
@@ -500,14 +500,14 @@ func TestSessionEndpointRejectsInvalidCookie(t *testing.T) {
 		Port:              "8080",
 		LogLevel:          "info",
 		AuthSessionSecret: "test-secret",
-		AuthSessionCookie: "sprocket_session",
+		AuthSessionCookie: "kinetic_session",
 		AuthSessionTTL:    "1h",
 		WebBaseURL:        "http://localhost:5173",
 	}
 	srv := New(cfg, slog.Default(), Dependencies{})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/session", nil)
-	req.AddCookie(&http.Cookie{Name: "sprocket_session", Value: "bad-token"})
+	req.AddCookie(&http.Cookie{Name: "kinetic_session", Value: "bad-token"})
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1339,7 +1339,7 @@ func TestIngestReplayEvidenceSuccess(t *testing.T) {
 			ParseRun: hierarchy.ReplayParseRun{
 				ID:                 1,
 				ReplayEvidenceID:   1,
-				ParserName:         "sprocket-rl-parser",
+				ParserName:         "kinetic-rl-parser",
 				ParserVersion:      "v0.1.0",
 				ParserConfigDigest: "cfg-001",
 				Status:             "parsed",
@@ -1354,7 +1354,7 @@ func TestIngestReplayEvidenceSuccess(t *testing.T) {
 		HierarchyStore: store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/replay-evidence", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"replayBody":"fake-bytes","parserName":"sprocket-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-001","resultSubmissionId":1,"parseOutputJson":{"goals":4}}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/replay-evidence", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"replayBody":"fake-bytes","parserName":"kinetic-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-001","resultSubmissionId":1,"parseOutputJson":{"goals":4}}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1370,7 +1370,7 @@ func TestListReplayParseRunsSuccess(t *testing.T) {
 			{
 				ID:                 1,
 				ReplayEvidenceID:   1,
-				ParserName:         "sprocket-rl-parser",
+				ParserName:         "kinetic-rl-parser",
 				ParserVersion:      "v0.1.0",
 				ParserConfigDigest: "cfg-001",
 				Status:             "parsed",
@@ -1447,7 +1447,7 @@ func assertProbePayload(t *testing.T, body io.Reader, expectedStatus string) {
 		t.Fatalf("expected status %q, got %q", expectedStatus, payload.Status)
 	}
 
-	if payload.Service != "sprocket-v3-api" {
+	if payload.Service != "kinetic-v3-api" {
 		t.Fatalf("unexpected service value %q", payload.Service)
 	}
 }

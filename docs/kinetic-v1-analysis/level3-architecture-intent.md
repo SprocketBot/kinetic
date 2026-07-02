@@ -1,4 +1,4 @@
-# Sprocket Level 3 Spec: Architecture Intent and Capability Design
+# Kinetic Level 3 Spec: Architecture Intent and Capability Design
 
 This level describes what the system is for, what outcomes it must reliably produce, and what architectural boundaries should remain stable as implementation details change.
 
@@ -6,7 +6,7 @@ It intentionally abstracts away class/module mechanics from Level 1 and subsyste
 
 ## 1. Product Mission
 
-Sprocket exists to run organized esports competition with credible, enforceable outcomes.
+Kinetic exists to run organized esports competition with credible, enforceable outcomes.
 
 Its core promise is to:
 - convert gameplay evidence into trusted league state,
@@ -79,7 +79,7 @@ Required outcomes:
 ### 3.6 Compatibility Capability
 
 Purpose:
-- preserve interoperability with legacy MLEDB-facing stakeholders while Sprocket-native models evolve.
+- preserve interoperability with legacy MLEDB-facing stakeholders while Kinetic-native models evolve.
 
 Required outcomes:
 - compatibility behavior remains behind bounded interfaces,
@@ -100,7 +100,7 @@ Client surfaces consume and influence this model but do not own canonical compet
 
 ## 5. Interaction Model
 
-Sprocket intentionally combines:
+Kinetic intentionally combines:
 - synchronous request/response paths for user intent capture and immediate reads,
 - asynchronous event/job paths for fan-out work, long-running processing, and external delivery.
 

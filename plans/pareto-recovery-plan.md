@@ -1,4 +1,4 @@
-# Sprocket v3 Pareto Recovery Plan
+# Kinetic v3 Pareto Recovery Plan
 
 Date: 2026-02-15  
 Owner capacity: 10 hrs/week gross, 8 hrs/week delivery target

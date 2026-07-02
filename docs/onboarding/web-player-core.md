@@ -26,7 +26,7 @@ This runbook covers the player-facing core workflows in `/app/player`:
 ## Local Validation
 
 ```bash
-cd /Users/jacbaile/Sprocket-v3/web/client
+cd /Users/jacbaile/Kinetic-v3/web/client
 npm run lint
 npm run typecheck
 npm run test
@@ -38,7 +38,7 @@ npm run test:e2e
 
 `/app/player` embeds Evidence views via iframe, controlled by:
 
-- `VITE_EVIDENCE_BASE_URL` (default `https://evidence.sprocket.gg`)
+- `VITE_EVIDENCE_BASE_URL` (default `https://evidence.kinetic.gg`)
 
 Views included in F2:
 

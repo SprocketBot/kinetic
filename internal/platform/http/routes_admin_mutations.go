@@ -1,9 +1,9 @@
 package http
 
 import (
-	"github.com/sprocketbot/sprocket-v3/internal/domain/authz"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/hierarchy"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/skillgroup"
+	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/domain/skillgroup"
 	"net/http"
 	"strconv"
 )

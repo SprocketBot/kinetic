@@ -1,8 +1,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: sprocket-v3-config
-  namespace: sprocket-v3
+  name: kinetic-v3-config
+  namespace: kinetic-v3
 data:
   PORT: "8080"
   LOG_LEVEL: "info"

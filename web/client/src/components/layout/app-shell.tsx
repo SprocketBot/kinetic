@@ -33,7 +33,7 @@ export function AppShell({ title, children }: AppShellProps) {
     <div className="app-shell">
       <header className="app-shell__header">
         <div className="app-shell__brand">
-          <img alt="Sprocket" className="app-shell__logo" src="/img/logo-horizontal.svg" />
+          <img alt="Kinetic" className="app-shell__logo" src="/img/logo-horizontal.svg" />
           <div className="app-shell__title-wrap">
             <p className="app-shell__eyebrow">Web Client v3</p>
             <h1 className="app-shell__title">{title}</h1>

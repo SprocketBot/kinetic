@@ -14,7 +14,7 @@ Week 3 introduces the first hierarchy domain slice:
 ## Run migrations
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 MIGRATIONS_DIR="./migrations" \
 go run ./cmd/migrate
 ```
@@ -22,7 +22,7 @@ go run ./cmd/migrate
 ## Start API in DB-required mode
 
 ```bash
-DATABASE_URL="postgres://postgres:postgres@localhost:55432/sprocket?sslmode=disable" \
+DATABASE_URL="postgres://postgres:postgres@localhost:55432/kinetic?sslmode=disable" \
 REQUIRE_DATABASE=true \
 go run ./cmd/api
 ```

@@ -7,20 +7,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sprocketbot/sprocket-v3/internal/platform/config"
+	"github.com/kineticbot/kinetic-v3/internal/platform/config"
 )
 
 func TestCORSPreflightAllowsConfiguredOrigin(t *testing.T) {
 	srv := New(config.Config{
 		Port:               "8080",
 		LogLevel:           "info",
-		WebBaseURL:         "https://sprocket.mlesports.gg",
-		CORSAllowedOrigins: "https://sprocket.mlesports.gg",
+		WebBaseURL:         "https://kinetic.mlesports.gg",
+		CORSAllowedOrigins: "https://kinetic.mlesports.gg",
 		AuthLocalLogin:     true,
 	}, slog.Default(), Dependencies{})
 
 	req := httptest.NewRequest(http.MethodOptions, "/v1/session", nil)
-	req.Header.Set("Origin", "https://sprocket.mlesports.gg")
+	req.Header.Set("Origin", "https://kinetic.mlesports.gg")
 	req.Header.Set("Access-Control-Request-Method", "GET")
 	rr := httptest.NewRecorder()
 
@@ -29,7 +29,7 @@ func TestCORSPreflightAllowsConfiguredOrigin(t *testing.T) {
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("expected preflight status %d, got %d body=%s", http.StatusNoContent, rr.Code, rr.Body.String())
 	}
-	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "https://sprocket.mlesports.gg" {
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "https://kinetic.mlesports.gg" {
 		t.Fatalf("expected reflected CORS origin, got %q", got)
 	}
 	if got := rr.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
@@ -41,8 +41,8 @@ func TestCORSPreflightRejectsUnconfiguredOrigin(t *testing.T) {
 	srv := New(config.Config{
 		Port:               "8080",
 		LogLevel:           "info",
-		WebBaseURL:         "https://sprocket.mlesports.gg",
-		CORSAllowedOrigins: "https://sprocket.mlesports.gg",
+		WebBaseURL:         "https://kinetic.mlesports.gg",
+		CORSAllowedOrigins: "https://kinetic.mlesports.gg",
 		AuthLocalLogin:     true,
 	}, slog.Default(), Dependencies{})
 
@@ -65,13 +65,13 @@ func TestCORSActualResponseAllowsConfiguredOrigin(t *testing.T) {
 	srv := New(config.Config{
 		Port:               "8080",
 		LogLevel:           "info",
-		WebBaseURL:         "https://sprocket.mlesports.gg",
-		CORSAllowedOrigins: "https://sprocket.mlesports.gg",
+		WebBaseURL:         "https://kinetic.mlesports.gg",
+		CORSAllowedOrigins: "https://kinetic.mlesports.gg",
 		AuthLocalLogin:     true,
 	}, slog.Default(), Dependencies{})
 
 	req := httptest.NewRequest(http.MethodGet, "/v1/session", nil)
-	req.Header.Set("Origin", "https://sprocket.mlesports.gg")
+	req.Header.Set("Origin", "https://kinetic.mlesports.gg")
 	rr := httptest.NewRecorder()
 
 	srv.Handler().ServeHTTP(rr, req)
@@ -79,7 +79,7 @@ func TestCORSActualResponseAllowsConfiguredOrigin(t *testing.T) {
 	if rr.Code != http.StatusUnauthorized {
 		t.Fatalf("expected session status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
 	}
-	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "https://sprocket.mlesports.gg" {
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "https://kinetic.mlesports.gg" {
 		t.Fatalf("expected reflected CORS origin, got %q", got)
 	}
 	if got := rr.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
@@ -91,7 +91,7 @@ func TestLocalAuthCanBeDisabled(t *testing.T) {
 	srv := New(config.Config{
 		Port:              "8080",
 		LogLevel:          "info",
-		WebBaseURL:        "https://sprocket.mlesports.gg",
+		WebBaseURL:        "https://kinetic.mlesports.gg",
 		AuthLocalLogin:    false,
 		AuthLocalLoginSet: true,
 	}, slog.Default(), Dependencies{})

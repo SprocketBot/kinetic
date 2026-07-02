@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/sprocketbot/sprocket-v3/internal/domain/skillgroup"
+	"github.com/kineticbot/kinetic-v3/internal/domain/skillgroup"
 )
 
 type SkillGroupStore struct {

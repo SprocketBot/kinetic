@@ -1,4 +1,4 @@
-# Sprocket v3 Progress Report
+# Kinetic v3 Progress Report
 
 Date: 2026-02-14
 Scope covered: Weeks 1-6 complete
@@ -57,8 +57,8 @@ Remaining work is meaningful but bounded, and is achievable as a hobby project a
 
 ## Current System Snapshot
 
-- ADRs: 8 (`/Users/jacbaile/Sprocket-v3/docs/adr`)
-- Migrations: 7 (`/Users/jacbaile/Sprocket-v3/migrations`)
+- ADRs: 8 (`/Users/jacbaile/Kinetic-v3/docs/adr`)
+- Migrations: 7 (`/Users/jacbaile/Kinetic-v3/migrations`)
 - Week smoke scripts: 5 (`week1`, `week3`, `week4`, `week5`, `week6`)
 - HTTP v1 routes in service: admin ping + 8 hierarchy/roster/queue routes
 - Test cases in `internal/*`: 39 (`func Test...` count)

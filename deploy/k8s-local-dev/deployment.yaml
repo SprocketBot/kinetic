@@ -1,30 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sprocket-v3-api
-  namespace: sprocket-v3
+  name: kinetic-v3-api
+  namespace: kinetic-v3
   labels:
-    app: sprocket-v3-api
+    app: kinetic-v3-api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sprocket-v3-api
+      app: kinetic-v3-api
   template:
     metadata:
       labels:
-        app: sprocket-v3-api
+        app: kinetic-v3-api
     spec:
       containers:
         - name: api
-          image: sprocket-v3-api:dev
+          image: kinetic-v3-api:dev
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
               name: http
           envFrom:
             - configMapRef:
-                name: sprocket-v3-config
+                name: kinetic-v3-config
           livenessProbe:
             httpGet:
               path: /healthz

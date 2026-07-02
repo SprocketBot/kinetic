@@ -4,12 +4,12 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-002 (auth and RBAC baseline), ADR-008 (scheduled match vs scrim), ADR-009 (scheduled competition slice)
-- Source Parser: <https://github.com/SprocketBot/sprocket-rl-parser>
+- Source Parser: <https://github.com/KineticBot/kinetic-rl-parser>
 - Detailed Reference: `docs/replay-parsing/unified-replay-parsing-core-concepts.md`
 
 ## Context
 
-Sprocket's league and scrim workflows depend on reliable game results and player statistics derived from replay files.
+Kinetic's league and scrim workflows depend on reliable game results and player statistics derived from replay files.
 The same person can appear under multiple in-game platform identities (`Epic`, `Steam`, `Xbox`, `PSN`), while platform login identity and in-game identity are separate concerns.
 
 Without a unified model for account association and replay attribution, replay-driven automation becomes error-prone and difficult to audit.
@@ -33,7 +33,7 @@ Adopt a replay-centric ingestion and identity-resolution model with explicit pla
 ### 3. Replay evidence as source of truth
 
 - Replay bytes are ingested as immutable evidence.
-- Parsing is delegated to `sprocket-rl-parser`.
+- Parsing is delegated to `kinetic-rl-parser`.
 - Parsed outputs are normalized into canonical internal structures with parser provenance.
 
 ### 4. Participant resolution contract
@@ -72,7 +72,7 @@ Adopt a replay-centric ingestion and identity-resolution model with explicit pla
 
 ## Non-Goals (Current Decision Scope)
 
-- Replacing `sprocket-rl-parser` internals.
+- Replacing `kinetic-rl-parser` internals.
 - Defining full UI/UX flows for every replay-management screen.
 - Final retention policy and cost optimization strategy for replay storage.
 

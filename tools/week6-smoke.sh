@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PG_NAME="sprocket-v3-pg-week6-smoke"
+PG_NAME="kinetic-v3-pg-week6-smoke"
 PG_PORT="${PG_PORT:-55432}"
 DB_URL=""
 API_PID=""
@@ -27,23 +27,23 @@ for offset in 0 1 2 3 4; do
   if docker run --name "$PG_NAME" \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=sprocket \
+    -e POSTGRES_DB=kinetic \
     -p "${candidate_port}:5432" \
-    -d postgres:16 >/dev/null 2>/tmp/sprocket_v3_week6_docker_err.log; then
+    -d postgres:16 >/dev/null 2>/tmp/kinetic_v3_week6_docker_err.log; then
     PG_PORT="${candidate_port}"
-    DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/sprocket?sslmode=disable"
+    DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/kinetic?sslmode=disable"
     break
   fi
 done
 
 if [[ -z "${DB_URL}" ]]; then
   echo "Unable to start Postgres container on ports ${PG_PORT}-${PG_PORT}+4" >&2
-  cat /tmp/sprocket_v3_week6_docker_err.log >&2 || true
+  cat /tmp/kinetic_v3_week6_docker_err.log >&2 || true
   exit 1
 fi
 
 for i in $(seq 1 40); do
-  if docker exec "$PG_NAME" pg_isready -U postgres -d sprocket >/dev/null 2>&1; then
+  if docker exec "$PG_NAME" pg_isready -U postgres -d kinetic >/dev/null 2>&1; then
     break
   fi
   sleep 1
@@ -54,10 +54,10 @@ for i in $(seq 1 40); do
 done
 
 echo "Running migrations"
-DATABASE_URL="$DB_URL" MIGRATIONS_DIR="./migrations" go run ./cmd/migrate >/tmp/sprocket_v3_week6_migrate.log
+DATABASE_URL="$DB_URL" MIGRATIONS_DIR="./migrations" go run ./cmd/migrate >/tmp/kinetic_v3_week6_migrate.log
 
 echo "Starting API in DB-required mode"
-DATABASE_URL="$DB_URL" REQUIRE_DATABASE=true go run ./cmd/api >/tmp/sprocket_v3_week6_api.log 2>&1 &
+DATABASE_URL="$DB_URL" REQUIRE_DATABASE=true go run ./cmd/api >/tmp/kinetic_v3_week6_api.log 2>&1 &
 API_PID=$!
 sleep 1
 

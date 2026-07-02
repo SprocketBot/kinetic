@@ -4,7 +4,7 @@ Date: 2026-02-15
 
 ## Purpose
 
-Run and verify the Sprocket v3 web client foundation (`web/client`) locally.
+Run and verify the Kinetic v3 web client foundation (`web/client`) locally.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Run and verify the Sprocket v3 web client foundation (`web/client`) locally.
 ## Install
 
 ```bash
-cd /Users/jacbaile/Sprocket-v3/web/client
+cd /Users/jacbaile/Kinetic-v3/web/client
 npm ci
 ```
 
@@ -75,7 +75,7 @@ npm run build
 Or from repo root:
 
 ```bash
-cd /Users/jacbaile/Sprocket-v3
+cd /Users/jacbaile/Kinetic-v3
 ./tools/web-quality-gate.sh
 ```
 

@@ -124,13 +124,13 @@ Our league already provides most of the _viewing_ capability for all of the
 user/player data I have just outlined via a static site we publish once per hour
 via a framework called Evidence (https://evidence.dev/). We do not want to
 duplicate any of this capability. Ideally, we would be able to embed various
-views from the static site into the web client for the Sprocket app, and simply
+views from the static site into the web client for the Kinetic app, and simply
 provide whatever additional interface is necessary to support the rest of the
 CRUD capabilities, as applicable.
 
 ## A word on styling
 
-The sprocket platform already has a pretty recognizable brand in terms of
+The kinetic platform already has a pretty recognizable brand in terms of
 styling and art. You can get a feel for it by checking out the web client code
-in github.com/SprocketBot/sprocket. The v1 (current) UI is on the `main` branch,
+in github.com/KineticBot/kinetic. The v1 (current) UI is on the `main` branch,
 and the v2 UI on `dev`.

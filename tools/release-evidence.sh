@@ -6,7 +6,7 @@ TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 ARTIFACT_DIR="${RELEASE_EVIDENCE_ARTIFACT_DIR:-${ROOT_DIR}/artifacts/release-validation/local/${TIMESTAMP}}"
 API_PORT="${RELEASE_EVIDENCE_API_PORT:-18080}"
 WEB_PORT="${RELEASE_EVIDENCE_WEB_PORT:-4173}"
-PG_NAME="sprocket-v3-pg-release-evidence"
+PG_NAME="kinetic-v3-pg-release-evidence"
 PG_PORT="${RELEASE_EVIDENCE_PG_PORT:-56432}"
 API_BASE_URL="http://127.0.0.1:${API_PORT}"
 WEB_BASE_URL="http://127.0.0.1:${WEB_PORT}"
@@ -93,11 +93,11 @@ for offset in 0 1 2 3 4; do
   if docker run --name "${PG_NAME}" \
     -e POSTGRES_USER=postgres \
     -e POSTGRES_PASSWORD=postgres \
-    -e POSTGRES_DB=sprocket \
+    -e POSTGRES_DB=kinetic \
     -p "${candidate_port}:5432" \
     -d postgres:16 >/dev/null 2>"${ARTIFACT_DIR}/logs/postgres-start.err"; then
     PG_PORT="${candidate_port}"
-    DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/sprocket?sslmode=disable"
+    DB_URL="postgres://postgres:postgres@localhost:${PG_PORT}/kinetic?sslmode=disable"
     break
   fi
 done
@@ -109,7 +109,7 @@ if [[ -z "${DB_URL}" ]]; then
 fi
 
 for i in $(seq 1 40); do
-  if docker exec "${PG_NAME}" pg_isready -U postgres -d sprocket >/dev/null 2>&1; then
+  if docker exec "${PG_NAME}" pg_isready -U postgres -d kinetic >/dev/null 2>&1; then
     break
   fi
   sleep 1
@@ -166,7 +166,7 @@ fi
 
 curl_capture "cors-preflight-rejected" 403 \
   -X OPTIONS "${API_BASE_URL}/v1/session" \
-  -H "Origin: https://not-sprocket.example" \
+  -H "Origin: https://not-kinetic.example" \
   -H "Access-Control-Request-Method: GET"
 if grep -qi "access-control-allow-origin:" "${ARTIFACT_DIR}/api/cors-preflight-rejected.headers"; then
   echo "rejected CORS preflight unexpectedly included access-control-allow-origin" >&2
@@ -280,7 +280,7 @@ replay_body="release-evidence-replay-body-${suffix}"
 curl_capture "ingest-replay-first" 201 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"sprocket-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
 if ! grep -q '"duplicate":false' "$(body_path ingest-replay-first)"; then
   echo "first replay ingest did not return duplicate=false" >&2
   cat "$(body_path ingest-replay-first)" >&2
@@ -290,7 +290,7 @@ fi
 curl_capture "ingest-replay-duplicate" 200 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"sprocket-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
 if ! grep -q '"duplicate":true' "$(body_path ingest-replay-duplicate)"; then
   echo "duplicate replay ingest did not return duplicate=true" >&2
   cat "$(body_path ingest-replay-duplicate)" >&2
@@ -300,7 +300,7 @@ fi
 curl_capture "ingest-replay-context-rejected" 409 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${second_scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"sprocket-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${second_scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"parseOutputJson\":{\"goals\":4}}"
 
 curl_capture "list-replay-evidence" 200 "${API_BASE_URL}/v1/replay-evidence"
 require_json_field "list replay evidence" "replaySha256" "$(body_path list-replay-evidence)"
