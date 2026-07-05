@@ -219,7 +219,9 @@ textarea {
 }
 
 .app-shell__content > .layout-grid,
-.app-shell__content > .layout-links {
+.app-shell__content > .layout-links,
+.app-shell__content > .workspace-tabs,
+.app-shell__content > .tab-panel {
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -505,6 +507,69 @@ textarea {
   color: rgba(255, 247, 224, 0.95);
 }
 
+.workspace-tabs,
+.segmented-control,
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.workspace-tabs {
+  background: rgba(13, 14, 14, 0.42);
+  border: 1px solid var(--border-muted);
+  border-radius: 10px;
+  padding: 0.35rem;
+}
+
+.app-shell__main .workspace-tabs__tab,
+.app-shell__main .segmented-control__button {
+  background: rgba(78, 77, 78, 0.28);
+  border: 1px solid rgba(207, 210, 211, 0.16);
+  color: rgba(247, 248, 248, 0.9);
+  min-height: 2rem;
+}
+
+.app-shell__main .workspace-tabs__tab.active,
+.app-shell__main .segmented-control__button.active {
+  background: linear-gradient(128deg, rgba(254, 191, 43, 0.92), rgba(241, 90, 36, 0.88));
+  border-color: rgba(254, 191, 43, 0.5);
+  color: #181818;
+}
+
+.tab-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.segmented-control {
+  margin-bottom: 0.8rem;
+}
+
+.form-actions {
+  align-items: center;
+}
+
+.form-grid {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.support-inbox-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+}
+
+.moderation-card {
+  background: linear-gradient(160deg, var(--surface-2) 0%, var(--surface-3) 100%);
+  border: 1px solid rgba(207, 210, 211, 0.12);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
 @media (max-width: 1100px) {
   .layout-grid--3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -546,5 +611,9 @@ textarea {
   .app-shell__main article,
   .app-shell__main [data-testid="ticket-detail"] {
     padding: 0.85rem;
+  }
+
+  .support-inbox-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

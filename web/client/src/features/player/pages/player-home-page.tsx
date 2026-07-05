@@ -132,6 +132,7 @@ const evidenceViews = [
 export function PlayerHomePage() {
   const session = useSession();
   const queryClient = useQueryClient();
+  const [activeWorkspace, setActiveWorkspace] = useState<"overview" | "actions" | "profile" | "evidence">("overview");
   const [selectedEvidenceView, setSelectedEvidenceView] = useState(evidenceViews[0].id);
   const sessionSubject = session.principal?.subject ?? "";
 
@@ -218,66 +219,111 @@ export function PlayerHomePage() {
       <h2>Player</h2>
       <p>Queue, scrim, replay submission, and ratification workflows.</p>
 
+      <nav aria-label="Player workspace" className="workspace-tabs">
+        <button
+          aria-pressed={activeWorkspace === "overview"}
+          className={activeWorkspace === "overview" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("overview")}
+          type="button"
+        >
+          Overview
+        </button>
+        <button
+          aria-pressed={activeWorkspace === "actions"}
+          className={activeWorkspace === "actions" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("actions")}
+          type="button"
+        >
+          Actions
+        </button>
+        <button
+          aria-pressed={activeWorkspace === "profile"}
+          className={activeWorkspace === "profile" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("profile")}
+          type="button"
+        >
+          Profile
+        </button>
+        <button
+          aria-pressed={activeWorkspace === "evidence"}
+          className={activeWorkspace === "evidence" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("evidence")}
+          type="button"
+        >
+          Evidence
+        </button>
+      </nav>
+
       <section className="layout-grid layout-grid--3">
         <CountCard label="Queue entries" testId="player-queue-count" value={activeQueueEntries.length} />
         <CountCard label="Active scrims" testId="player-scrim-count" value={activeScrims.length} />
         <CountCard label="Submissions in progress" testId="player-submission-count" value={inProcessSubmissions.length} />
       </section>
 
-      <section className="layout-grid layout-grid--2">
-        <QueueActions
-          onEnqueue={enqueueMutation.mutateAsync}
-          onLeave={leaveQueueMutation.mutateAsync}
-          status={[enqueueMutation, leaveQueueMutation]}
-        />
-        <SubmissionActions
-          defaultScrim={activeScrims[0] ?? null}
-          onCreateSubmission={createSubmissionMutation.mutateAsync}
-          onRatify={ratifyMutation.mutateAsync}
-          onReject={rejectMutation.mutateAsync}
-          onReplayUpload={replayMutation.mutateAsync}
-          status={[createSubmissionMutation, ratifyMutation, rejectMutation, replayMutation]}
-        />
-      </section>
+      {activeWorkspace === "overview" && (
+        <section className="layout-grid layout-grid--3 tab-panel">
+          <DataList
+            items={activeQueueEntries.map((entry) => `Entry #${entry.id} · queue ${entry.queueId} · team ${entry.teamId}`)}
+            loading={queueQuery.isLoading}
+            title="Active Queue Entries"
+          />
+          <DataList
+            items={activeScrims.map((scrim) => `Scrim #${scrim.id} · queue ${scrim.queueId} · ${scrim.state}`)}
+            loading={scrimsQuery.isLoading}
+            title="Active Scrims"
+          />
+          <DataList
+            items={inProcessSubmissions.map(
+              (submission) =>
+                `Submission #${submission.id} · ${submission.contextType}:${submission.contextId} · ${submission.state}`,
+            )}
+            loading={submissionsQuery.isLoading}
+            title="Submissions In Progress"
+          />
+        </section>
+      )}
 
-      <section className="layout-grid layout-grid--3">
-        <DataList
-          items={activeQueueEntries.map((entry) => `Entry #${entry.id} · queue ${entry.queueId} · team ${entry.teamId}`)}
-          loading={queueQuery.isLoading}
-          title="Active Queue Entries"
-        />
-        <DataList
-          items={activeScrims.map((scrim) => `Scrim #${scrim.id} · queue ${scrim.queueId} · ${scrim.state}`)}
-          loading={scrimsQuery.isLoading}
-          title="Active Scrims"
-        />
-        <DataList
-          items={inProcessSubmissions.map(
-            (submission) =>
-              `Submission #${submission.id} · ${submission.contextType}:${submission.contextId} · ${submission.state}`,
-          )}
-          loading={submissionsQuery.isLoading}
-          title="Submissions In Progress"
-        />
-      </section>
+      {activeWorkspace === "actions" && (
+        <section className="layout-grid layout-grid--2 tab-panel">
+          <QueueActions
+            onEnqueue={enqueueMutation.mutateAsync}
+            onLeave={leaveQueueMutation.mutateAsync}
+            status={[enqueueMutation, leaveQueueMutation]}
+          />
+          <SubmissionActions
+            defaultScrim={activeScrims[0] ?? null}
+            onCreateSubmission={createSubmissionMutation.mutateAsync}
+            onRatify={ratifyMutation.mutateAsync}
+            onReject={rejectMutation.mutateAsync}
+            onReplayUpload={replayMutation.mutateAsync}
+            status={[createSubmissionMutation, ratifyMutation, rejectMutation, replayMutation]}
+          />
+        </section>
+      )}
 
-      <section className="layout-grid layout-grid--2">
-        <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
-        <AccountAndEligibilityPanel
-          eligibility={eligibilityQuery.data ?? null}
-          eligibilityError={eligibilityQuery.error}
-          eligibilityLoading={session.status === "loading" || eligibilityQuery.isLoading}
-          links={platformAccountsQuery.data ?? []}
-          loading={session.status === "loading" || platformAccountsQuery.isLoading}
-          onLink={linkPlatformMutation.mutateAsync}
-          onUnlink={unlinkPlatformMutation.mutateAsync}
-          queryError={platformAccountsQuery.error}
-          status={[linkPlatformMutation, unlinkPlatformMutation]}
-          subject={sessionSubject}
-        />
-      </section>
+      {activeWorkspace === "profile" && (
+        <section className="layout-grid layout-grid--2 tab-panel">
+          <RatingsPanel loading={ratingsQuery.isLoading} ratings={ratingsQuery.data ?? []} />
+          <AccountAndEligibilityPanel
+            eligibility={eligibilityQuery.data ?? null}
+            eligibilityError={eligibilityQuery.error}
+            eligibilityLoading={session.status === "loading" || eligibilityQuery.isLoading}
+            links={platformAccountsQuery.data ?? []}
+            loading={session.status === "loading" || platformAccountsQuery.isLoading}
+            onLink={linkPlatformMutation.mutateAsync}
+            onUnlink={unlinkPlatformMutation.mutateAsync}
+            queryError={platformAccountsQuery.error}
+            status={[linkPlatformMutation, unlinkPlatformMutation]}
+            subject={sessionSubject}
+          />
+        </section>
+      )}
 
-      <EvidenceSection selected={selectedEvidenceView} setSelected={setSelectedEvidenceView} />
+      {activeWorkspace === "evidence" && (
+        <div className="tab-panel">
+          <EvidenceSection selected={selectedEvidenceView} setSelected={setSelectedEvidenceView} />
+        </div>
+      )}
 
       {[queueQuery.error, scrimsQuery.error, submissionsQuery.error, ratingsQuery.error].map((error, index) =>
         error ? <ErrorView error={error} key={`query-error-${index}`} label="Player data request failed" /> : null,
@@ -314,14 +360,14 @@ function QueueActions({
     await onEnqueue({ queueId, teamId });
   }
 
-  async function submitLeave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submitLeave() {
     await onLeave({ queueId, teamId });
   }
 
   return (
     <section>
       <h3>Queue Actions</h3>
+      <p>Use the same queue and team values to join or leave the active queue.</p>
       <form onSubmit={submitEnqueue}>
         <label>
           Queue ID
@@ -331,14 +377,11 @@ function QueueActions({
           Team ID
           <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
         </label>
-        <div>
+        <div className="form-actions">
           <button type="submit">Join queue</button>
-        </div>
-      </form>
-
-      <form onSubmit={submitLeave} style={{ marginTop: "0.6rem" }}>
-        <div>
-          <button type="submit">Leave queue</button>
+          <button onClick={() => void submitLeave()} type="button">
+            Leave queue
+          </button>
         </div>
       </form>
 
@@ -385,6 +428,7 @@ function SubmissionActions({
   onReplayUpload: (input: IngestReplayEvidenceInput) => Promise<ReplayIngestionResult>;
   status: Array<{ isPending: boolean; isSuccess: boolean; error: Error | null }>;
 }) {
+  const [activeAction, setActiveAction] = useState<"submit" | "ratify" | "reject" | "replay">("submit");
   const [submissionId, setSubmissionId] = useState(1);
   const [teamId, setTeamId] = useState(1);
   const [rejectReason, setRejectReason] = useState("needs review");
@@ -483,97 +527,126 @@ function SubmissionActions({
   return (
     <section>
       <h3>Submission Actions</h3>
-      <form onSubmit={submitResult}>
-        <label>
-          Context type
-          <select value={contextType} onChange={(event) => setContextType(event.target.value as "scrim" | "match")}>
-            <option value="scrim">scrim</option>
-            <option value="match">match</option>
-          </select>
-        </label>
-        <label>
-          Context ID
-          <input min={1} type="number" value={contextId} onChange={(event) => setContextId(Number(event.target.value))} />
-        </label>
-        <label>
-          Reporting team ID
-          <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
-        </label>
-        <label>
-          Home team ID
-          <input min={1} type="number" value={homeTeamId} onChange={(event) => setHomeTeamId(Number(event.target.value))} />
-        </label>
-        <label>
-          Away team ID
-          <input min={1} type="number" value={awayTeamId} onChange={(event) => setAwayTeamId(Number(event.target.value))} />
-        </label>
-        <label>
-          Home score
-          <input min={0} type="number" value={homeScore} onChange={(event) => setHomeScore(Number(event.target.value))} />
-        </label>
-        <label>
-          Away score
-          <input min={0} type="number" value={awayScore} onChange={(event) => setAwayScore(Number(event.target.value))} />
-        </label>
-        <label>
-          Home shots
-          <input min={0} type="number" value={homeShots} onChange={(event) => setHomeShots(Number(event.target.value))} />
-        </label>
-        <label>
-          Away shots
-          <input min={0} type="number" value={awayShots} onChange={(event) => setAwayShots(Number(event.target.value))} />
-        </label>
-        <label>
-          Home saves
-          <input min={0} type="number" value={homeSaves} onChange={(event) => setHomeSaves(Number(event.target.value))} />
-        </label>
-        <label>
-          Away saves
-          <input min={0} type="number" value={awaySaves} onChange={(event) => setAwaySaves(Number(event.target.value))} />
-        </label>
-        <div>
-          <button type="submit">Submit result</button>
-        </div>
-      </form>
+      <div aria-label="Submission action type" className="segmented-control">
+        {[
+          ["submit", "Submit"],
+          ["ratify", "Ratify"],
+          ["reject", "Reject"],
+          ["replay", "Replay"],
+        ].map(([id, label]) => (
+          <button
+            aria-pressed={activeAction === id}
+            className={activeAction === id ? "segmented-control__button active" : "segmented-control__button"}
+            key={id}
+            onClick={() => setActiveAction(id as "submit" | "ratify" | "reject" | "replay")}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
-      <form onSubmit={submitRatify}>
-        <label>
-          Submission ID
-          <input
-            min={1}
-            type="number"
-            value={submissionId}
-            onChange={(event) => setSubmissionId(Number(event.target.value))}
-          />
-        </label>
-        <label>
-          Team ID
-          <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
-        </label>
-        <div>
-          <button type="submit">Ratify result</button>
-        </div>
-      </form>
+      {activeAction === "submit" && (
+        <form onSubmit={submitResult}>
+          <label>
+            Context type
+            <select value={contextType} onChange={(event) => setContextType(event.target.value as "scrim" | "match")}>
+              <option value="scrim">scrim</option>
+              <option value="match">match</option>
+            </select>
+          </label>
+          <label>
+            Context ID
+            <input min={1} type="number" value={contextId} onChange={(event) => setContextId(Number(event.target.value))} />
+          </label>
+          <label>
+            Reporting team ID
+            <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
+          </label>
+          <div className="layout-grid layout-grid--2 form-grid">
+            <label>
+              Home team ID
+              <input min={1} type="number" value={homeTeamId} onChange={(event) => setHomeTeamId(Number(event.target.value))} />
+            </label>
+            <label>
+              Away team ID
+              <input min={1} type="number" value={awayTeamId} onChange={(event) => setAwayTeamId(Number(event.target.value))} />
+            </label>
+            <label>
+              Home score
+              <input min={0} type="number" value={homeScore} onChange={(event) => setHomeScore(Number(event.target.value))} />
+            </label>
+            <label>
+              Away score
+              <input min={0} type="number" value={awayScore} onChange={(event) => setAwayScore(Number(event.target.value))} />
+            </label>
+            <label>
+              Home shots
+              <input min={0} type="number" value={homeShots} onChange={(event) => setHomeShots(Number(event.target.value))} />
+            </label>
+            <label>
+              Away shots
+              <input min={0} type="number" value={awayShots} onChange={(event) => setAwayShots(Number(event.target.value))} />
+            </label>
+            <label>
+              Home saves
+              <input min={0} type="number" value={homeSaves} onChange={(event) => setHomeSaves(Number(event.target.value))} />
+            </label>
+            <label>
+              Away saves
+              <input min={0} type="number" value={awaySaves} onChange={(event) => setAwaySaves(Number(event.target.value))} />
+            </label>
+          </div>
+          <div>
+            <button type="submit">Submit result</button>
+          </div>
+        </form>
+      )}
 
-      <form onSubmit={submitReject} style={{ marginTop: "0.6rem" }}>
-        <label>
-          Reject reason
-          <input value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
-        </label>
-        <div>
-          <button type="submit">Reject result</button>
-        </div>
-      </form>
+      {activeAction === "ratify" && (
+        <form onSubmit={submitRatify}>
+          <label>
+            Submission ID
+            <input
+              min={1}
+              type="number"
+              value={submissionId}
+              onChange={(event) => setSubmissionId(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            Team ID
+            <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
+          </label>
+          <div>
+            <button type="submit">Ratify result</button>
+          </div>
+        </form>
+      )}
 
-      <form onSubmit={submitReplay} style={{ marginTop: "0.6rem" }}>
-        <label>
-          Replay body
-          <input value={replayBody} onChange={(event) => setReplayBody(event.target.value)} />
-        </label>
-        <div>
-          <button type="submit">Upload replay evidence</button>
-        </div>
-      </form>
+      {activeAction === "reject" && (
+        <form onSubmit={submitReject}>
+          <label>
+            Reject reason
+            <input value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} />
+          </label>
+          <div>
+            <button type="submit">Reject result</button>
+          </div>
+        </form>
+      )}
+
+      {activeAction === "replay" && (
+        <form onSubmit={submitReplay}>
+          <label>
+            Replay body
+            <input value={replayBody} onChange={(event) => setReplayBody(event.target.value)} />
+          </label>
+          <div>
+            <button type="submit">Upload replay evidence</button>
+          </div>
+        </form>
+      )}
       {lastReplayConflict ? <p data-testid="player-replay-conflict">Replay review needs attention.</p> : null}
 
       {status.some((item) => item.isPending) && <LoadingState label="Saving submission action..." />}

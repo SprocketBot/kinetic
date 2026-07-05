@@ -43,6 +43,7 @@ describe("PlayerHomePage", () => {
     await waitFor(() => expect(screen.getByTestId("player-queue-count")).toHaveTextContent("1"));
     await waitFor(() => expect(screen.getByTestId("player-scrim-count")).toHaveTextContent("1"));
     await waitFor(() => expect(screen.getByTestId("player-submission-count")).toHaveTextContent("1"));
+    await userEvent.click(screen.getByRole("button", { name: "Profile" }));
     expect(screen.getByRole("heading", { name: "Ratings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Accounts and Eligibility" })).toBeInTheDocument();
     expect(await screen.findByText(/threshold 40/)).toBeInTheDocument();
@@ -57,6 +58,7 @@ describe("PlayerHomePage", () => {
 
     renderPage();
 
+    await userEvent.click(screen.getByRole("button", { name: "Actions" }));
     expect(await screen.findByRole("heading", { name: "Queue Actions" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Join queue" }));
@@ -65,12 +67,15 @@ describe("PlayerHomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Submit result" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Ratify" }));
     await userEvent.click(screen.getByRole("button", { name: "Ratify result" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Replay" }));
     await userEvent.click(screen.getByRole("button", { name: "Upload replay evidence" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Profile" }));
     await userEvent.clear(screen.getByLabelText("Provider account ID"));
     await userEvent.type(screen.getByLabelText("Provider account ID"), "epic-222");
     await userEvent.type(screen.getByLabelText("Provider display name"), "Player One Epic");

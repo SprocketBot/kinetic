@@ -75,6 +75,7 @@ function isInProcessSubmission(submission: ResultSubmission): boolean {
 export function SupportDashboardPage() {
   const session = useSession();
   const queryClient = useQueryClient();
+  const [activeWorkspace, setActiveWorkspace] = useState<"inbox" | "activity" | "moderation">("inbox");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [stateFilter, setStateFilter] = useState<string>("all");
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
@@ -178,6 +179,33 @@ export function SupportDashboardPage() {
       <h2>League Support</h2>
       <p>Inbox triage workspace for active exception operations.</p>
 
+      <nav aria-label="Support workspace" className="workspace-tabs">
+        <button
+          aria-pressed={activeWorkspace === "inbox"}
+          className={activeWorkspace === "inbox" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("inbox")}
+          type="button"
+        >
+          Inbox
+        </button>
+        <button
+          aria-pressed={activeWorkspace === "activity"}
+          className={activeWorkspace === "activity" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("activity")}
+          type="button"
+        >
+          Activity
+        </button>
+        <button
+          aria-pressed={activeWorkspace === "moderation"}
+          className={activeWorkspace === "moderation" ? "workspace-tabs__tab active" : "workspace-tabs__tab"}
+          onClick={() => setActiveWorkspace("moderation")}
+          type="button"
+        >
+          Moderation
+        </button>
+      </nav>
+
       <section aria-label="support live snapshots" className="layout-grid layout-grid--2">
         <LiveCard
           count={activeScrims.length}
@@ -193,78 +221,86 @@ export function SupportDashboardPage() {
         />
       </section>
 
-      <section aria-label="support filters" className="layout-grid layout-grid--2">
-        <label>
-          Filter severity
-          <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}>
-            <option value="all">All</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </label>
+      {activeWorkspace === "inbox" && (
+        <div className="tab-panel">
+          <section aria-label="support filters" className="layout-grid layout-grid--2">
+            <label>
+              Filter severity
+              <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value)}>
+                <option value="all">All</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </label>
 
-        <label>
-          Filter state
-          <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
-            <option value="all">All</option>
-            <option value="open">open</option>
-            <option value="triaged">triaged</option>
-            <option value="resolved">resolved</option>
-          </select>
-        </label>
-      </section>
+            <label>
+              Filter state
+              <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
+                <option value="all">All</option>
+                <option value="open">open</option>
+                <option value="triaged">triaged</option>
+                <option value="resolved">resolved</option>
+              </select>
+            </label>
+          </section>
 
-      {inboxQuery.isLoading && <LoadingState label="Loading operator inbox..." />}
-      {inboxQuery.isError && <ErrorView error={inboxQuery.error} label="Inbox request failed" />}
+          {inboxQuery.isLoading && <LoadingState label="Loading operator inbox..." />}
+          {inboxQuery.isError && <ErrorView error={inboxQuery.error} label="Inbox request failed" />}
 
-      {inboxQuery.isSuccess && (
-        <section style={{ display: "grid", gap: "1rem", gridTemplateColumns: "minmax(280px, 360px) 1fr" }}>
-          <InboxList
-            onSelect={setSelectedTicketId}
-            selectedTicketId={selectedTicketId}
-            tickets={filteredTickets}
-          />
+          {inboxQuery.isSuccess && (
+            <section className="support-inbox-grid">
+              <InboxList
+                onSelect={setSelectedTicketId}
+                selectedTicketId={selectedTicketId}
+                tickets={filteredTickets}
+              />
 
-          {selectedTicket ? (
-            <TicketDetail
-              actorDefault={actorDefault}
-              onResolve={resolveMutation.mutateAsync}
-              onTriage={triageMutation.mutateAsync}
-              resolveError={resolveMutation.error}
-              resolveSuccess={resolveMutation.isSuccess}
-              resolving={resolveMutation.isPending}
-              ticket={selectedTicket}
-              triageError={triageMutation.error}
-              triageSuccess={triageMutation.isSuccess}
-              triaging={triageMutation.isPending}
-            />
-          ) : (
-            <p data-testid="ticket-detail-empty">No ticket selected for current filters.</p>
+              {selectedTicket ? (
+                <TicketDetail
+                  actorDefault={actorDefault}
+                  onResolve={resolveMutation.mutateAsync}
+                  onTriage={triageMutation.mutateAsync}
+                  resolveError={resolveMutation.error}
+                  resolveSuccess={resolveMutation.isSuccess}
+                  resolving={resolveMutation.isPending}
+                  ticket={selectedTicket}
+                  triageError={triageMutation.error}
+                  triageSuccess={triageMutation.isSuccess}
+                  triaging={triageMutation.isPending}
+                />
+              ) : (
+                <p data-testid="ticket-detail-empty">No ticket selected for current filters.</p>
+              )}
+            </section>
           )}
+        </div>
+      )}
+
+      {activeWorkspace === "activity" && (
+        <section className="layout-grid layout-grid--2 tab-panel">
+          <ScrimList scrims={activeScrims} />
+          <SubmissionList submissions={inProcessSubmissions} />
         </section>
       )}
 
-      <section className="layout-grid layout-grid--2">
-        <ScrimList scrims={activeScrims} />
-        <SubmissionList submissions={inProcessSubmissions} />
-      </section>
-
-      <section>
-        <QueueModerationPanel
-          actorDefault={actorDefault}
-          banError={banMutation.error}
-          banPlayer={banMutation.mutateAsync}
-          banSuccess={banMutation.isSuccess}
-          bans={queueBansQuery.data ?? []}
-          loading={queueBansQuery.isLoading}
-          unbanError={unbanMutation.error}
-          unbanPlayer={unbanMutation.mutateAsync}
-          unbanSuccess={unbanMutation.isSuccess}
-        />
-      </section>
+      {activeWorkspace === "moderation" && (
+        <div className="tab-panel">
+          <QueueModerationPanel
+            actorDefault={actorDefault}
+            banError={banMutation.error}
+            banPlayer={banMutation.mutateAsync}
+            banSuccess={banMutation.isSuccess}
+            bans={queueBansQuery.data ?? []}
+            loading={queueBansQuery.isLoading}
+            unbanError={unbanMutation.error}
+            unbanPlayer={unbanMutation.mutateAsync}
+            unbanSuccess={unbanMutation.isSuccess}
+          />
+        </div>
+      )}
     </AppShell>
   );
 }
@@ -353,6 +389,7 @@ function TicketDetail({
   triageError: Error | null;
   resolveError: Error | null;
 }) {
+  const [activeAction, setActiveAction] = useState<"triage" | "resolve">("triage");
   const [triageReasonCode, setTriageReasonCode] = useState(ticket.reasonCode);
   const [triageSeverity, setTriageSeverity] = useState(ticket.severity);
   const [triageSuggestedAction, setTriageSuggestedAction] = useState(ticket.suggestedAction);
@@ -403,91 +440,114 @@ function TicketDetail({
       </p>
       <p>Current state: {ticket.state}</p>
 
-      <section style={{ borderTop: "1px solid #e5e7eb", marginTop: "1rem", paddingTop: "1rem" }}>
-        <h4>Triage</h4>
-        <form onSubmit={handleTriageSubmit}>
-          <label>
-            Actor
-            <input value={triageActor} onChange={(event) => setTriageActor(event.target.value)} />
-          </label>
-          <label>
-            Reason code
-            <input value={triageReasonCode} onChange={(event) => setTriageReasonCode(event.target.value)} />
-          </label>
-          <label>
-            Severity
-            <input
-              max={5}
-              min={1}
-              type="number"
-              value={triageSeverity}
-              onChange={(event) => setTriageSeverity(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            Suggested action
-            <input value={triageSuggestedAction} onChange={(event) => setTriageSuggestedAction(event.target.value)} />
-          </label>
-          <label>
-            Minutes spent
-            <input
-              min={0}
-              type="number"
-              value={triageMinutesSpent}
-              onChange={(event) => setTriageMinutesSpent(Number(event.target.value))}
-            />
-          </label>
-          <div>
-            <button disabled={triaging} type="submit">
-              {triaging ? "Submitting..." : "Submit triage"}
-            </button>
-          </div>
-        </form>
-        {triageSuccess && <p data-testid="triage-success">Triage submitted.</p>}
-        {triageError && <ErrorView error={triageError} label="Triage failed" />}
-      </section>
+      <div aria-label="Ticket action type" className="segmented-control">
+        <button
+          aria-pressed={activeAction === "triage"}
+          className={activeAction === "triage" ? "segmented-control__button active" : "segmented-control__button"}
+          onClick={() => setActiveAction("triage")}
+          type="button"
+        >
+          Triage
+        </button>
+        <button
+          aria-pressed={activeAction === "resolve"}
+          className={activeAction === "resolve" ? "segmented-control__button active" : "segmented-control__button"}
+          onClick={() => setActiveAction("resolve")}
+          type="button"
+        >
+          Resolve
+        </button>
+      </div>
 
-      <section style={{ borderTop: "1px solid #e5e7eb", marginTop: "1rem", paddingTop: "1rem" }}>
-        <h4>Resolve</h4>
-        <form onSubmit={handleResolveSubmit}>
-          <label>
-            Actor
-            <input value={resolveActor} onChange={(event) => setResolveActor(event.target.value)} />
-          </label>
-          <label>
-            Resolution code
-            <input value={resolveCode} onChange={(event) => setResolveCode(event.target.value)} />
-          </label>
-          <label>
-            Notes
-            <input value={resolveNotes} onChange={(event) => setResolveNotes(event.target.value)} />
-          </label>
-          <label>
-            Minutes spent
-            <input
-              min={0}
-              type="number"
-              value={resolveMinutesSpent}
-              onChange={(event) => setResolveMinutesSpent(Number(event.target.value))}
-            />
-          </label>
-          <label>
-            Automated
-            <input
-              checked={resolveAutomated}
-              type="checkbox"
-              onChange={(event) => setResolveAutomated(event.target.checked)}
-            />
-          </label>
-          <div>
-            <button disabled={resolving} type="submit">
-              {resolving ? "Submitting..." : "Submit resolution"}
-            </button>
-          </div>
-        </form>
-        {resolveSuccess && <p data-testid="resolve-success">Resolution submitted.</p>}
-        {resolveError && <ErrorView error={resolveError} label="Resolve failed" />}
-      </section>
+      {activeAction === "triage" && (
+        <section>
+          <h4>Triage</h4>
+          <form onSubmit={handleTriageSubmit}>
+            <label>
+              Actor
+              <input value={triageActor} onChange={(event) => setTriageActor(event.target.value)} />
+            </label>
+            <label>
+              Reason code
+              <input value={triageReasonCode} onChange={(event) => setTriageReasonCode(event.target.value)} />
+            </label>
+            <label>
+              Severity
+              <input
+                max={5}
+                min={1}
+                type="number"
+                value={triageSeverity}
+                onChange={(event) => setTriageSeverity(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Suggested action
+              <input value={triageSuggestedAction} onChange={(event) => setTriageSuggestedAction(event.target.value)} />
+            </label>
+            <label>
+              Minutes spent
+              <input
+                min={0}
+                type="number"
+                value={triageMinutesSpent}
+                onChange={(event) => setTriageMinutesSpent(Number(event.target.value))}
+              />
+            </label>
+            <div>
+              <button disabled={triaging} type="submit">
+                {triaging ? "Submitting..." : "Submit triage"}
+              </button>
+            </div>
+          </form>
+          {triageSuccess && <p data-testid="triage-success">Triage submitted.</p>}
+          {triageError && <ErrorView error={triageError} label="Triage failed" />}
+        </section>
+      )}
+
+      {activeAction === "resolve" && (
+        <section>
+          <h4>Resolve</h4>
+          <form onSubmit={handleResolveSubmit}>
+            <label>
+              Actor
+              <input value={resolveActor} onChange={(event) => setResolveActor(event.target.value)} />
+            </label>
+            <label>
+              Resolution code
+              <input value={resolveCode} onChange={(event) => setResolveCode(event.target.value)} />
+            </label>
+            <label>
+              Notes
+              <input value={resolveNotes} onChange={(event) => setResolveNotes(event.target.value)} />
+            </label>
+            <label>
+              Minutes spent
+              <input
+                min={0}
+                type="number"
+                value={resolveMinutesSpent}
+                onChange={(event) => setResolveMinutesSpent(Number(event.target.value))}
+              />
+            </label>
+            <label>
+              Automated
+              <input
+                checked={resolveAutomated}
+                type="checkbox"
+                onChange={(event) => setResolveAutomated(event.target.checked)}
+              />
+            </label>
+            <div>
+              <button disabled={resolving} type="submit">
+                {resolving ? "Submitting..." : "Submit resolution"}
+              </button>
+            </div>
+          </form>
+          {resolveSuccess && <p data-testid="resolve-success">Resolution submitted.</p>}
+          {resolveError && <ErrorView error={resolveError} label="Resolve failed" />}
+        </section>
+      )}
     </div>
   );
 }
@@ -541,6 +601,7 @@ function QueueModerationPanel({
   banError: Error | null;
   unbanError: Error | null;
 }) {
+  const [activeAction, setActiveAction] = useState<"ban" | "lift">("ban");
   const [queueId, setQueueId] = useState(1);
   const [playerId, setPlayerId] = useState(1);
   const [actor, setActor] = useState(actorDefault);
@@ -560,52 +621,74 @@ function QueueModerationPanel({
   return (
     <section>
       <h3>Queue Moderation</h3>
-      <div className="layout-grid layout-grid--2">
-        <form onSubmit={submitBan}>
-          <h4>Ban Player</h4>
-          <label>
-            Queue ID
-            <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
-          </label>
-          <label>
-            Player ID
-            <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
-          </label>
-          <label>
-            Actor
-            <input value={actor} onChange={(event) => setActor(event.target.value)} />
-          </label>
-          <label>
-            Reason
-            <input value={banReason} onChange={(event) => setBanReason(event.target.value)} />
-          </label>
-          <button type="submit">Ban player from queue</button>
-          {banSuccess && <p data-testid="queue-ban-success">Queue ban submitted.</p>}
-          {banError && <ErrorView error={banError} label="Queue ban failed" />}
-        </form>
+      <div aria-label="Queue moderation action type" className="segmented-control">
+        <button
+          aria-pressed={activeAction === "ban"}
+          className={activeAction === "ban" ? "segmented-control__button active" : "segmented-control__button"}
+          onClick={() => setActiveAction("ban")}
+          type="button"
+        >
+          Ban
+        </button>
+        <button
+          aria-pressed={activeAction === "lift"}
+          className={activeAction === "lift" ? "segmented-control__button active" : "segmented-control__button"}
+          onClick={() => setActiveAction("lift")}
+          type="button"
+        >
+          Lift
+        </button>
+      </div>
+      <div className="moderation-card">
+        {activeAction === "ban" && (
+          <form onSubmit={submitBan}>
+            <h4>Ban Player</h4>
+            <label>
+              Queue ID
+              <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
+            </label>
+            <label>
+              Player ID
+              <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+            </label>
+            <label>
+              Actor
+              <input value={actor} onChange={(event) => setActor(event.target.value)} />
+            </label>
+            <label>
+              Reason
+              <input value={banReason} onChange={(event) => setBanReason(event.target.value)} />
+            </label>
+            <button type="submit">Ban player from queue</button>
+            {banSuccess && <p data-testid="queue-ban-success">Queue ban submitted.</p>}
+            {banError && <ErrorView error={banError} label="Queue ban failed" />}
+          </form>
+        )}
 
-        <form onSubmit={submitUnban}>
-          <h4>Lift Queue Ban</h4>
-          <label>
-            Queue ID
-            <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
-          </label>
-          <label>
-            Player ID
-            <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
-          </label>
-          <label>
-            Actor
-            <input value={actor} onChange={(event) => setActor(event.target.value)} />
-          </label>
-          <label>
-            Reason
-            <input value={unbanReason} onChange={(event) => setUnbanReason(event.target.value)} />
-          </label>
-          <button type="submit">Lift queue ban</button>
-          {unbanSuccess && <p data-testid="queue-unban-success">Queue ban lifted.</p>}
-          {unbanError && <ErrorView error={unbanError} label="Queue unban failed" />}
-        </form>
+        {activeAction === "lift" && (
+          <form onSubmit={submitUnban}>
+            <h4>Lift Queue Ban</h4>
+            <label>
+              Queue ID
+              <input min={1} type="number" value={queueId} onChange={(event) => setQueueId(Number(event.target.value))} />
+            </label>
+            <label>
+              Player ID
+              <input min={1} type="number" value={playerId} onChange={(event) => setPlayerId(Number(event.target.value))} />
+            </label>
+            <label>
+              Actor
+              <input value={actor} onChange={(event) => setActor(event.target.value)} />
+            </label>
+            <label>
+              Reason
+              <input value={unbanReason} onChange={(event) => setUnbanReason(event.target.value)} />
+            </label>
+            <button type="submit">Lift queue ban</button>
+            {unbanSuccess && <p data-testid="queue-unban-success">Queue ban lifted.</p>}
+            {unbanError && <ErrorView error={unbanError} label="Queue unban failed" />}
+          </form>
+        )}
       </div>
 
       {loading ? (
