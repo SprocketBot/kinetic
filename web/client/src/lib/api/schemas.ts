@@ -138,15 +138,24 @@ export const resultSubmissionSchema = z.object({
   id: z.number(),
   contextType: z.string(),
   contextId: z.number(),
+  gameKey: z.string().default("rocket_league"),
   submittedByTeamId: z.number(),
+  submittedBySubject: z.string().optional(),
+  submittedByDisplayName: z.string().optional(),
   homeTeamId: z.number(),
   awayTeamId: z.number(),
   winningTeamId: z.number(),
   losingTeamId: z.number(),
   state: z.string(),
   payloadJson: z.unknown().optional(),
+  payloadDigest: z.string().optional(),
+  provenanceJson: z.unknown().optional(),
   homeRatifiedAt: z.string().nullable().optional(),
+  homeRatifiedBySubject: z.string().nullable().optional(),
+  homeRatifiedByDisplayName: z.string().nullable().optional(),
   awayRatifiedAt: z.string().nullable().optional(),
+  awayRatifiedBySubject: z.string().nullable().optional(),
+  awayRatifiedByDisplayName: z.string().nullable().optional(),
   rejectedByTeamId: z.number().nullable().optional(),
   rejectionReason: z.string().nullable().optional(),
   rejectedAt: z.string().nullable().optional(),
@@ -154,6 +163,17 @@ export const resultSubmissionSchema = z.object({
 });
 
 export const resultSubmissionListSchema = z.array(resultSubmissionSchema);
+
+export const createResultSubmissionInputSchema = z.object({
+  contextType: z.enum(["scrim", "match"]),
+  contextId: z.number().positive(),
+  gameKey: z.literal("rocket_league").default("rocket_league"),
+  submittedByTeamId: z.number().positive(),
+  winningTeamId: z.number().positive(),
+  losingTeamId: z.number().positive(),
+  payloadJson: z.unknown(),
+  provenanceJson: z.unknown().optional(),
+});
 
 export const overrideResultSubmissionInputSchema = z.object({
   submissionId: z.number().positive(),
@@ -380,6 +400,8 @@ export const replayIngestionResultSchema = z.object({
   parseRun: replayParseRunSchema,
   duplicate: z.boolean(),
   linkedSubmissionId: z.number().nullable().optional(),
+  autofillJson: z.unknown().optional(),
+  conflictJson: z.unknown().optional(),
 });
 
 export const playerRatingSchema = z.object({
@@ -465,6 +487,7 @@ export type PlatformAccountLink = z.infer<typeof platformAccountLinkSchema>;
 export type EligibilityStatus = z.infer<typeof eligibilityStatusSchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;
+export type CreateResultSubmissionInput = z.infer<typeof createResultSubmissionInputSchema>;
 export type ResultOverride = z.infer<typeof resultOverrideSchema>;
 export type ExceptionMetrics = z.infer<typeof exceptionMetricsSchema>;
 export type ReplayIngestionResult = z.infer<typeof replayIngestionResultSchema>;

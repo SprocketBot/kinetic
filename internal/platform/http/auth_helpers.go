@@ -65,6 +65,31 @@ func readPrincipal(r *http.Request, cookieName, secret string, tokenStore apitok
 	}, true
 }
 
+func readRequestPrincipal(
+	r *http.Request,
+	cookieName, secret string,
+	tokenValidator auth.TokenValidator,
+	tokenStore apitoken.Store,
+) (auth.SessionPrincipal, bool) {
+	if p, ok := readSessionPrincipal(r, cookieName, secret); ok {
+		return p, true
+	}
+	if tokenValidator != nil {
+		if principal, err := tokenValidator.Validate(r.Header.Get("Authorization")); err == nil && !principal.Anonymous {
+			return auth.SessionPrincipal{
+				Subject:     principal.Subject,
+				DisplayName: principal.Subject,
+				Roles:       principal.Roles,
+				ExpiresAt:   time.Time{},
+			}, true
+		}
+	}
+	if tokenStore != nil {
+		return readAPIBearerPrincipal(r, tokenStore)
+	}
+	return auth.SessionPrincipal{}, false
+}
+
 func buildAuthCallbackQuery(values url.Values, webBaseURL string) string {
 	subject := strings.TrimSpace(values.Get("subject"))
 	if subject == "" {

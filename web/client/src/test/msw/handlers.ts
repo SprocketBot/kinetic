@@ -61,20 +61,57 @@ const scrims = [
   },
 ];
 
-const resultSubmissions = [
+type MockResultSubmission = {
+  id: number;
+  contextType: string;
+  contextId: number;
+  gameKey: string;
+  submittedByTeamId: number;
+  submittedBySubject: string;
+  submittedByDisplayName: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  winningTeamId: number;
+  losingTeamId: number;
+  state: string;
+  payloadJson: unknown;
+  payloadDigest: string;
+  provenanceJson: unknown;
+  homeRatifiedAt: string | null;
+  homeRatifiedBySubject: string | null;
+  homeRatifiedByDisplayName: string | null;
+  awayRatifiedAt: string | null;
+  awayRatifiedBySubject: string | null;
+  awayRatifiedByDisplayName: string | null;
+  rejectedByTeamId: number | null;
+  rejectionReason: string | null;
+  rejectedAt: string | null;
+  createdAt: string;
+};
+
+const resultSubmissions: MockResultSubmission[] = [
   {
     id: 1,
     contextType: "scrim",
     contextId: 1,
     submittedByTeamId: 101,
+    submittedBySubject: "player-1",
+    submittedByDisplayName: "Player One",
+    gameKey: "rocket_league",
     homeTeamId: 101,
     awayTeamId: 102,
     winningTeamId: 101,
     losingTeamId: 102,
     state: "pending_ratification",
     payloadJson: {},
+    payloadDigest: "fixture",
+    provenanceJson: {},
     homeRatifiedAt: null,
+    homeRatifiedBySubject: "player-1",
+    homeRatifiedByDisplayName: "Player One",
     awayRatifiedAt: null,
+    awayRatifiedBySubject: null,
+    awayRatifiedByDisplayName: null,
     rejectedByTeamId: null,
     rejectionReason: null,
     rejectedAt: null,
@@ -434,6 +471,48 @@ export const handlers = [
 
   http.get("http://localhost:8080/v1/scrims", () => HttpResponse.json(scrims)),
   http.get("http://localhost:8080/v1/result-submissions", () => HttpResponse.json(resultSubmissions)),
+  http.post("http://localhost:8080/v1/result-submissions", async ({ request }) => {
+    const body = (await request.json()) as {
+      contextType: string;
+      contextId: number;
+      gameKey?: string;
+      submittedByTeamId: number;
+      winningTeamId: number;
+      losingTeamId: number;
+      payloadJson: unknown;
+      provenanceJson?: unknown;
+    };
+    const scrim = scrims.find((item) => item.id === body.contextId);
+    const submission = {
+      id: resultSubmissions.length + 1,
+      contextType: body.contextType,
+      contextId: body.contextId,
+      gameKey: body.gameKey ?? "rocket_league",
+      submittedByTeamId: body.submittedByTeamId,
+      submittedBySubject: "player-1",
+      submittedByDisplayName: "Player One",
+      homeTeamId: scrim?.homeTeamId ?? 101,
+      awayTeamId: scrim?.awayTeamId ?? 102,
+      winningTeamId: body.winningTeamId,
+      losingTeamId: body.losingTeamId,
+      state: "pending_ratification",
+      payloadJson: body.payloadJson,
+      payloadDigest: "mock-digest",
+      provenanceJson: body.provenanceJson ?? {},
+      homeRatifiedAt: body.submittedByTeamId === (scrim?.homeTeamId ?? 101) ? "2026-02-15T01:00:00Z" : null,
+      homeRatifiedBySubject: body.submittedByTeamId === (scrim?.homeTeamId ?? 101) ? "player-1" : null,
+      homeRatifiedByDisplayName: body.submittedByTeamId === (scrim?.homeTeamId ?? 101) ? "Player One" : null,
+      awayRatifiedAt: body.submittedByTeamId === (scrim?.awayTeamId ?? 102) ? "2026-02-15T01:00:00Z" : null,
+      awayRatifiedBySubject: body.submittedByTeamId === (scrim?.awayTeamId ?? 102) ? "player-1" : null,
+      awayRatifiedByDisplayName: body.submittedByTeamId === (scrim?.awayTeamId ?? 102) ? "Player One" : null,
+      rejectedByTeamId: null,
+      rejectionReason: null,
+      rejectedAt: null,
+      createdAt: "2026-02-15T01:00:00Z",
+    };
+    resultSubmissions.unshift(submission);
+    return HttpResponse.json(submission, { status: 201 });
+  }),
   http.get("http://localhost:8080/v1/result-overrides", () => HttpResponse.json(resultOverrides)),
   http.post("http://localhost:8080/v1/result-overrides", async ({ request }) => {
     const body = (await request.json()) as {
@@ -744,6 +823,8 @@ export const handlers = [
       },
       duplicate: false,
       linkedSubmissionId: body.resultSubmissionId ?? null,
+      autofillJson: { score: { home: 3, away: 1 } },
+      conflictJson: null,
     });
   }),
 

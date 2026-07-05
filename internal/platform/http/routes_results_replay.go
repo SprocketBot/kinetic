@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"fmt"
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 	"net/http"
@@ -33,6 +34,13 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
+			}
+			if principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore); ok {
+				input.SubmittedBySubject = principal.Subject
+				input.SubmittedByDisplayName = principal.DisplayName
+			} else {
+				input.SubmittedBySubject = fmt.Sprintf("team:%d:submission", input.SubmittedByTeamID)
+				input.SubmittedByDisplayName = fmt.Sprintf("Team %d submitter", input.SubmittedByTeamID)
 			}
 			submission, err := deps.ResultStore.CreateResultSubmission(r.Context(), input)
 			if err != nil {
@@ -91,6 +99,13 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
+			}
+			if principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore); ok {
+				input.RatifiedBySubject = principal.Subject
+				input.RatifiedByDisplayName = principal.DisplayName
+			} else {
+				input.RatifiedBySubject = fmt.Sprintf("team:%d:ratification", input.TeamID)
+				input.RatifiedByDisplayName = fmt.Sprintf("Team %d ratifier", input.TeamID)
 			}
 			submission, err := deps.ResultStore.RatifyResultSubmission(r.Context(), input)
 			if err != nil {

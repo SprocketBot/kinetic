@@ -8,7 +8,7 @@ import { exceptionMetricsSchema } from "../../../lib/api/schemas";
 
 const opsLinks = [
   { label: "Grafana", href: "https://grafana.example.internal" },
-  { label: "GitHub Actions", href: "https://github.com/KineticBot/kinetic-v3/actions" },
+  { label: "GitHub Actions", href: "https://github.com/SprocketBot/kinetic/actions" },
   { label: "GHCR Packages", href: "https://github.com/orgs/KineticBot/packages" },
 ];
 

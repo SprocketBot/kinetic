@@ -31,10 +31,6 @@ func TestCUJPlayerSkillRating(t *testing.T) {
 
 	app.post(t, "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
-		"teamId":       fixture.HomeTeamID,
-	}, stdhttp.StatusOK)
-	app.post(t, "/v1/result-submission-ratifications", map[string]any{
-		"submissionId": submissionID,
 		"teamId":       fixture.AwayTeamID,
 	}, stdhttp.StatusOK)
 

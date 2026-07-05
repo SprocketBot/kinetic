@@ -1559,31 +1559,27 @@ func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
 	}
 
 	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
-		ContextType:       "scrim",
-		ContextID:         scrim.ID,
-		SubmittedByTeamID: teamA.ID,
-		WinningTeamID:     teamA.ID,
-		LosingTeamID:      teamB.ID,
-		PayloadJSON:       []byte(`{"score":"3-1"}`),
+		ContextType:            "scrim",
+		ContextID:              scrim.ID,
+		SubmittedByTeamID:      teamA.ID,
+		SubmittedBySubject:     "home-submitter",
+		SubmittedByDisplayName: "Home Submitter",
+		WinningTeamID:          teamA.ID,
+		LosingTeamID:           teamB.ID,
+		PayloadJSON:            []byte(`{"score":"3-1"}`),
 	})
 	if err != nil {
 		t.Fatalf("failed to create result submission: %v", err)
 	}
-
-	submission, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
-		SubmissionID: submission.ID,
-		TeamID:       teamA.ID,
-	})
-	if err != nil {
-		t.Fatalf("failed to ratify submission by home team: %v", err)
-	}
 	if submission.State != "pending" {
-		t.Fatalf("expected pending after first ratification, got %s", submission.State)
+		t.Fatalf("expected pending after home submission attestation, got %s", submission.State)
 	}
 
 	submission, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
-		SubmissionID: submission.ID,
-		TeamID:       teamB.ID,
+		SubmissionID:          submission.ID,
+		TeamID:                teamB.ID,
+		RatifiedBySubject:     "away-ratifier",
+		RatifiedByDisplayName: "Away Ratifier",
 	})
 	if err != nil {
 		t.Fatalf("failed to ratify submission by away team: %v", err)
@@ -1593,8 +1589,10 @@ func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
 	}
 
 	_, err = store.RatifyResultSubmission(ctx, hierarchy.RatifyResultSubmissionInput{
-		SubmissionID: submission.ID,
-		TeamID:       teamB.ID,
+		SubmissionID:          submission.ID,
+		TeamID:                teamB.ID,
+		RatifiedBySubject:     "away-ratifier-2",
+		RatifiedByDisplayName: "Away Ratifier 2",
 	})
 	if err == nil {
 		t.Fatal("expected conflict when ratifying an already ratified submission")
@@ -1679,12 +1677,14 @@ func TestHierarchyStoreResultOverrideAuditFlow(t *testing.T) {
 	}
 
 	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
-		ContextType:       "scrim",
-		ContextID:         scrim.ID,
-		SubmittedByTeamID: teamA.ID,
-		WinningTeamID:     teamA.ID,
-		LosingTeamID:      teamB.ID,
-		PayloadJSON:       []byte(`{"score":"3-1"}`),
+		ContextType:            "scrim",
+		ContextID:              scrim.ID,
+		SubmittedByTeamID:      teamA.ID,
+		SubmittedBySubject:     "home-submitter",
+		SubmittedByDisplayName: "Home Submitter",
+		WinningTeamID:          teamA.ID,
+		LosingTeamID:           teamB.ID,
+		PayloadJSON:            []byte(`{"score":"3-1"}`),
 	})
 	if err != nil {
 		t.Fatalf("failed to create submission: %v", err)
@@ -1788,12 +1788,14 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		t.Fatalf("failed to create scrim: %v", err)
 	}
 	submission, err := store.CreateResultSubmission(ctx, hierarchy.CreateResultSubmissionInput{
-		ContextType:       "scrim",
-		ContextID:         scrim.ID,
-		SubmittedByTeamID: teamA.ID,
-		WinningTeamID:     teamA.ID,
-		LosingTeamID:      teamB.ID,
-		PayloadJSON:       []byte(`{"score":"3-1"}`),
+		ContextType:            "scrim",
+		ContextID:              scrim.ID,
+		SubmittedByTeamID:      teamA.ID,
+		SubmittedBySubject:     "home-submitter",
+		SubmittedByDisplayName: "Home Submitter",
+		WinningTeamID:          teamA.ID,
+		LosingTeamID:           teamB.ID,
+		PayloadJSON:            []byte(`{"score":"3-1"}`),
 	})
 	if err != nil {
 		t.Fatalf("failed to create result submission: %v", err)

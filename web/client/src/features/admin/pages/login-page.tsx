@@ -2,36 +2,57 @@ import { useNavigate } from "react-router-dom";
 
 import { setMockSession } from "../../../auth/auth-service";
 import { useSession } from "../../../auth/session-context";
+import type { Role } from "../../../auth/types";
 import { env } from "../../../lib/config/env";
 
-const mockSupportPrincipal = {
-  subject: "local-support",
-  displayName: "Local Support Operator",
-  roles: ["league_support" as const],
-};
+const localRoles: Array<{ role: Role; label: string; subject: string; buttonLabel: string }> = [
+  { role: "player", label: "Local Player", subject: "local-player", buttonLabel: "Continue as player" },
+  {
+    role: "league_support",
+    label: "Local Support",
+    subject: "local-league-support",
+    buttonLabel: "Continue as support",
+  },
+  { role: "league_admin", label: "Local Admin", subject: "local-league-admin", buttonLabel: "Continue as admin" },
+  {
+    role: "platform_operator",
+    label: "Local Platform Operator",
+    subject: "local-platform-operator",
+    buttonLabel: "Continue as platform operator",
+  },
+];
 
 export function LoginPage() {
   const session = useSession();
   const navigate = useNavigate();
 
-  async function handleMockLogin() {
-    setMockSession(mockSupportPrincipal);
+  async function handleMockLogin(role: Role) {
+    const localRole = localRoles.find((item) => item.role === role);
+
+    if (!localRole) {
+      return;
+    }
+
+    setMockSession({
+      subject: localRole.subject,
+      displayName: localRole.label,
+      roles: [localRole.role],
+    });
     await session.refresh();
     navigate("/app", { replace: true });
   }
 
-  function handleApiLogin(role: "player" | "league_support" | "league_admin" | "platform_operator") {
-    const labels: Record<typeof role, string> = {
-      player: "Local Player",
-      league_support: "Local Support",
-      league_admin: "Local Admin",
-      platform_operator: "Local Platform Operator",
-    };
-    const subject = `local-${role.replace("_", "-")}`;
+  function handleApiLogin(role: Role) {
+    const localRole = localRoles.find((item) => item.role === role);
+
+    if (!localRole) {
+      return;
+    }
+
     const redirect = `${window.location.origin}/app`;
     const query = new URLSearchParams({
-      subject,
-      displayName: labels[role],
+      subject: localRole.subject,
+      displayName: localRole.label,
       roles: role,
       redirect,
     });
@@ -45,29 +66,24 @@ export function LoginPage() {
         <h1>Kinetic Sign In</h1>
         {env.authMode === "mock" ? (
           <>
-            <p>Mock login is enabled for local development.</p>
+            <p>Choose a local role for development testing.</p>
             <div className="login-page__actions">
-              <button onClick={handleMockLogin} type="button">
-                Continue with mock session
-              </button>
+              {localRoles.map((localRole) => (
+                <button key={localRole.role} onClick={() => handleMockLogin(localRole.role)} type="button">
+                  {localRole.buttonLabel}
+                </button>
+              ))}
             </div>
           </>
         ) : (
           <>
             <p>Sign in through the local OIDC shim.</p>
             <div className="login-page__actions">
-              <button onClick={() => handleApiLogin("player")} type="button">
-                Continue as player
-              </button>
-              <button onClick={() => handleApiLogin("league_support")} type="button">
-                Continue as support
-              </button>
-              <button onClick={() => handleApiLogin("league_admin")} type="button">
-                Continue as admin
-              </button>
-              <button onClick={() => handleApiLogin("platform_operator")} type="button">
-                Continue as platform operator
-              </button>
+              {localRoles.map((localRole) => (
+                <button key={localRole.role} onClick={() => handleApiLogin(localRole.role)} type="button">
+                  {localRole.buttonLabel}
+                </button>
+              ))}
             </div>
           </>
         )}

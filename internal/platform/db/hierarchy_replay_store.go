@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -137,16 +138,19 @@ RETURNING id, replay_evidence_id, parser_name, parser_version, parser_config_dig
 
 	if input.ResultSubmissionID != nil {
 		const verifySubmissionStmt = `
-SELECT context_type, context_id, home_team_id, away_team_id
+SELECT context_type, context_id, home_team_id, away_team_id, payload_json, provenance_json
 FROM result_submissions
 WHERE id = $1;`
 		var submissionContextType string
 		var submissionContextID, submissionHomeTeamID, submissionAwayTeamID int64
+		var submissionPayload, submissionProvenance json.RawMessage
 		if err := tx.QueryRowContext(ctx, verifySubmissionStmt, *input.ResultSubmissionID).Scan(
 			&submissionContextType,
 			&submissionContextID,
 			&submissionHomeTeamID,
 			&submissionAwayTeamID,
+			&submissionPayload,
+			&submissionProvenance,
 		); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return hierarchy.ReplayIngestionResult{}, fmt.Errorf("%w: result submission not found", hierarchy.ErrDependency)
@@ -168,12 +172,72 @@ ON CONFLICT (result_submission_id, replay_evidence_id) DO NOTHING;`
 			return hierarchy.ReplayIngestionResult{}, mapSQLError(err)
 		}
 		result.LinkedSubmissionID = input.ResultSubmissionID
+
+		autofillJSON, conflictJSON, provenanceJSON, err := buildReplayReviewMetadata(output, submissionPayload, submissionProvenance)
+		if err != nil {
+			return hierarchy.ReplayIngestionResult{}, err
+		}
+		result.AutofillJSON = autofillJSON
+		result.ConflictJSON = conflictJSON
+		const updateReviewStmt = `
+UPDATE result_submissions
+SET provenance_json = $2
+WHERE id = $1;`
+		if _, err := tx.ExecContext(ctx, updateReviewStmt, *input.ResultSubmissionID, provenanceJSON); err != nil {
+			return hierarchy.ReplayIngestionResult{}, mapSQLError(err)
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return hierarchy.ReplayIngestionResult{}, err
 	}
 	return result, nil
+}
+
+func buildReplayReviewMetadata(parserOutput, submissionPayload, existingProvenance json.RawMessage) (json.RawMessage, json.RawMessage, json.RawMessage, error) {
+	autofillJSON := normalizeJSON(parserOutput)
+	parserScore, parserScoreOK, err := hierarchy.ExtractRocketLeagueScore(autofillJSON)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	submissionScore, submissionScoreOK, err := hierarchy.ExtractRocketLeagueScore(submissionPayload)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	review := map[string]any{
+		"status": "parser_unavailable",
+		"source": "parser",
+	}
+	var conflictJSON json.RawMessage
+	if parserScoreOK {
+		review["parserScore"] = map[string]any{"home": parserScore.Home, "away": parserScore.Away}
+		review["status"] = "autofill_available"
+	}
+	if parserScoreOK && submissionScoreOK {
+		review["manualScore"] = map[string]any{"home": submissionScore.Home, "away": submissionScore.Away}
+		if parserScore.Home == submissionScore.Home && parserScore.Away == submissionScore.Away {
+			review["status"] = "matched"
+		} else {
+			review["status"] = "conflict"
+			conflictJSON = mustJSON(review)
+		}
+	}
+
+	provenance := map[string]any{}
+	if len(existingProvenance) > 0 {
+		_ = json.Unmarshal(existingProvenance, &provenance)
+	}
+	provenance["replayReview"] = review
+	return autofillJSON, conflictJSON, mustJSON(provenance), nil
+}
+
+func mustJSON(value any) json.RawMessage {
+	raw, err := json.Marshal(value)
+	if err != nil {
+		return json.RawMessage(`{}`)
+	}
+	return raw
 }
 
 func (s *HierarchyStore) ListReplayEvidence(ctx context.Context) ([]hierarchy.ReplayEvidence, error) {

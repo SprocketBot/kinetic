@@ -198,22 +198,31 @@ type MatchmakingDecision struct {
 }
 
 type ResultSubmission struct {
-	ID                int64           `json:"id"`
-	ContextType       string          `json:"contextType"`
-	ContextID         int64           `json:"contextId"`
-	SubmittedByTeamID int64           `json:"submittedByTeamId"`
-	HomeTeamID        int64           `json:"homeTeamId"`
-	AwayTeamID        int64           `json:"awayTeamId"`
-	WinningTeamID     int64           `json:"winningTeamId"`
-	LosingTeamID      int64           `json:"losingTeamId"`
-	State             string          `json:"state"`
-	PayloadJSON       json.RawMessage `json:"payloadJson"`
-	HomeRatifiedAt    *time.Time      `json:"homeRatifiedAt,omitempty"`
-	AwayRatifiedAt    *time.Time      `json:"awayRatifiedAt,omitempty"`
-	RejectedByTeamID  *int64          `json:"rejectedByTeamId,omitempty"`
-	RejectionReason   *string         `json:"rejectionReason,omitempty"`
-	RejectedAt        *time.Time      `json:"rejectedAt,omitempty"`
-	CreatedAt         time.Time       `json:"createdAt"`
+	ID                        int64           `json:"id"`
+	ContextType               string          `json:"contextType"`
+	ContextID                 int64           `json:"contextId"`
+	GameKey                   string          `json:"gameKey"`
+	SubmittedByTeamID         int64           `json:"submittedByTeamId"`
+	SubmittedBySubject        string          `json:"submittedBySubject"`
+	SubmittedByDisplayName    string          `json:"submittedByDisplayName"`
+	HomeTeamID                int64           `json:"homeTeamId"`
+	AwayTeamID                int64           `json:"awayTeamId"`
+	WinningTeamID             int64           `json:"winningTeamId"`
+	LosingTeamID              int64           `json:"losingTeamId"`
+	State                     string          `json:"state"`
+	PayloadJSON               json.RawMessage `json:"payloadJson"`
+	PayloadDigest             string          `json:"payloadDigest"`
+	ProvenanceJSON            json.RawMessage `json:"provenanceJson"`
+	HomeRatifiedAt            *time.Time      `json:"homeRatifiedAt,omitempty"`
+	HomeRatifiedBySubject     *string         `json:"homeRatifiedBySubject,omitempty"`
+	HomeRatifiedByDisplayName *string         `json:"homeRatifiedByDisplayName,omitempty"`
+	AwayRatifiedAt            *time.Time      `json:"awayRatifiedAt,omitempty"`
+	AwayRatifiedBySubject     *string         `json:"awayRatifiedBySubject,omitempty"`
+	AwayRatifiedByDisplayName *string         `json:"awayRatifiedByDisplayName,omitempty"`
+	RejectedByTeamID          *int64          `json:"rejectedByTeamId,omitempty"`
+	RejectionReason           *string         `json:"rejectionReason,omitempty"`
+	RejectedAt                *time.Time      `json:"rejectedAt,omitempty"`
+	CreatedAt                 time.Time       `json:"createdAt"`
 }
 
 type ResultOverride struct {
@@ -498,12 +507,16 @@ type PromotionProcessingRun struct {
 }
 
 type CreateResultSubmissionInput struct {
-	ContextType       string          `json:"contextType"`
-	ContextID         int64           `json:"contextId"`
-	SubmittedByTeamID int64           `json:"submittedByTeamId"`
-	WinningTeamID     int64           `json:"winningTeamId"`
-	LosingTeamID      int64           `json:"losingTeamId"`
-	PayloadJSON       json.RawMessage `json:"payloadJson"`
+	ContextType            string          `json:"contextType"`
+	ContextID              int64           `json:"contextId"`
+	GameKey                string          `json:"gameKey,omitempty"`
+	SubmittedByTeamID      int64           `json:"submittedByTeamId"`
+	SubmittedBySubject     string          `json:"submittedBySubject,omitempty"`
+	SubmittedByDisplayName string          `json:"submittedByDisplayName,omitempty"`
+	WinningTeamID          int64           `json:"winningTeamId"`
+	LosingTeamID           int64           `json:"losingTeamId"`
+	PayloadJSON            json.RawMessage `json:"payloadJson"`
+	ProvenanceJSON         json.RawMessage `json:"provenanceJson,omitempty"`
 }
 
 type OverrideResultSubmissionInput struct {
@@ -515,8 +528,10 @@ type OverrideResultSubmissionInput struct {
 }
 
 type RatifyResultSubmissionInput struct {
-	SubmissionID int64 `json:"submissionId"`
-	TeamID       int64 `json:"teamId"`
+	SubmissionID          int64  `json:"submissionId"`
+	TeamID                int64  `json:"teamId"`
+	RatifiedBySubject     string `json:"ratifiedBySubject,omitempty"`
+	RatifiedByDisplayName string `json:"ratifiedByDisplayName,omitempty"`
 }
 
 type RejectResultSubmissionInput struct {
@@ -538,10 +553,12 @@ type IngestReplayEvidenceInput struct {
 }
 
 type ReplayIngestionResult struct {
-	Evidence           ReplayEvidence `json:"evidence"`
-	ParseRun           ReplayParseRun `json:"parseRun"`
-	Duplicate          bool           `json:"duplicate"`
-	LinkedSubmissionID *int64         `json:"linkedSubmissionId,omitempty"`
+	Evidence           ReplayEvidence  `json:"evidence"`
+	ParseRun           ReplayParseRun  `json:"parseRun"`
+	Duplicate          bool            `json:"duplicate"`
+	LinkedSubmissionID *int64          `json:"linkedSubmissionId,omitempty"`
+	AutofillJSON       json.RawMessage `json:"autofillJson,omitempty"`
+	ConflictJSON       json.RawMessage `json:"conflictJson,omitempty"`
 }
 
 type ReportExceptionInput struct {

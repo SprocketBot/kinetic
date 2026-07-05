@@ -1,8 +1,10 @@
 package hierarchy
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -326,17 +328,31 @@ func ValidateCreateResultSubmissionInput(input CreateResultSubmissionInput) erro
 	default:
 		return fmt.Errorf("%w: contextType must be scrim or match", ErrInvalidInput)
 	}
+	switch normalizeGameKey(input.GameKey) {
+	case "rocket_league":
+	default:
+		return fmt.Errorf("%w: gameKey must be rocket_league", ErrInvalidInput)
+	}
 	if input.ContextID <= 0 {
 		return fmt.Errorf("%w: contextId must be greater than zero", ErrInvalidInput)
 	}
 	if input.SubmittedByTeamID <= 0 {
 		return fmt.Errorf("%w: submittedByTeamId must be greater than zero", ErrInvalidInput)
 	}
+	if strings.TrimSpace(input.SubmittedBySubject) == "" {
+		return fmt.Errorf("%w: submittedBySubject is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.SubmittedByDisplayName) == "" {
+		return fmt.Errorf("%w: submittedByDisplayName is required", ErrInvalidInput)
+	}
 	if input.WinningTeamID <= 0 || input.LosingTeamID <= 0 {
 		return fmt.Errorf("%w: winningTeamId and losingTeamId must be greater than zero", ErrInvalidInput)
 	}
 	if input.WinningTeamID == input.LosingTeamID {
 		return fmt.Errorf("%w: winningTeamId and losingTeamId must differ", ErrInvalidInput)
+	}
+	if err := ValidateRocketLeagueResultPayload(input.PayloadJSON, input.WinningTeamID, input.LosingTeamID); err != nil {
+		return err
 	}
 	return nil
 }
@@ -366,6 +382,165 @@ func ValidateRatifyResultSubmissionInput(input RatifyResultSubmissionInput) erro
 	}
 	if input.TeamID <= 0 {
 		return fmt.Errorf("%w: teamId must be greater than zero", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.RatifiedBySubject) == "" {
+		return fmt.Errorf("%w: ratifiedBySubject is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.RatifiedByDisplayName) == "" {
+		return fmt.Errorf("%w: ratifiedByDisplayName is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+type RocketLeagueScore struct {
+	Home int
+	Away int
+}
+
+func NormalizeGameKey(gameKey string) string {
+	return normalizeGameKey(gameKey)
+}
+
+func normalizeGameKey(gameKey string) string {
+	trimmed := strings.TrimSpace(gameKey)
+	if trimmed == "" {
+		return "rocket_league"
+	}
+	return trimmed
+}
+
+func ValidateRocketLeagueResultPayload(raw json.RawMessage, winningTeamID, losingTeamID int64) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return fmt.Errorf("%w: payloadJson must be valid JSON", ErrInvalidInput)
+	}
+	score, ok, err := ExtractRocketLeagueScore(raw)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+	if score.Home == score.Away {
+		return fmt.Errorf("%w: rocket league score cannot be tied", ErrInvalidInput)
+	}
+	if err := validateOptionalSummaryStats(payload["summaryStats"]); err != nil {
+		return err
+	}
+	winnerIsHome := score.Home > score.Away
+	if winnerIsHome && winningTeamID == losingTeamID {
+		return fmt.Errorf("%w: winningTeamId and losingTeamId must differ", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ExtractRocketLeagueScore(raw json.RawMessage) (RocketLeagueScore, bool, error) {
+	if len(raw) == 0 {
+		return RocketLeagueScore{}, false, nil
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return RocketLeagueScore{}, false, fmt.Errorf("%w: payloadJson must be valid JSON", ErrInvalidInput)
+	}
+	if scoreValue, ok := payload["score"]; ok {
+		return parseScoreValue(scoreValue)
+	}
+	if scoreValue, ok := payload["series"]; ok {
+		return parseScoreValue(scoreValue)
+	}
+	home, homeOK, err := intFromAny(payload["homeScore"])
+	if err != nil {
+		return RocketLeagueScore{}, false, err
+	}
+	away, awayOK, err := intFromAny(payload["awayScore"])
+	if err != nil {
+		return RocketLeagueScore{}, false, err
+	}
+	if homeOK || awayOK {
+		if !homeOK || !awayOK {
+			return RocketLeagueScore{}, false, fmt.Errorf("%w: homeScore and awayScore must both be present", ErrInvalidInput)
+		}
+		return RocketLeagueScore{Home: home, Away: away}, true, nil
+	}
+	return RocketLeagueScore{}, false, nil
+}
+
+func parseScoreValue(value any) (RocketLeagueScore, bool, error) {
+	switch typed := value.(type) {
+	case string:
+		parts := strings.Split(typed, "-")
+		if len(parts) != 2 {
+			return RocketLeagueScore{}, false, fmt.Errorf("%w: score must use home-away format", ErrInvalidInput)
+		}
+		home, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if err != nil {
+			return RocketLeagueScore{}, false, fmt.Errorf("%w: home score must be an integer", ErrInvalidInput)
+		}
+		away, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if err != nil {
+			return RocketLeagueScore{}, false, fmt.Errorf("%w: away score must be an integer", ErrInvalidInput)
+		}
+		return validateScore(home, away)
+	case map[string]any:
+		home, homeOK, err := intFromAny(typed["home"])
+		if err != nil {
+			return RocketLeagueScore{}, false, err
+		}
+		away, awayOK, err := intFromAny(typed["away"])
+		if err != nil {
+			return RocketLeagueScore{}, false, err
+		}
+		if !homeOK || !awayOK {
+			return RocketLeagueScore{}, false, fmt.Errorf("%w: score.home and score.away are required", ErrInvalidInput)
+		}
+		return validateScore(home, away)
+	default:
+		return RocketLeagueScore{}, false, fmt.Errorf("%w: score must be a string or object", ErrInvalidInput)
+	}
+}
+
+func validateScore(home, away int) (RocketLeagueScore, bool, error) {
+	if home < 0 || away < 0 {
+		return RocketLeagueScore{}, false, fmt.Errorf("%w: score values must be nonnegative", ErrInvalidInput)
+	}
+	return RocketLeagueScore{Home: home, Away: away}, true, nil
+}
+
+func intFromAny(value any) (int, bool, error) {
+	if value == nil {
+		return 0, false, nil
+	}
+	switch typed := value.(type) {
+	case float64:
+		if typed < 0 || typed != float64(int(typed)) {
+			return 0, false, fmt.Errorf("%w: numeric fields must be nonnegative integers", ErrInvalidInput)
+		}
+		return int(typed), true, nil
+	case int:
+		if typed < 0 {
+			return 0, false, fmt.Errorf("%w: numeric fields must be nonnegative integers", ErrInvalidInput)
+		}
+		return typed, true, nil
+	default:
+		return 0, false, fmt.Errorf("%w: numeric fields must be nonnegative integers", ErrInvalidInput)
+	}
+}
+
+func validateOptionalSummaryStats(value any) error {
+	if value == nil {
+		return nil
+	}
+	stats, ok := value.(map[string]any)
+	if !ok {
+		return fmt.Errorf("%w: summaryStats must be an object", ErrInvalidInput)
+	}
+	for key, statValue := range stats {
+		if _, _, err := intFromAny(statValue); err != nil {
+			return fmt.Errorf("%w: summaryStats.%s must be a nonnegative integer", ErrInvalidInput, key)
+		}
 	}
 	return nil
 }

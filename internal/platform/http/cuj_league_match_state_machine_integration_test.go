@@ -73,10 +73,6 @@ func TestCUJLeagueMatchStateMachine(t *testing.T) {
 	}, stdhttp.StatusCreated)
 	submissionID := cujID(t, submission, "id")
 
-	app.post(t, "/v1/result-submission-ratifications", map[string]any{
-		"submissionId": submissionID,
-		"teamId":       fixture.HomeTeamID,
-	}, stdhttp.StatusOK)
 	ratified := app.post(t, "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
 		"teamId":       fixture.AwayTeamID,

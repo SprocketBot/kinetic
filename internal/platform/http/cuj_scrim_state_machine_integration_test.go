@@ -63,7 +63,7 @@ func TestCUJScrimStateMachine(t *testing.T) {
 		},
 	}, stdhttp.StatusCreated)
 	submissionID := cujID(t, submission, "id")
-	if cujString(t, submission, "state") != "pending_ratification" {
+	if cujString(t, submission, "state") != "pending" {
 		t.Fatalf("expected submitted result to require ratification, got %#v", submission["state"])
 	}
 
@@ -104,10 +104,6 @@ func TestCUJScrimStateMachine(t *testing.T) {
 		t.Fatalf("expected second replay upload to be duplicate, got %#v", duplicate)
 	}
 
-	app.post(t, "/v1/result-submission-ratifications", map[string]any{
-		"submissionId": submissionID,
-		"teamId":       fixture.HomeTeamID,
-	}, stdhttp.StatusOK)
 	ratified := app.post(t, "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
 		"teamId":       fixture.AwayTeamID,

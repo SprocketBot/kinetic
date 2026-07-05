@@ -1,9 +1,14 @@
 # Kinetic
 
-Kinetic is the next-generation league operations platform for Minor League Esports.
-It carries forward the mechanical identity of Kinetic while marking a clean product reboot: a statically typed Go backend, a React/TypeScript web client, Kubernetes-native operations, multi-game workflow foundations, and artifact-backed release gates for the workflows that matter most.
+Kinetic is the next-generation league operations platform for Minor League
+Esports. It carries forward the mechanical identity of Kinetic while marking a
+clean product reboot: a statically typed Go backend, a React/TypeScript web
+client, Kubernetes-native operations, multi-game workflow foundations, and
+artifact-backed release gates for the workflows that matter most.
 
-Kinetic is built to make league administration, scrim operations, evidence intake, roster governance, and player-facing workflows reliable enough to ship without the support loop that accumulated in earlier platform iterations.
+Kinetic is built to make league administration, scrim operations, evidence
+intake, roster governance, and player-facing workflows reliable enough to ship
+without the support loop that accumulated in earlier platform iterations.
 
 ## Current Status
 
@@ -11,12 +16,14 @@ Core platform slices are complete, including:
 
 - league hierarchy, roster, queue, scrim, and scheduled match foundations
 - deterministic queue promotion processing with observability
-- result submission + ratification lifecycle
-- replay evidence ingestion MVP with parser provenance + dedupe
+- result submission + ratification life cycle
+- replay evidence ingestion MVP with parser provenance + de-duplication
 - local and minikube smoke automation for weekly slices
-- browser/API release evidence covering credentialed CORS, session identity, privilege isolation, and replay intake behavior
+- browser/API release evidence covering credentialed CORS, session identity,
+  privilege isolation, and replay intake behavior
 
-Handoff hardening and CI quality-gate enforcement are in place. Current active strategy is Pareto Recovery focused on exception automation:
+Handoff hardening and CI quality-gate enforcement are in place. Current active
+strategy is Pareto Recovery focused on exception automation:
 
 - `plans/pareto-recovery-plan.md`
 
@@ -36,7 +43,10 @@ Planning source of truth:
 - `test/`: integration/functional test assets
 - `tools/`: development tooling scripts
 
-HTTP handlers are split by route area under `internal/platform/http`. PostgreSQL-backed store wiring is assembled through `internal/platform/db.NewStores`, with capability interfaces declared in `internal/domain/hierarchy/store.go`.
+HTTP handlers are split by route area under `internal/platform/http`.
+PostgreSQL-backed store wiring is assembled through
+`internal/platform/db.NewStores`, with capability interfaces declared in
+`internal/domain/hierarchy/store.go`.
 
 Configuration variables are documented in `docs/runbooks/configuration.md`.
 
@@ -44,8 +54,10 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 
 - Ship vertical slices weekly.
 - Every shipped slice includes code + tests + docs.
-- Keep architecture simple: modular monolith first, split later only with evidence.
-- Treat release evidence as a required promotion artifact, not an optional smoke test.
+- Keep architecture simple: modular monolith first, split later only with
+  evidence.
+- Treat release evidence as a required promotion artifact, not an optional smoke
+  test.
 
 ## Quick Commands
 
@@ -81,8 +93,10 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 ./tools/week14-smoke.sh
 ```
 
-`tools/release-evidence.sh` writes proof bundles under `artifacts/release-validation/<environment>/<timestamp>/`.
-Generated artifacts are ignored by git, but release notes should record the artifact path used for promotion.
+`tools/release-evidence.sh` writes proof bundles under
+`artifacts/release-validation/<environment>/<timestamp>/`. Generated artifacts
+are ignored by git, but release notes should record the artifact path used for
+promotion.
 
 ## Local K8s Dev
 
@@ -96,9 +110,11 @@ Supported local testing path:
 
 Notes:
 
-- `tools/start-dev.sh` deploys the API and an in-cluster Postgres to Minikube using `deploy/k8s-local-dev`.
+- `tools/start-dev.sh` deploys the API and an in-cluster Postgres to Minikube
+  using `deploy/k8s-local-dev`.
 - The API is port-forwarded to `http://localhost:8080`.
-- The web client still runs on the host via Vite; it is not deployed to Kubernetes in this repo.
+- The web client still runs on the host via Vite; it is not deployed to
+  Kubernetes in this repo.
 - Clean up Minikube dev resources with `kubectl delete -k deploy/k8s-local-dev`.
 
 Current onboarding guides:

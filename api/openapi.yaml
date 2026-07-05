@@ -675,9 +675,16 @@ components:
         contextId:
           type: integer
           format: int64
+        gameKey:
+          type: string
+          enum: ["rocket_league"]
         submittedByTeamId:
           type: integer
           format: int64
+        submittedBySubject:
+          type: string
+        submittedByDisplayName:
+          type: string
         homeTeamId:
           type: integer
           format: int64
@@ -694,14 +701,30 @@ components:
           type: string
           description: "Workflow state (e.g. pending, ratified, rejected, overridden)."
         payloadJson:
-          description: "Arbitrary JSON payload attached to the submission."
+          description: "Rocket League score and optional summary-stat payload."
+        payloadDigest:
+          type: string
+        provenanceJson:
+          description: "Field-level source metadata and replay review status."
         homeRatifiedAt:
           type: string
           format: date-time
           nullable: true
+        homeRatifiedBySubject:
+          type: string
+          nullable: true
+        homeRatifiedByDisplayName:
+          type: string
+          nullable: true
         awayRatifiedAt:
           type: string
           format: date-time
+          nullable: true
+        awayRatifiedBySubject:
+          type: string
+          nullable: true
+        awayRatifiedByDisplayName:
+          type: string
           nullable: true
         rejectedByTeamId:
           type: integer
@@ -721,12 +744,16 @@ components:
         - id
         - contextType
         - contextId
+        - gameKey
         - submittedByTeamId
+        - submittedBySubject
+        - submittedByDisplayName
         - homeTeamId
         - awayTeamId
         - winningTeamId
         - losingTeamId
         - state
+        - payloadDigest
         - createdAt
 
     ResultOverride:
@@ -856,6 +883,10 @@ components:
           type: integer
           format: int64
           nullable: true
+        autofillJson:
+          description: "Parsed values suitable for filling editable result fields."
+        conflictJson:
+          description: "Parser/manual difference metadata when a linked submission disagrees with parser output."
       required:
         - evidence
         - parseRun
@@ -3075,6 +3106,10 @@ paths:
                 contextId:
                   type: integer
                   format: int64
+                gameKey:
+                  type: string
+                  enum: ["rocket_league"]
+                  default: "rocket_league"
                 submittedByTeamId:
                   type: integer
                   format: int64
@@ -3085,7 +3120,9 @@ paths:
                   type: integer
                   format: int64
                 payloadJson:
-                  description: "Arbitrary JSON payload."
+                  description: "Rocket League score and optional summary-stat payload."
+                provenanceJson:
+                  description: "Field-level source metadata."
               required:
                 - contextType
                 - contextId

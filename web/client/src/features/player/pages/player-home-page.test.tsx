@@ -62,10 +62,13 @@ describe("PlayerHomePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Join queue" }));
     expect(await screen.findByTestId("player-queue-success")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("button", { name: "Submit result" }));
+    expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole("button", { name: "Ratify result" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Upload replay" }));
+    await userEvent.click(screen.getByRole("button", { name: "Upload replay evidence" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText("Provider account ID"));

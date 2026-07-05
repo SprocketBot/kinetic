@@ -56,15 +56,24 @@ export async function installCUJApi(page: Page) {
       id: 22,
       contextType: "scrim",
       contextId: 9,
+      gameKey: "rocket_league",
       submittedByTeamId: 100,
+      submittedBySubject: "local-player",
+      submittedByDisplayName: "CUJ player",
       homeTeamId: 100,
       awayTeamId: 101,
       winningTeamId: 100,
       losingTeamId: 101,
       state: "pending_ratification",
       payloadJson: {},
+      payloadDigest: "fixture",
+      provenanceJson: {},
       homeRatifiedAt: null,
+      homeRatifiedBySubject: "local-player",
+      homeRatifiedByDisplayName: "CUJ player",
       awayRatifiedAt: null,
+      awayRatifiedBySubject: null,
+      awayRatifiedByDisplayName: null,
       rejectedByTeamId: null,
       rejectionReason: null,
       rejectedAt: null,
@@ -184,7 +193,39 @@ export async function installCUJApi(page: Page) {
     return json(route, entry, 201);
   });
   await page.route("**/v1/scrims", async (route) => json(route, scrims));
-  await page.route("**/v1/result-submissions", async (route) => json(route, submissions));
+  await page.route("**/v1/result-submissions", async (route) => {
+    if (route.request().method() === "GET") return json(route, submissions);
+    const body = route.request().postDataJSON();
+    const submission = {
+      id: nextId++,
+      contextType: body.contextType,
+      contextId: body.contextId,
+      gameKey: body.gameKey ?? "rocket_league",
+      submittedByTeamId: body.submittedByTeamId,
+      submittedBySubject: "local-player",
+      submittedByDisplayName: "CUJ player",
+      homeTeamId: scrims[0].homeTeamId,
+      awayTeamId: scrims[0].awayTeamId,
+      winningTeamId: body.winningTeamId,
+      losingTeamId: body.losingTeamId,
+      state: "pending_ratification",
+      payloadJson: body.payloadJson,
+      payloadDigest: "mock-digest",
+      provenanceJson: body.provenanceJson ?? {},
+      homeRatifiedAt: body.submittedByTeamId === scrims[0].homeTeamId ? "2026-02-15T01:00:00Z" : null,
+      homeRatifiedBySubject: body.submittedByTeamId === scrims[0].homeTeamId ? "local-player" : null,
+      homeRatifiedByDisplayName: body.submittedByTeamId === scrims[0].homeTeamId ? "CUJ player" : null,
+      awayRatifiedAt: body.submittedByTeamId === scrims[0].awayTeamId ? "2026-02-15T01:00:00Z" : null,
+      awayRatifiedBySubject: body.submittedByTeamId === scrims[0].awayTeamId ? "local-player" : null,
+      awayRatifiedByDisplayName: body.submittedByTeamId === scrims[0].awayTeamId ? "CUJ player" : null,
+      rejectedByTeamId: null,
+      rejectionReason: null,
+      rejectedAt: null,
+      createdAt: "2026-02-15T01:00:00Z",
+    };
+    submissions.unshift(submission);
+    return json(route, submission, 201);
+  });
   await page.route("**/v1/result-submission-ratifications", async (route) => {
     const body = route.request().postDataJSON();
     submissions[0] = { ...submissions[0], homeRatifiedAt: body.teamId === 100 ? "2026-02-15T01:00:00Z" : submissions[0].homeRatifiedAt };
@@ -219,6 +260,8 @@ export async function installCUJApi(page: Page) {
       },
       duplicate: false,
       linkedSubmissionId: 22,
+      autofillJson: { score: { home: 3, away: 1 } },
+      conflictJson: null,
     }),
   );
 

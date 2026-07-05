@@ -606,25 +606,45 @@ func TestValidateCreateResultSubmissionInput(t *testing.T) {
 	t.Parallel()
 
 	err := ValidateCreateResultSubmissionInput(CreateResultSubmissionInput{
-		ContextType:       "scrim",
-		ContextID:         1,
-		SubmittedByTeamID: 10,
-		WinningTeamID:     10,
-		LosingTeamID:      20,
+		ContextType:            "scrim",
+		ContextID:              1,
+		SubmittedByTeamID:      10,
+		SubmittedBySubject:     "submitter",
+		SubmittedByDisplayName: "Submitter",
+		WinningTeamID:          10,
+		LosingTeamID:           20,
+		PayloadJSON:            []byte(`{"score":"3-1"}`),
 	})
 	if err != nil {
 		t.Fatalf("expected valid input, got error: %v", err)
 	}
 
 	err = ValidateCreateResultSubmissionInput(CreateResultSubmissionInput{
-		ContextType:       "bad",
-		ContextID:         1,
-		SubmittedByTeamID: 10,
-		WinningTeamID:     10,
-		LosingTeamID:      20,
+		ContextType:            "bad",
+		ContextID:              1,
+		SubmittedByTeamID:      10,
+		SubmittedBySubject:     "submitter",
+		SubmittedByDisplayName: "Submitter",
+		WinningTeamID:          10,
+		LosingTeamID:           20,
+		PayloadJSON:            []byte(`{"score":"3-1"}`),
 	})
 	if err == nil {
 		t.Fatal("expected invalid contextType to fail validation")
+	}
+
+	err = ValidateCreateResultSubmissionInput(CreateResultSubmissionInput{
+		ContextType:            "scrim",
+		ContextID:              1,
+		SubmittedByTeamID:      10,
+		SubmittedBySubject:     "submitter",
+		SubmittedByDisplayName: "Submitter",
+		WinningTeamID:          10,
+		LosingTeamID:           20,
+		PayloadJSON:            []byte(`{"score":{"home":2,"away":2}}`),
+	})
+	if err == nil {
+		t.Fatal("expected tied rocket league score to fail validation")
 	}
 }
 
@@ -658,16 +678,20 @@ func TestValidateRatifyResultSubmissionInput(t *testing.T) {
 	t.Parallel()
 
 	err := ValidateRatifyResultSubmissionInput(RatifyResultSubmissionInput{
-		SubmissionID: 1,
-		TeamID:       10,
+		SubmissionID:          1,
+		TeamID:                10,
+		RatifiedBySubject:     "ratifier",
+		RatifiedByDisplayName: "Ratifier",
 	})
 	if err != nil {
 		t.Fatalf("expected valid input, got error: %v", err)
 	}
 
 	err = ValidateRatifyResultSubmissionInput(RatifyResultSubmissionInput{
-		SubmissionID: 0,
-		TeamID:       10,
+		SubmissionID:          0,
+		TeamID:                10,
+		RatifiedBySubject:     "ratifier",
+		RatifiedByDisplayName: "Ratifier",
 	})
 	if err == nil {
 		t.Fatal("expected invalid submissionId to fail validation")

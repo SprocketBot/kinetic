@@ -342,11 +342,6 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 
 	createEntity(t, server, "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
-		"teamId":       teamID,
-	}, http.StatusOK)
-
-	createEntity(t, server, "/v1/result-submission-ratifications", map[string]any{
-		"submissionId": submissionID,
 		"teamId":       teamTwoID,
 	}, http.StatusOK)
 

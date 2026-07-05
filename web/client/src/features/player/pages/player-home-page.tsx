@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -11,6 +11,7 @@ import { env } from "../../../lib/config/env";
 import {
   enqueueTeamInputSchema,
   eligibilityStatusSchema,
+  createResultSubmissionInputSchema,
   ingestReplayEvidenceInputSchema,
   linkPlatformAccountInputSchema,
   leaveQueueInputSchema,
@@ -27,10 +28,12 @@ import {
   scrimListSchema,
   unlinkPlatformAccountInputSchema,
   type EligibilityStatus,
+  type CreateResultSubmissionInput,
   type IngestReplayEvidenceInput,
   type PlatformAccountLink,
   type QueueEntry,
   type ResultSubmission,
+  type ReplayIngestionResult,
   type Scrim,
   type PlayerRating,
 } from "../../../lib/api/schemas";
@@ -67,6 +70,11 @@ async function enqueueTeam(input: { queueId: number; teamId: number }) {
 async function leaveQueue(input: { queueId: number; teamId: number }) {
   const payload = leaveQueueInputSchema.parse(input);
   return deleteJson("/v1/queue-entries", payload, queueEntrySchema);
+}
+
+async function createResultSubmission(input: CreateResultSubmissionInput) {
+  const payload = createResultSubmissionInputSchema.parse(input);
+  return postJson("/v1/result-submissions", payload, resultSubmissionSchema);
 }
 
 async function ratifySubmission(input: { submissionId: number; teamId: number }) {
@@ -163,6 +171,13 @@ export function PlayerHomePage() {
     },
   });
 
+  const createSubmissionMutation = useMutation({
+    mutationFn: createResultSubmission,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["result-submissions"] });
+    },
+  });
+
   const ratifyMutation = useMutation({
     mutationFn: ratifySubmission,
     onSuccess: async () => {
@@ -216,10 +231,12 @@ export function PlayerHomePage() {
           status={[enqueueMutation, leaveQueueMutation]}
         />
         <SubmissionActions
+          defaultScrim={activeScrims[0] ?? null}
+          onCreateSubmission={createSubmissionMutation.mutateAsync}
           onRatify={ratifyMutation.mutateAsync}
           onReject={rejectMutation.mutateAsync}
           onReplayUpload={replayMutation.mutateAsync}
-          status={[ratifyMutation, rejectMutation, replayMutation]}
+          status={[createSubmissionMutation, ratifyMutation, rejectMutation, replayMutation]}
         />
       </section>
 
@@ -334,15 +351,38 @@ function QueueActions({
   );
 }
 
+function scoreFromPayload(value: unknown): { home: number; away: number } | null {
+  if (!value || typeof value !== "object") return null;
+  const payload = value as { score?: unknown; homeScore?: unknown; awayScore?: unknown };
+  if (payload.score && typeof payload.score === "object") {
+    const score = payload.score as { home?: unknown; away?: unknown };
+    if (typeof score.home === "number" && typeof score.away === "number") {
+      return { home: score.home, away: score.away };
+    }
+  }
+  if (typeof payload.score === "string") {
+    const [home, away] = payload.score.split("-").map((part) => Number(part.trim()));
+    if (Number.isFinite(home) && Number.isFinite(away)) return { home, away };
+  }
+  if (typeof payload.homeScore === "number" && typeof payload.awayScore === "number") {
+    return { home: payload.homeScore, away: payload.awayScore };
+  }
+  return null;
+}
+
 function SubmissionActions({
+  defaultScrim,
+  onCreateSubmission,
   onRatify,
   onReject,
   onReplayUpload,
   status,
 }: {
+  defaultScrim: Scrim | null;
+  onCreateSubmission: (input: CreateResultSubmissionInput) => Promise<unknown>;
   onRatify: (input: { submissionId: number; teamId: number }) => Promise<unknown>;
   onReject: (input: { submissionId: number; teamId: number; reason: string }) => Promise<unknown>;
-  onReplayUpload: (input: IngestReplayEvidenceInput) => Promise<unknown>;
+  onReplayUpload: (input: IngestReplayEvidenceInput) => Promise<ReplayIngestionResult>;
   status: Array<{ isPending: boolean; isSuccess: boolean; error: Error | null }>;
 }) {
   const [submissionId, setSubmissionId] = useState(1);
@@ -351,10 +391,63 @@ function SubmissionActions({
 
   const [contextType, setContextType] = useState<"scrim" | "match">("scrim");
   const [contextId, setContextId] = useState(1);
+  const [homeTeamId, setHomeTeamId] = useState(1);
+  const [awayTeamId, setAwayTeamId] = useState(2);
+  const [homeScore, setHomeScore] = useState(3);
+  const [awayScore, setAwayScore] = useState(1);
+  const [homeShots, setHomeShots] = useState(0);
+  const [awayShots, setAwayShots] = useState(0);
+  const [homeSaves, setHomeSaves] = useState(0);
+  const [awaySaves, setAwaySaves] = useState(0);
   const [replayBody, setReplayBody] = useState("placeholder-replay");
-  const [parserName, setParserName] = useState("kinetic-rl-parser");
-  const [parserVersion, setParserVersion] = useState("v1");
-  const [parserConfigDigest, setParserConfigDigest] = useState("default");
+  const [lastReplayConflict, setLastReplayConflict] = useState<unknown | null>(null);
+
+  useEffect(() => {
+    if (!defaultScrim) return;
+    setContextType("scrim");
+    setContextId(defaultScrim.id);
+    setHomeTeamId(defaultScrim.homeTeamId);
+    setAwayTeamId(defaultScrim.awayTeamId);
+    setTeamId(defaultScrim.homeTeamId);
+  }, [defaultScrim]);
+
+  async function submitResult(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const winningTeamId = homeScore > awayScore ? homeTeamId : awayTeamId;
+    const losingTeamId = homeScore > awayScore ? awayTeamId : homeTeamId;
+    const payloadJson = {
+      score: { home: homeScore, away: awayScore },
+      summaryStats: {
+        homeShots,
+        awayShots,
+        homeSaves,
+        awaySaves,
+      },
+    };
+    await onCreateSubmission({
+      contextType,
+      contextId,
+      gameKey: "rocket_league",
+      submittedByTeamId: teamId,
+      winningTeamId,
+      losingTeamId,
+      payloadJson,
+      provenanceJson: {
+        fields: {
+          contextType: defaultScrim ? "database_default" : "manual",
+          contextId: defaultScrim ? "database_default" : "manual",
+          homeTeamId: defaultScrim ? "database_default" : "manual",
+          awayTeamId: defaultScrim ? "database_default" : "manual",
+          score: "manual",
+          summaryStats: "manual",
+        },
+        evidence: {
+          replayRequired: false,
+          replayAttached: false,
+        },
+      },
+    });
+  }
 
   async function submitRatify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -368,22 +461,81 @@ function SubmissionActions({
 
   async function submitReplay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onReplayUpload({
+    const result = await onReplayUpload({
       contextType,
       contextId,
       submittedByTeamId: teamId,
       replayBody,
-      parserName,
-      parserVersion,
-      parserConfigDigest,
+      parserName: "kinetic-rl-parser",
+      parserVersion: "v1",
+      parserConfigDigest: "default",
       parseOutputJson: {},
       resultSubmissionId: submissionId,
     });
+    const score = scoreFromPayload(result.autofillJson);
+    if (score) {
+      setHomeScore(score.home);
+      setAwayScore(score.away);
+    }
+    setLastReplayConflict(result.conflictJson ?? null);
   }
 
   return (
     <section>
       <h3>Submission Actions</h3>
+      <form onSubmit={submitResult}>
+        <label>
+          Context type
+          <select value={contextType} onChange={(event) => setContextType(event.target.value as "scrim" | "match")}>
+            <option value="scrim">scrim</option>
+            <option value="match">match</option>
+          </select>
+        </label>
+        <label>
+          Context ID
+          <input min={1} type="number" value={contextId} onChange={(event) => setContextId(Number(event.target.value))} />
+        </label>
+        <label>
+          Reporting team ID
+          <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
+        </label>
+        <label>
+          Home team ID
+          <input min={1} type="number" value={homeTeamId} onChange={(event) => setHomeTeamId(Number(event.target.value))} />
+        </label>
+        <label>
+          Away team ID
+          <input min={1} type="number" value={awayTeamId} onChange={(event) => setAwayTeamId(Number(event.target.value))} />
+        </label>
+        <label>
+          Home score
+          <input min={0} type="number" value={homeScore} onChange={(event) => setHomeScore(Number(event.target.value))} />
+        </label>
+        <label>
+          Away score
+          <input min={0} type="number" value={awayScore} onChange={(event) => setAwayScore(Number(event.target.value))} />
+        </label>
+        <label>
+          Home shots
+          <input min={0} type="number" value={homeShots} onChange={(event) => setHomeShots(Number(event.target.value))} />
+        </label>
+        <label>
+          Away shots
+          <input min={0} type="number" value={awayShots} onChange={(event) => setAwayShots(Number(event.target.value))} />
+        </label>
+        <label>
+          Home saves
+          <input min={0} type="number" value={homeSaves} onChange={(event) => setHomeSaves(Number(event.target.value))} />
+        </label>
+        <label>
+          Away saves
+          <input min={0} type="number" value={awaySaves} onChange={(event) => setAwaySaves(Number(event.target.value))} />
+        </label>
+        <div>
+          <button type="submit">Submit result</button>
+        </div>
+      </form>
+
       <form onSubmit={submitRatify}>
         <label>
           Submission ID
@@ -415,41 +567,14 @@ function SubmissionActions({
 
       <form onSubmit={submitReplay} style={{ marginTop: "0.6rem" }}>
         <label>
-          Context type
-          <select value={contextType} onChange={(event) => setContextType(event.target.value as "scrim" | "match")}>
-            <option value="scrim">scrim</option>
-            <option value="match">match</option>
-          </select>
-        </label>
-        <label>
-          Context ID
-          <input
-            min={1}
-            type="number"
-            value={contextId}
-            onChange={(event) => setContextId(Number(event.target.value))}
-          />
-        </label>
-        <label>
           Replay body
           <input value={replayBody} onChange={(event) => setReplayBody(event.target.value)} />
         </label>
-        <label>
-          Parser name
-          <input value={parserName} onChange={(event) => setParserName(event.target.value)} />
-        </label>
-        <label>
-          Parser version
-          <input value={parserVersion} onChange={(event) => setParserVersion(event.target.value)} />
-        </label>
-        <label>
-          Parser config digest
-          <input value={parserConfigDigest} onChange={(event) => setParserConfigDigest(event.target.value)} />
-        </label>
         <div>
-          <button type="submit">Upload replay</button>
+          <button type="submit">Upload replay evidence</button>
         </div>
       </form>
+      {lastReplayConflict ? <p data-testid="player-replay-conflict">Replay review needs attention.</p> : null}
 
       {status.some((item) => item.isPending) && <LoadingState label="Saving submission action..." />}
       {status.some((item) => item.isSuccess) && (

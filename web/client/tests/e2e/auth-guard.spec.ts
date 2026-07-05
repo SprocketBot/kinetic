@@ -441,7 +441,7 @@ test("runs player queue and submission actions", async ({ page }) => {
   await page.getByRole("button", { name: "Ratify result" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 
-  await page.getByRole("button", { name: "Upload replay" }).click();
+  await page.getByRole("button", { name: "Upload replay evidence" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 });
 

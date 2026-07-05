@@ -12,7 +12,10 @@ test("CUJ 2: player can move through scrim queue, replay upload, and ratificatio
   await page.getByRole("button", { name: "Join queue" }).click();
   await expect(page.getByTestId("player-queue-success")).toBeVisible();
 
-  await page.getByRole("button", { name: "Upload replay" }).click();
+  await page.getByRole("button", { name: "Submit result" }).click();
+  await expect(page.getByTestId("player-submission-success")).toBeVisible();
+
+  await page.getByRole("button", { name: "Upload replay evidence" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 
   await page.getByRole("button", { name: "Ratify result" }).click();

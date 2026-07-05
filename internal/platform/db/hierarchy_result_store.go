@@ -1,14 +1,80 @@
 package db
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 )
+
+const resultSubmissionColumns = `
+	id,
+	context_type,
+	context_id,
+	game_key,
+	submitted_by_team_id,
+	submitted_by_subject,
+	submitted_by_display_name,
+	home_team_id,
+	away_team_id,
+	winning_team_id,
+	losing_team_id,
+	state,
+	payload_json,
+	payload_digest,
+	provenance_json,
+	home_ratified_at,
+	home_ratified_by_subject,
+	home_ratified_by_display_name,
+	away_ratified_at,
+	away_ratified_by_subject,
+	away_ratified_by_display_name,
+	rejected_by_team_id,
+	rejection_reason,
+	rejected_at,
+	created_at`
+
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanResultSubmission(scanner rowScanner, submission *hierarchy.ResultSubmission) error {
+	return scanner.Scan(
+		&submission.ID,
+		&submission.ContextType,
+		&submission.ContextID,
+		&submission.GameKey,
+		&submission.SubmittedByTeamID,
+		&submission.SubmittedBySubject,
+		&submission.SubmittedByDisplayName,
+		&submission.HomeTeamID,
+		&submission.AwayTeamID,
+		&submission.WinningTeamID,
+		&submission.LosingTeamID,
+		&submission.State,
+		&submission.PayloadJSON,
+		&submission.PayloadDigest,
+		&submission.ProvenanceJSON,
+		&submission.HomeRatifiedAt,
+		&submission.HomeRatifiedBySubject,
+		&submission.HomeRatifiedByDisplayName,
+		&submission.AwayRatifiedAt,
+		&submission.AwayRatifiedBySubject,
+		&submission.AwayRatifiedByDisplayName,
+		&submission.RejectedByTeamID,
+		&submission.RejectionReason,
+		&submission.RejectedAt,
+		&submission.CreatedAt,
+	)
+}
 
 func (s *HierarchyStore) CreateResultSubmission(ctx context.Context, input hierarchy.CreateResultSubmissionInput) (hierarchy.ResultSubmission, error) {
 	if err := hierarchy.ValidateCreateResultSubmissionInput(input); err != nil {
@@ -27,96 +93,99 @@ func (s *HierarchyStore) CreateResultSubmission(ctx context.Context, input hiera
 		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: winning and losing teams must match context participants", hierarchy.ErrConflict)
 	}
 
-	payload := input.PayloadJSON
-	if len(payload) == 0 {
-		payload = []byte(`{}`)
+	payload := normalizeJSON(input.PayloadJSON)
+	if score, ok, err := hierarchy.ExtractRocketLeagueScore(payload); err != nil {
+		return hierarchy.ResultSubmission{}, err
+	} else if ok {
+		expectedWinner := awayTeamID
+		if score.Home > score.Away {
+			expectedWinner = homeTeamID
+		}
+		if input.WinningTeamID != expectedWinner {
+			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: winningTeamId must match payload score", hierarchy.ErrInvalidInput)
+		}
 	}
+	provenance := normalizeJSON(input.ProvenanceJSON)
+	gameKey := hierarchy.NormalizeGameKey(input.GameKey)
+	payloadDigest := digestJSON(payload)
 
 	const stmt = `
 INSERT INTO result_submissions(
 	context_type,
 	context_id,
+	game_key,
 	submitted_by_team_id,
+	submitted_by_subject,
+	submitted_by_display_name,
 	home_team_id,
 	away_team_id,
 	winning_team_id,
 	losing_team_id,
-	payload_json
-)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
 	payload_json,
+	payload_digest,
+	provenance_json,
 	home_ratified_at,
+	home_ratified_by_subject,
+	home_ratified_by_display_name,
 	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at;`
+	away_ratified_by_subject,
+	away_ratified_by_display_name
+)
+VALUES (
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+	CASE WHEN $4 = $7 THEN NOW() ELSE NULL END,
+	CASE WHEN $4 = $7 THEN $5 ELSE NULL END,
+	CASE WHEN $4 = $7 THEN $6 ELSE NULL END,
+	CASE WHEN $4 = $8 THEN NOW() ELSE NULL END,
+	CASE WHEN $4 = $8 THEN $5 ELSE NULL END,
+	CASE WHEN $4 = $8 THEN $6 ELSE NULL END
+)
+RETURNING` + resultSubmissionColumns + `;`
 
 	var submission hierarchy.ResultSubmission
-	err = s.db.QueryRowContext(
+	err = scanResultSubmission(s.db.QueryRowContext(
 		ctx,
 		stmt,
 		input.ContextType,
 		input.ContextID,
+		gameKey,
 		input.SubmittedByTeamID,
+		strings.TrimSpace(input.SubmittedBySubject),
+		strings.TrimSpace(input.SubmittedByDisplayName),
 		homeTeamID,
 		awayTeamID,
 		input.WinningTeamID,
 		input.LosingTeamID,
 		payload,
-	).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
-	)
+		payloadDigest,
+		provenance,
+	), &submission)
 	if err != nil {
 		return hierarchy.ResultSubmission{}, mapSQLError(err)
 	}
 	return submission, nil
 }
 
+func normalizeJSON(raw json.RawMessage) json.RawMessage {
+	if len(raw) == 0 {
+		return json.RawMessage(`{}`)
+	}
+	var buffer bytes.Buffer
+	if err := json.Compact(&buffer, raw); err != nil {
+		return raw
+	}
+	return json.RawMessage(buffer.Bytes())
+}
+
+func digestJSON(raw json.RawMessage) string {
+	normalized := normalizeJSON(raw)
+	sum := sha256.Sum256(normalized)
+	return hex.EncodeToString(sum[:])
+}
+
 func (s *HierarchyStore) ListResultSubmissions(ctx context.Context) ([]hierarchy.ResultSubmission, error) {
 	const stmt = `
-SELECT
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at
+SELECT` + resultSubmissionColumns + `
 FROM result_submissions
 ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
@@ -128,24 +197,7 @@ ORDER BY id ASC;`
 	submissions := make([]hierarchy.ResultSubmission, 0)
 	for rows.Next() {
 		var submission hierarchy.ResultSubmission
-		if err := rows.Scan(
-			&submission.ID,
-			&submission.ContextType,
-			&submission.ContextID,
-			&submission.SubmittedByTeamID,
-			&submission.HomeTeamID,
-			&submission.AwayTeamID,
-			&submission.WinningTeamID,
-			&submission.LosingTeamID,
-			&submission.State,
-			&submission.PayloadJSON,
-			&submission.HomeRatifiedAt,
-			&submission.AwayRatifiedAt,
-			&submission.RejectedByTeamID,
-			&submission.RejectionReason,
-			&submission.RejectedAt,
-			&submission.CreatedAt,
-		); err != nil {
+		if err := scanResultSubmission(rows, &submission); err != nil {
 			return nil, err
 		}
 		submissions = append(submissions, submission)
@@ -212,42 +264,9 @@ SET
 	rejection_reason = NULL,
 	rejected_at = NULL
 WHERE id = $1
-RETURNING
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at;`
+RETURNING` + resultSubmissionColumns + `;`
 	var submission hierarchy.ResultSubmission
-	if err := tx.QueryRowContext(ctx, overrideStmt, input.SubmissionID, input.WinningTeamID, input.LosingTeamID).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
-	); err != nil {
+	if err := scanResultSubmission(tx.QueryRowContext(ctx, overrideStmt, input.SubmissionID, input.WinningTeamID, input.LosingTeamID), &submission); err != nil {
 		return hierarchy.ResultSubmission{}, mapSQLError(err)
 	}
 
@@ -348,16 +367,19 @@ func (s *HierarchyStore) RatifyResultSubmission(ctx context.Context, input hiera
 	}()
 
 	const lockStmt = `
-SELECT home_team_id, away_team_id, state, home_ratified_at, away_ratified_at
+SELECT home_team_id, away_team_id, submitted_by_team_id, submitted_by_subject, state, home_ratified_at, away_ratified_at
 FROM result_submissions
 WHERE id = $1
 FOR UPDATE;`
-	var homeTeamID, awayTeamID int64
+	var homeTeamID, awayTeamID, submittedByTeamID int64
+	var submittedBySubject string
 	var state string
 	var homeRatifiedAt, awayRatifiedAt *time.Time
 	if err := tx.QueryRowContext(ctx, lockStmt, input.SubmissionID).Scan(
 		&homeTeamID,
 		&awayTeamID,
+		&submittedByTeamID,
+		&submittedBySubject,
 		&state,
 		&homeRatifiedAt,
 		&awayRatifiedAt,
@@ -373,6 +395,12 @@ FOR UPDATE;`
 	if input.TeamID != homeTeamID && input.TeamID != awayTeamID {
 		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: ratifying team must be a participant", hierarchy.ErrConflict)
 	}
+	if input.TeamID == submittedByTeamID {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submitting team is already attested", hierarchy.ErrConflict)
+	}
+	if strings.EqualFold(strings.TrimSpace(input.RatifiedBySubject), strings.TrimSpace(submittedBySubject)) {
+		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: ratifying subject must differ from submitter", hierarchy.ErrConflict)
+	}
 	if (input.TeamID == homeTeamID && homeRatifiedAt != nil) || (input.TeamID == awayTeamID && awayRatifiedAt != nil) {
 		return hierarchy.ResultSubmission{}, fmt.Errorf("%w: team already ratified", hierarchy.ErrConflict)
 	}
@@ -384,9 +412,25 @@ SET
 		WHEN $2 = home_team_id AND home_ratified_at IS NULL THEN NOW()
 		ELSE home_ratified_at
 	END,
+	home_ratified_by_subject = CASE
+		WHEN $2 = home_team_id AND home_ratified_by_subject IS NULL THEN $3
+		ELSE home_ratified_by_subject
+	END,
+	home_ratified_by_display_name = CASE
+		WHEN $2 = home_team_id AND home_ratified_by_display_name IS NULL THEN $4
+		ELSE home_ratified_by_display_name
+	END,
 	away_ratified_at = CASE
 		WHEN $2 = away_team_id AND away_ratified_at IS NULL THEN NOW()
 		ELSE away_ratified_at
+	END,
+	away_ratified_by_subject = CASE
+		WHEN $2 = away_team_id AND away_ratified_by_subject IS NULL THEN $3
+		ELSE away_ratified_by_subject
+	END,
+	away_ratified_by_display_name = CASE
+		WHEN $2 = away_team_id AND away_ratified_by_display_name IS NULL THEN $4
+		ELSE away_ratified_by_display_name
 	END,
 	state = CASE
 		WHEN
@@ -397,41 +441,18 @@ SET
 		ELSE state
 	END
 WHERE id = $1
-RETURNING
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at;`
+RETURNING` + resultSubmissionColumns + `;`
 	var submission hierarchy.ResultSubmission
-	if err := tx.QueryRowContext(ctx, ratifyStmt, input.SubmissionID, input.TeamID).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
+	if err := scanResultSubmission(
+		tx.QueryRowContext(
+			ctx,
+			ratifyStmt,
+			input.SubmissionID,
+			input.TeamID,
+			strings.TrimSpace(input.RatifiedBySubject),
+			strings.TrimSpace(input.RatifiedByDisplayName),
+		),
+		&submission,
 	); err != nil {
 		return hierarchy.ResultSubmission{}, mapSQLError(err)
 	}
@@ -464,42 +485,9 @@ SET
 WHERE id = $1
   AND state = 'pending'
   AND ($2 = home_team_id OR $2 = away_team_id)
-RETURNING
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at;`
+RETURNING` + resultSubmissionColumns + `;`
 	var submission hierarchy.ResultSubmission
-	err := s.db.QueryRowContext(ctx, stmt, input.SubmissionID, input.TeamID, input.Reason).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
-	)
+	err := scanResultSubmission(s.db.QueryRowContext(ctx, stmt, input.SubmissionID, input.TeamID, input.Reason), &submission)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission reject not allowed or not found", hierarchy.ErrConflict)
@@ -534,44 +522,11 @@ func resolveContextTeams(ctx context.Context, queryer interface {
 
 func (s *HierarchyStore) GetResultSubmission(ctx context.Context, submissionID int64) (hierarchy.ResultSubmission, error) {
 	const stmt = `
-SELECT
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at
+SELECT` + resultSubmissionColumns + `
 FROM result_submissions
 WHERE id = $1;`
 	var submission hierarchy.ResultSubmission
-	err := s.db.QueryRowContext(ctx, stmt, submissionID).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
-	)
+	err := scanResultSubmission(s.db.QueryRowContext(ctx, stmt, submissionID), &submission)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: result submission not found", hierarchy.ErrDependency)
@@ -583,23 +538,7 @@ WHERE id = $1;`
 
 func (s *HierarchyStore) ListResultSubmissionsFiltered(ctx context.Context, input hierarchy.ListResultSubmissionsInput) ([]hierarchy.ResultSubmission, error) {
 	query := `
-SELECT
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at
+SELECT` + resultSubmissionColumns + `
 FROM result_submissions`
 
 	args := make([]any, 0)
@@ -631,24 +570,7 @@ FROM result_submissions`
 	submissions := make([]hierarchy.ResultSubmission, 0)
 	for rows.Next() {
 		var submission hierarchy.ResultSubmission
-		if err := rows.Scan(
-			&submission.ID,
-			&submission.ContextType,
-			&submission.ContextID,
-			&submission.SubmittedByTeamID,
-			&submission.HomeTeamID,
-			&submission.AwayTeamID,
-			&submission.WinningTeamID,
-			&submission.LosingTeamID,
-			&submission.State,
-			&submission.PayloadJSON,
-			&submission.HomeRatifiedAt,
-			&submission.AwayRatifiedAt,
-			&submission.RejectedByTeamID,
-			&submission.RejectionReason,
-			&submission.RejectedAt,
-			&submission.CreatedAt,
-		); err != nil {
+		if err := scanResultSubmission(rows, &submission); err != nil {
 			return nil, err
 		}
 		submissions = append(submissions, submission)
@@ -667,46 +589,17 @@ SET
 	rejected_by_team_id = NULL,
 	rejection_reason = NULL,
 	rejected_at = NULL,
-	home_ratified_at = NULL,
-	away_ratified_at = NULL
+	home_ratified_at = CASE WHEN submitted_by_team_id = home_team_id THEN NOW() ELSE NULL END,
+	home_ratified_by_subject = CASE WHEN submitted_by_team_id = home_team_id THEN submitted_by_subject ELSE NULL END,
+	home_ratified_by_display_name = CASE WHEN submitted_by_team_id = home_team_id THEN submitted_by_display_name ELSE NULL END,
+	away_ratified_at = CASE WHEN submitted_by_team_id = away_team_id THEN NOW() ELSE NULL END,
+	away_ratified_by_subject = CASE WHEN submitted_by_team_id = away_team_id THEN submitted_by_subject ELSE NULL END,
+	away_ratified_by_display_name = CASE WHEN submitted_by_team_id = away_team_id THEN submitted_by_display_name ELSE NULL END
 WHERE id = $1
   AND state = 'rejected'
-RETURNING
-	id,
-	context_type,
-	context_id,
-	submitted_by_team_id,
-	home_team_id,
-	away_team_id,
-	winning_team_id,
-	losing_team_id,
-	state,
-	payload_json,
-	home_ratified_at,
-	away_ratified_at,
-	rejected_by_team_id,
-	rejection_reason,
-	rejected_at,
-	created_at;`
+RETURNING` + resultSubmissionColumns + `;`
 	var submission hierarchy.ResultSubmission
-	err := s.db.QueryRowContext(ctx, stmt, input.SubmissionID).Scan(
-		&submission.ID,
-		&submission.ContextType,
-		&submission.ContextID,
-		&submission.SubmittedByTeamID,
-		&submission.HomeTeamID,
-		&submission.AwayTeamID,
-		&submission.WinningTeamID,
-		&submission.LosingTeamID,
-		&submission.State,
-		&submission.PayloadJSON,
-		&submission.HomeRatifiedAt,
-		&submission.AwayRatifiedAt,
-		&submission.RejectedByTeamID,
-		&submission.RejectionReason,
-		&submission.RejectedAt,
-		&submission.CreatedAt,
-	)
+	err := scanResultSubmission(s.db.QueryRowContext(ctx, stmt, input.SubmissionID), &submission)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return hierarchy.ResultSubmission{}, fmt.Errorf("%w: submission reset not allowed or not found", hierarchy.ErrConflict)
