@@ -116,7 +116,7 @@ function activeScrim(scrim: Scrim): boolean {
 }
 
 function inProgressSubmission(submission: ResultSubmission): boolean {
-  return !["accepted", "finalized", "rejected"].includes(submission.state.toLowerCase());
+  return !["accepted", "finalized", "ratified", "rejected"].includes(submission.state.toLowerCase());
 }
 
 function activeQueueEntry(entry: QueueEntry): boolean {
@@ -286,12 +286,14 @@ export function PlayerHomePage() {
       {activeWorkspace === "actions" && (
         <section className="layout-grid layout-grid--2 tab-panel">
           <QueueActions
+            activeEntries={activeQueueEntries}
             onEnqueue={enqueueMutation.mutateAsync}
             onLeave={leaveQueueMutation.mutateAsync}
             status={[enqueueMutation, leaveQueueMutation]}
           />
           <SubmissionActions
             defaultScrim={activeScrims[0] ?? null}
+            inProcessSubmissions={inProcessSubmissions}
             onCreateSubmission={createSubmissionMutation.mutateAsync}
             onRatify={ratifyMutation.mutateAsync}
             onReject={rejectMutation.mutateAsync}
@@ -344,19 +346,31 @@ function CountCard({ label, value, testId }: { label: string; value: number; tes
 }
 
 function QueueActions({
+  activeEntries,
   onEnqueue,
   onLeave,
   status,
 }: {
+  activeEntries: QueueEntry[];
   onEnqueue: (input: { queueId: number; teamId: number }) => Promise<unknown>;
   onLeave: (input: { queueId: number; teamId: number }) => Promise<unknown>;
   status: Array<{ isPending: boolean; isSuccess: boolean; error: Error | null }>;
 }) {
   const [queueId, setQueueId] = useState(1);
   const [teamId, setTeamId] = useState(1);
+  const [initializedFromActiveEntry, setInitializedFromActiveEntry] = useState(false);
+  const activeEntry = activeEntries.find((entry) => entry.queueId === queueId && entry.teamId === teamId) ?? null;
+
+  useEffect(() => {
+    if (initializedFromActiveEntry || activeEntries.length === 0) return;
+    setQueueId(activeEntries[0].queueId);
+    setTeamId(activeEntries[0].teamId);
+    setInitializedFromActiveEntry(true);
+  }, [activeEntries, initializedFromActiveEntry]);
 
   async function submitEnqueue(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (activeEntry) return;
     await onEnqueue({ queueId, teamId });
   }
 
@@ -368,6 +382,7 @@ function QueueActions({
     <section>
       <h3>Queue Actions</h3>
       <p>Use the same queue and team values to join or leave the active queue.</p>
+      {activeEntry && <p data-testid="player-queue-already-active">Team {teamId} is already active in queue {queueId}.</p>}
       <form onSubmit={submitEnqueue}>
         <label>
           Queue ID
@@ -378,7 +393,9 @@ function QueueActions({
           <input min={1} type="number" value={teamId} onChange={(event) => setTeamId(Number(event.target.value))} />
         </label>
         <div className="form-actions">
-          <button type="submit">Join queue</button>
+          <button disabled={activeEntry !== null} type="submit">
+            Join queue
+          </button>
           <button onClick={() => void submitLeave()} type="button">
             Leave queue
           </button>
@@ -415,6 +432,7 @@ function scoreFromPayload(value: unknown): { home: number; away: number } | null
 
 function SubmissionActions({
   defaultScrim,
+  inProcessSubmissions,
   onCreateSubmission,
   onRatify,
   onReject,
@@ -422,6 +440,7 @@ function SubmissionActions({
   status,
 }: {
   defaultScrim: Scrim | null;
+  inProcessSubmissions: ResultSubmission[];
   onCreateSubmission: (input: CreateResultSubmissionInput) => Promise<unknown>;
   onRatify: (input: { submissionId: number; teamId: number }) => Promise<unknown>;
   onReject: (input: { submissionId: number; teamId: number; reason: string }) => Promise<unknown>;
@@ -445,6 +464,10 @@ function SubmissionActions({
   const [awaySaves, setAwaySaves] = useState(0);
   const [replayBody, setReplayBody] = useState("placeholder-replay");
   const [lastReplayConflict, setLastReplayConflict] = useState<unknown | null>(null);
+  const existingSubmission =
+    inProcessSubmissions.find(
+      (submission) => submission.contextType === contextType && submission.contextId === contextId,
+    ) ?? null;
 
   useEffect(() => {
     if (!defaultScrim) return;
@@ -455,8 +478,14 @@ function SubmissionActions({
     setTeamId(defaultScrim.homeTeamId);
   }, [defaultScrim]);
 
+  useEffect(() => {
+    if (!existingSubmission) return;
+    setSubmissionId(existingSubmission.id);
+  }, [existingSubmission]);
+
   async function submitResult(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (existingSubmission) return;
     const winningTeamId = homeScore > awayScore ? homeTeamId : awayTeamId;
     const losingTeamId = homeScore > awayScore ? awayTeamId : homeTeamId;
     const payloadJson = {
@@ -527,6 +556,12 @@ function SubmissionActions({
   return (
     <section>
       <h3>Submission Actions</h3>
+      {existingSubmission && (
+        <p data-testid="player-submission-already-active">
+          Submission #{existingSubmission.id} already exists for {contextType}:{contextId}. Use ratify, reject, or replay
+          evidence instead.
+        </p>
+      )}
       <div aria-label="Submission action type" className="segmented-control">
         {[
           ["submit", "Submit"],
@@ -598,7 +633,9 @@ function SubmissionActions({
             </label>
           </div>
           <div>
-            <button type="submit">Submit result</button>
+            <button disabled={existingSubmission !== null} type="submit">
+              Submit result
+            </button>
           </div>
         </form>
       )}

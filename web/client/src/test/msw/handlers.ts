@@ -433,6 +433,10 @@ export const handlers = [
   http.get("http://localhost:8080/v1/queue-entries", () => HttpResponse.json(queueEntries)),
   http.post("http://localhost:8080/v1/queue-entries", async ({ request }) => {
     const body = (await request.json()) as { queueId: number; teamId: number };
+    const existing = queueEntries.find((entry) => entry.queueId === body.queueId && entry.teamId === body.teamId && entry.isActive);
+    if (existing) {
+      return HttpResponse.text("conflict: uq_queue_entries_active_queue_team", { status: 409 });
+    }
 
     const rosterPlayers = rosterMemberships
       .filter((membership) => membership.teamId === body.teamId && membership.isActive)
@@ -444,7 +448,7 @@ export const handlers = [
       return HttpResponse.text(`team has player ${blockedBan.playerId} actively banned from this queue`, { status: 409 });
     }
 
-    return HttpResponse.json({
+    const entry = {
       id: queueEntries.length + 1,
       queueId: body.queueId,
       teamId: body.teamId,
@@ -453,7 +457,9 @@ export const handlers = [
       createdAt: "2026-02-15T00:00:00Z",
       stageAt: "2026-02-15T00:00:00Z",
       leftAt: null,
-    });
+    };
+    queueEntries.unshift(entry);
+    return HttpResponse.json(entry);
   }),
   http.delete("http://localhost:8080/v1/queue-entries", async ({ request }) => {
     const body = (await request.json()) as { queueId: number; teamId: number };

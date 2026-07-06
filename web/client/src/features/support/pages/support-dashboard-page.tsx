@@ -69,7 +69,7 @@ function isActiveScrim(scrim: Scrim): boolean {
 }
 
 function isInProcessSubmission(submission: ResultSubmission): boolean {
-  return !["finalized", "accepted", "rejected"].includes(submission.state.toLowerCase());
+  return !["finalized", "accepted", "ratified", "rejected"].includes(submission.state.toLowerCase());
 }
 
 export function SupportDashboardPage() {

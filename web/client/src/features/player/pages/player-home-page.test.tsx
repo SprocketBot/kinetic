@@ -60,12 +60,17 @@ describe("PlayerHomePage", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Actions" }));
     expect(await screen.findByRole("heading", { name: "Queue Actions" })).toBeInTheDocument();
+    expect(await screen.findByTestId("player-queue-already-active")).toHaveTextContent("Team 101 is already active in queue 1.");
+    expect(screen.getByRole("button", { name: "Join queue" })).toBeDisabled();
 
+    await userEvent.clear(screen.getAllByLabelText("Team ID")[0]);
+    await userEvent.type(screen.getAllByLabelText("Team ID")[0], "102");
+    expect(screen.getByRole("button", { name: "Join queue" })).toBeEnabled();
     await userEvent.click(screen.getByRole("button", { name: "Join queue" }));
     expect(await screen.findByTestId("player-queue-success")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Submit result" }));
-    expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
+    expect(await screen.findByTestId("player-submission-already-active")).toHaveTextContent("Submission #1 already exists");
+    expect(screen.getByRole("button", { name: "Submit result" })).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Ratify" }));
     await userEvent.click(screen.getByRole("button", { name: "Ratify result" }));
