@@ -29,6 +29,7 @@ const queueBans: Array<{
 const platformAccountLinks: Array<{
   id: number;
   subject: string;
+  playerId: number | null;
   provider: string;
   providerAccountId: string;
   providerAccountName: string;
@@ -39,6 +40,7 @@ const platformAccountLinks: Array<{
   {
     id: 1,
     subject: "player-1",
+    playerId: 1,
     provider: "steam",
     providerAccountId: "steam-123",
     providerAccountName: "Player One",
@@ -306,18 +308,22 @@ const baseTicket = {
 };
 
 export const handlers = [
+  http.get("http://localhost:8080/v1/me/players", () => HttpResponse.json([{
+    userId: 1, playerId: 1, gameId: 1, createdAt: "2026-02-15T00:00:00Z",
+    player: { id: 1, displayName: "Player One", slug: "player-one", isActive: true, createdAt: "2026-02-15T00:00:00Z" },
+    game: { id: 1, name: "Rocket League", slug: "rocket-league", isActive: true, createdAt: "2026-02-15T00:00:00Z" },
+  }])),
   http.get("http://localhost:8080/v1/platform-accounts", ({ request }) => {
     const url = new URL(request.url);
-    const subject = url.searchParams.get("subject");
-    if (!subject) {
-      return HttpResponse.text("subject is required", { status: 400 });
+    const playerId = Number(url.searchParams.get("playerId"));
+    if (!playerId) {
+      return HttpResponse.text("playerId is required", { status: 400 });
     }
-
-    return HttpResponse.json(platformAccountLinks.filter((link) => link.subject === subject));
+    return HttpResponse.json(platformAccountLinks.filter((link) => link.playerId === playerId));
   }),
   http.post("http://localhost:8080/v1/platform-accounts/link", async ({ request }) => {
     const body = (await request.json()) as {
-      subject: string;
+      playerId: number;
       provider: string;
       providerAccountId: string;
       providerAccountName?: string;
@@ -335,7 +341,8 @@ export const handlers = [
 
     const link = {
       id: platformAccountLinks.length + 1,
-      subject: body.subject,
+      subject: "player-1",
+      playerId: body.playerId,
       provider: body.provider,
       providerAccountId: body.providerAccountId,
       providerAccountName: body.providerAccountName ?? "",
@@ -348,13 +355,13 @@ export const handlers = [
   }),
   http.post("http://localhost:8080/v1/platform-accounts/unlink", async ({ request }) => {
     const body = (await request.json()) as {
-      subject: string;
+      playerId: number;
       provider: string;
       providerAccountId: string;
     };
     const existing = platformAccountLinks.find(
       (link) =>
-        link.subject === body.subject &&
+        link.playerId === body.playerId &&
         link.provider === body.provider &&
         link.providerAccountId === body.providerAccountId &&
         link.isActive,

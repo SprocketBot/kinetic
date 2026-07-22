@@ -68,6 +68,7 @@ export const queueBanListSchema = z.array(queueBanSchema);
 export const platformAccountLinkSchema = z.object({
   id: z.number(),
   subject: z.string(),
+  playerId: z.number().nullable().optional(),
   provider: z.string(),
   providerAccountId: z.string(),
   providerAccountName: z.string(),
@@ -77,6 +78,16 @@ export const platformAccountLinkSchema = z.object({
 });
 
 export const platformAccountLinkListSchema = z.array(platformAccountLinkSchema);
+
+export const userPlayerSchema = z.object({
+  userId: z.number(),
+  playerId: z.number(),
+  gameId: z.number(),
+  createdAt: z.string(),
+  player: z.object({ id: z.number(), displayName: z.string(), slug: z.string(), isActive: z.boolean(), createdAt: z.string() }),
+  game: z.object({ id: z.number(), name: z.string(), slug: z.string(), isActive: z.boolean(), createdAt: z.string() }),
+});
+export const userPlayerListSchema = z.array(userPlayerSchema);
 
 export const eligibilityProjectionPointSchema = z.object({
   effectiveAt: z.string(),
@@ -109,14 +120,14 @@ export const unbanPlayerFromQueueInputSchema = z.object({
 });
 
 export const linkPlatformAccountInputSchema = z.object({
-  subject: z.string().min(1),
+  playerId: z.number().positive(),
   provider: z.enum(["steam", "xbox", "psn", "epic"]),
   providerAccountId: z.string().min(1),
   providerAccountName: z.string().default(""),
 });
 
 export const unlinkPlatformAccountInputSchema = z.object({
-  subject: z.string().min(1),
+  playerId: z.number().positive(),
   provider: z.enum(["steam", "xbox", "psn", "epic"]),
   providerAccountId: z.string().min(1),
 });
@@ -484,6 +495,7 @@ export type ResolveExceptionInput = z.infer<typeof resolveExceptionInputSchema>;
 export type QueueEntry = z.infer<typeof queueEntrySchema>;
 export type QueueBan = z.infer<typeof queueBanSchema>;
 export type PlatformAccountLink = z.infer<typeof platformAccountLinkSchema>;
+export type UserPlayer = z.infer<typeof userPlayerSchema>;
 export type EligibilityStatus = z.infer<typeof eligibilityStatusSchema>;
 export type Scrim = z.infer<typeof scrimSchema>;
 export type ResultSubmission = z.infer<typeof resultSubmissionSchema>;

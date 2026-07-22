@@ -17,6 +17,7 @@ import {
   leaveQueueInputSchema,
   platformAccountLinkListSchema,
   platformAccountLinkSchema,
+  userPlayerListSchema,
   playerRatingListSchema,
   queueEntryListSchema,
   queueEntrySchema,
@@ -36,6 +37,7 @@ import {
   type ReplayIngestionResult,
   type Scrim,
   type PlayerRating,
+  type UserPlayer,
 } from "../../../lib/api/schemas";
 
 async function listQueueEntries() {
@@ -54,8 +56,12 @@ async function listPlayerRatings() {
   return getJson("/v1/player-ratings", playerRatingListSchema);
 }
 
-async function listPlatformAccounts(subject: string) {
-  return getJson(`/v1/platform-accounts?subject=${encodeURIComponent(subject)}`, platformAccountLinkListSchema);
+async function listMyPlayers() {
+  return getJson("/v1/me/players", userPlayerListSchema);
+}
+
+async function listPlatformAccounts(playerId: number) {
+  return getJson(`/v1/platform-accounts?playerId=${playerId}`, platformAccountLinkListSchema);
 }
 
 async function getEligibilityStatus(subject: string) {
@@ -93,7 +99,7 @@ async function ingestReplay(input: IngestReplayEvidenceInput) {
 }
 
 async function linkPlatformAccount(input: {
-  subject: string;
+  playerId: number;
   provider: "steam" | "xbox" | "psn" | "epic";
   providerAccountId: string;
   providerAccountName: string;
@@ -103,7 +109,7 @@ async function linkPlatformAccount(input: {
 }
 
 async function unlinkPlatformAccount(input: {
-  subject: string;
+  playerId: number;
   provider: "steam" | "xbox" | "psn" | "epic";
   providerAccountId: string;
 }) {
@@ -134,16 +140,21 @@ export function PlayerHomePage() {
   const queryClient = useQueryClient();
   const [activeWorkspace, setActiveWorkspace] = useState<"overview" | "actions" | "profile" | "evidence">("overview");
   const [selectedEvidenceView, setSelectedEvidenceView] = useState(evidenceViews[0].id);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const sessionSubject = session.principal?.subject ?? "";
 
   const queueQuery = useQuery({ queryKey: ["queue-entries"], queryFn: listQueueEntries });
   const scrimsQuery = useQuery({ queryKey: ["scrims"], queryFn: listScrims });
   const submissionsQuery = useQuery({ queryKey: ["result-submissions"], queryFn: listResultSubmissions });
   const ratingsQuery = useQuery({ queryKey: ["player-ratings"], queryFn: listPlayerRatings });
+  const myPlayersQuery = useQuery({ queryKey: ["me-players"], queryFn: listMyPlayers, enabled: sessionSubject.length > 0 });
+  useEffect(() => {
+    if (selectedPlayerId === null && myPlayersQuery.data?.[0]) setSelectedPlayerId(myPlayersQuery.data[0].playerId);
+  }, [myPlayersQuery.data, selectedPlayerId]);
   const platformAccountsQuery = useQuery({
-    queryKey: ["platform-accounts", sessionSubject],
-    queryFn: () => listPlatformAccounts(sessionSubject),
-    enabled: sessionSubject.length > 0,
+    queryKey: ["platform-accounts", selectedPlayerId],
+    queryFn: () => listPlatformAccounts(selectedPlayerId!),
+    enabled: selectedPlayerId !== null,
   });
   const eligibilityQuery = useQuery({
     queryKey: ["eligibility", sessionSubject],
@@ -203,14 +214,14 @@ export function PlayerHomePage() {
   const linkPlatformMutation = useMutation({
     mutationFn: linkPlatformAccount,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", sessionSubject] });
+      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", selectedPlayerId] });
     },
   });
 
   const unlinkPlatformMutation = useMutation({
     mutationFn: unlinkPlatformAccount,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", sessionSubject] });
+      await queryClient.invalidateQueries({ queryKey: ["platform-accounts", selectedPlayerId] });
     },
   });
 
@@ -315,8 +326,10 @@ export function PlayerHomePage() {
             onLink={linkPlatformMutation.mutateAsync}
             onUnlink={unlinkPlatformMutation.mutateAsync}
             queryError={platformAccountsQuery.error}
+            players={myPlayersQuery.data ?? []}
+            selectedPlayerId={selectedPlayerId}
+            setSelectedPlayerId={setSelectedPlayerId}
             status={[linkPlatformMutation, unlinkPlatformMutation]}
-            subject={sessionSubject}
           />
         </section>
       )}
@@ -770,7 +783,9 @@ function RatingsPanel({ ratings, loading }: { ratings: PlayerRating[]; loading: 
 }
 
 function AccountAndEligibilityPanel({
-  subject,
+  players,
+  selectedPlayerId,
+  setSelectedPlayerId,
   links,
   loading,
   eligibility,
@@ -781,7 +796,9 @@ function AccountAndEligibilityPanel({
   onUnlink,
   status,
 }: {
-  subject: string;
+  players: UserPlayer[];
+  selectedPlayerId: number | null;
+  setSelectedPlayerId: (playerId: number) => void;
   links: PlatformAccountLink[];
   loading: boolean;
   eligibility: EligibilityStatus | null;
@@ -789,12 +806,12 @@ function AccountAndEligibilityPanel({
   eligibilityLoading: boolean;
   queryError: Error | null;
   onLink: (input: {
-    subject: string;
+    playerId: number;
     provider: "steam" | "xbox" | "psn" | "epic";
     providerAccountId: string;
     providerAccountName: string;
   }) => Promise<unknown>;
-  onUnlink: (input: { subject: string; provider: "steam" | "xbox" | "psn" | "epic"; providerAccountId: string }) => Promise<unknown>;
+  onUnlink: (input: { playerId: number; provider: "steam" | "xbox" | "psn" | "epic"; providerAccountId: string }) => Promise<unknown>;
   status: Array<{ isPending: boolean; isSuccess: boolean; error: Error | null }>;
 }) {
   const [provider, setProvider] = useState<"steam" | "xbox" | "psn" | "epic">("steam");
@@ -805,8 +822,9 @@ function AccountAndEligibilityPanel({
 
   async function submitLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (selectedPlayerId === null) return;
     await onLink({
-      subject,
+      playerId: selectedPlayerId,
       provider,
       providerAccountId,
       providerAccountName,
@@ -815,7 +833,7 @@ function AccountAndEligibilityPanel({
 
   async function submitUnlink(link: PlatformAccountLink) {
     await onUnlink({
-      subject: link.subject,
+      playerId: selectedPlayerId ?? 0,
       provider: link.provider as "steam" | "xbox" | "psn" | "epic",
       providerAccountId: link.providerAccountId,
     });
@@ -825,6 +843,13 @@ function AccountAndEligibilityPanel({
     <section>
       <h3>Accounts and Eligibility</h3>
       <p>Link and unlink verified platform identities for replay attribution and player ownership checks.</p>
+      <label>
+        Player identity
+        <select value={selectedPlayerId ?? ""} onChange={(event) => setSelectedPlayerId(Number(event.target.value))}>
+          <option value="" disabled>Select a player</option>
+          {players.map((player) => <option key={player.playerId} value={player.playerId}>{player.game.name} · {player.player.displayName}</option>)}
+        </select>
+      </label>
       <form onSubmit={submitLink}>
         <label>
           Provider
@@ -843,12 +868,12 @@ function AccountAndEligibilityPanel({
           Provider display name
           <input value={providerAccountName} onChange={(event) => setProviderAccountName(event.target.value)} />
         </label>
-        <button disabled={subject.length === 0} type="submit">
+        <button disabled={selectedPlayerId === null} type="submit">
           Link account
         </button>
       </form>
       {loading && <LoadingState label="Loading linked accounts..." />}
-      {subject.length === 0 && <p>Session subject unavailable; refresh the page after login.</p>}
+      {players.length === 0 && <p>Create a player identity for a game before linking platform accounts.</p>}
       {!loading && activeLinks.length === 0 && <p>No active platform accounts linked.</p>}
       {!loading && activeLinks.length > 0 && (
         <ul style={{ margin: "0.5rem 0", paddingLeft: "1.2rem" }}>
