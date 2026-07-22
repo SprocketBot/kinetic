@@ -48,10 +48,11 @@ SET is_active = FALSE, unlinked_at = NOW()
 WHERE subject = $1
   AND provider = $2
   AND provider_account_id = $3
+  AND ($4::BIGINT IS NULL OR player_id = $4)
   AND is_active = TRUE
 RETURNING id, subject, player_id, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
 	var link hierarchy.PlatformAccountLink
-	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID).Scan(
+	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID, input.PlayerID).Scan(
 		&link.ID,
 		&link.Subject,
 		&link.PlayerID,

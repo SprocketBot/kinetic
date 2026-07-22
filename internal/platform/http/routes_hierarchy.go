@@ -424,6 +424,28 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 					input.Subject = sessionPrincipal.Subject
 				}
 			}
+			if input.PlayerID != nil {
+				principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore)
+				if !ok {
+					http.Error(w, "authentication required", http.StatusUnauthorized)
+					return
+				}
+				user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+				if err != nil {
+					http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+					return
+				}
+				owns, err := deps.IdentityStore.UserOwnsPlayer(r.Context(), user.ID, *input.PlayerID)
+				if err != nil {
+					http.Error(w, "failed to verify player ownership", http.StatusInternalServerError)
+					return
+				}
+				if !owns {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				input.Subject = principal.Subject
+			}
 			link, err := deps.PlatformStore.UnlinkPlatformAccount(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
