@@ -90,6 +90,9 @@ components:
         id:
           type: integer
           format: int64
+        gameId:
+          type: integer
+          format: int64
         name:
           type: string
         slug:
@@ -101,6 +104,7 @@ components:
           format: date-time
       required:
         - id
+        - gameId
         - name
         - slug
         - isActive
@@ -1814,11 +1818,15 @@ paths:
             schema:
               type: object
               properties:
+                gameId:
+                  type: integer
+                  format: int64
                 name:
                   type: string
                 slug:
                   type: string
               required:
+                - gameId
                 - name
                 - slug
       responses:

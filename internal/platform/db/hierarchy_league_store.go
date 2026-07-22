@@ -12,12 +12,13 @@ func (s *HierarchyStore) CreateLeague(ctx context.Context, input hierarchy.Creat
 	}
 
 	const stmt = `
-INSERT INTO leagues(name, slug)
-VALUES ($1, $2)
-RETURNING id, name, slug, is_active, created_at;`
+INSERT INTO leagues(game_id, name, slug)
+VALUES (COALESCE(NULLIF($1, 0), (SELECT id FROM games WHERE slug = 'rocket-league')), $2, $3)
+RETURNING id, game_id, name, slug, is_active, created_at;`
 	var league hierarchy.League
-	err := s.db.QueryRowContext(ctx, stmt, input.Name, input.Slug).Scan(
+	err := s.db.QueryRowContext(ctx, stmt, input.GameID, input.Name, input.Slug).Scan(
 		&league.ID,
+		&league.GameID,
 		&league.Name,
 		&league.Slug,
 		&league.IsActive,
@@ -31,7 +32,7 @@ RETURNING id, name, slug, is_active, created_at;`
 
 func (s *HierarchyStore) ListLeagues(ctx context.Context) ([]hierarchy.League, error) {
 	const stmt = `
-SELECT id, name, slug, is_active, created_at
+SELECT id, game_id, name, slug, is_active, created_at
 FROM leagues
 ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
@@ -43,7 +44,7 @@ ORDER BY id ASC;`
 	leagues := make([]hierarchy.League, 0)
 	for rows.Next() {
 		var league hierarchy.League
-		if err := rows.Scan(&league.ID, &league.Name, &league.Slug, &league.IsActive, &league.CreatedAt); err != nil {
+		if err := rows.Scan(&league.ID, &league.GameID, &league.Name, &league.Slug, &league.IsActive, &league.CreatedAt); err != nil {
 			return nil, err
 		}
 		leagues = append(leagues, league)

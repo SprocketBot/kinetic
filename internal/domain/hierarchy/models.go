@@ -7,6 +7,7 @@ import (
 
 type League struct {
 	ID        int64     `json:"id"`
+	GameID    int64     `json:"gameId"`
 	Name      string    `json:"name"`
 	Slug      string    `json:"slug"`
 	IsActive  bool      `json:"isActive"`
@@ -379,8 +380,9 @@ type Match struct {
 }
 
 type CreateLeagueInput struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	GameID int64  `json:"gameId"`
+	Name   string `json:"name"`
+	Slug   string `json:"slug"`
 }
 
 type CreateFranchiseInput struct {
