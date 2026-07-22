@@ -33,6 +33,12 @@ type fakeHierarchyStore struct {
 	clubToReturn             hierarchy.Club
 	teamToReturn             hierarchy.Team
 	playerToReturn           hierarchy.Player
+	userToReturn             hierarchy.User
+	gameToReturn             hierarchy.Game
+	gamesToList              []hierarchy.Game
+	userPlayerToReturn       hierarchy.UserPlayer
+	userPlayersToList        []hierarchy.UserPlayer
+	createUserPlayerInput    hierarchy.CreateUserPlayerInput
 	membershipToReturn       hierarchy.RosterMembership
 	roleAssignmentToReturn   hierarchy.RoleAssignment
 	queueToReturn            hierarchy.Queue
@@ -143,6 +149,22 @@ func (f *fakeHierarchyStore) CreatePlayer(_ context.Context, _ hierarchy.CreateP
 }
 func (f *fakeHierarchyStore) ListPlayers(_ context.Context) ([]hierarchy.Player, error) {
 	return f.playersToList, nil
+}
+func (f *fakeHierarchyStore) UpsertUser(_ context.Context, _ hierarchy.UpsertUserInput) (hierarchy.User, error) {
+	return f.userToReturn, nil
+}
+func (f *fakeHierarchyStore) CreateGame(_ context.Context, _ hierarchy.CreateGameInput) (hierarchy.Game, error) {
+	return f.gameToReturn, nil
+}
+func (f *fakeHierarchyStore) ListGames(_ context.Context) ([]hierarchy.Game, error) {
+	return f.gamesToList, nil
+}
+func (f *fakeHierarchyStore) CreateUserPlayer(_ context.Context, input hierarchy.CreateUserPlayerInput) (hierarchy.UserPlayer, error) {
+	f.createUserPlayerInput = input
+	return f.userPlayerToReturn, nil
+}
+func (f *fakeHierarchyStore) ListUserPlayers(_ context.Context, _ int64) ([]hierarchy.UserPlayer, error) {
+	return f.userPlayersToList, nil
 }
 func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
 	return f.membershipToReturn, f.createMemberErr
@@ -1589,6 +1611,41 @@ func TestFranchiseManagerCanAssignRole(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestCreateMyPlayerUsesAuthenticatedUserAndGame(t *testing.T) {
+	store := &fakeHierarchyStore{
+		userToReturn: hierarchy.User{ID: 17, Subject: "jake", DisplayName: "Jake"},
+		userPlayerToReturn: hierarchy.UserPlayer{
+			UserID: 17, PlayerID: 42, GameID: 3,
+			Player: hierarchy.Player{ID: 42, DisplayName: "Rocket League Jake", Slug: "rocket-league-jake"},
+			Game:   hierarchy.Game{ID: 3, Name: "Rocket League", Slug: "rocket-league"},
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/me/players", strings.NewReader(`{"gameId":3,"displayName":"Rocket League Jake","slug":"rocket-league-jake"}`))
+	req.Header.Set("Authorization", "Bearer local:jake:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+	if store.createUserPlayerInput.UserID != 17 || store.createUserPlayerInput.GameID != 3 {
+		t.Fatalf("expected authenticated user 17 and game 3, got %#v", store.createUserPlayerInput)
+	}
+}
+
+func TestMyPlayersRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodGet, "/v1/me/players", nil)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
 	}
 }
 

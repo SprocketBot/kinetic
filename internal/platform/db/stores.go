@@ -10,6 +10,7 @@ type Stores struct {
 	HierarchyStore   hierarchy.Store
 	LeagueStore      hierarchy.LeagueStore
 	PlayerStore      hierarchy.PlayerStore
+	IdentityStore    hierarchy.IdentityStore
 	RosterStore      hierarchy.RosterStore
 	RoleStore        hierarchy.RoleStore
 	QueueStore       hierarchy.QueueStore
@@ -29,6 +30,7 @@ func NewStores(conn *sql.DB) Stores {
 		HierarchyStore:   hierarchyStore,
 		LeagueStore:      hierarchyStore,
 		PlayerStore:      hierarchyStore,
+		IdentityStore:    hierarchyStore,
 		RosterStore:      hierarchyStore,
 		RoleStore:        hierarchyStore,
 		QueueStore:       hierarchyStore,

@@ -206,6 +206,44 @@ components:
         - isActive
         - createdAt
 
+    Game:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        slug:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, slug, isActive, createdAt]
+
+    UserPlayer:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        playerId:
+          type: integer
+          format: int64
+        gameId:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        player:
+          $ref: "#/components/schemas/Player"
+        game:
+          $ref: "#/components/schemas/Game"
+      required: [userId, playerId, gameId, createdAt, player, game]
+
     RosterMembership:
       type: object
       properties:
@@ -1957,6 +1995,88 @@ paths:
           description: "Conflict."
         "503":
           description: "Hierarchy store unavailable."
+
+  # ── Identity: games and game-specific players ──────────────────────────────
+  /v1/games:
+    get:
+      operationId: listGames
+      summary: "List active and inactive games"
+      tags: [identity]
+      responses:
+        "200":
+          description: "Games."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+    post:
+      operationId: createGame
+      summary: "Create a game"
+      tags: [identity]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                slug: { type: string }
+              required: [name, slug]
+      responses:
+        "201":
+          description: "Created game."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "400": { description: "Invalid input." }
+        "401": { description: "Authentication required." }
+        "403": { description: "Forbidden." }
+        "409": { description: "Duplicate game name or slug." }
+
+  /v1/me/players:
+    get:
+      operationId: listMyPlayers
+      summary: "List the authenticated user's game-specific player identities"
+      tags: [identity]
+      responses:
+        "200":
+          description: "The user's players."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserPlayer"
+        "401": { description: "Authentication required." }
+    post:
+      operationId: createMyPlayer
+      summary: "Create the authenticated user's player identity for a game"
+      tags: [identity]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                gameId: { type: integer, format: int64 }
+                displayName: { type: string }
+                slug: { type: string }
+              required: [gameId, displayName, slug]
+      responses:
+        "201":
+          description: "Created player identity."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPlayer"
+        "400": { description: "Invalid input." }
+        "401": { description: "Authentication required." }
+        "409": { description: "The user already has a player for this game." }
 
   # ── Hierarchy: Players ─────────────────────────────────────────────────────
   /v1/players:

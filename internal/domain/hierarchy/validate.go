@@ -70,6 +70,36 @@ func ValidateCreatePlayerInput(input CreatePlayerInput) error {
 	return nil
 }
 
+func ValidateCreateGameInput(input CreateGameInput) error {
+	if strings.TrimSpace(input.Name) == "" {
+		return fmt.Errorf("%w: game name is required", ErrInvalidInput)
+	}
+	if !slugPattern.MatchString(input.Slug) {
+		return fmt.Errorf("%w: game slug must be lowercase kebab-case", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateUpsertUserInput(input UpsertUserInput) error {
+	if strings.TrimSpace(input.Subject) == "" {
+		return fmt.Errorf("%w: user subject is required", ErrInvalidInput)
+	}
+	if strings.TrimSpace(input.DisplayName) == "" {
+		return fmt.Errorf("%w: user displayName is required", ErrInvalidInput)
+	}
+	return nil
+}
+
+func ValidateCreateUserPlayerInput(input CreateUserPlayerInput) error {
+	if input.UserID <= 0 {
+		return fmt.Errorf("%w: userId must be greater than zero", ErrInvalidInput)
+	}
+	if input.GameID <= 0 {
+		return fmt.Errorf("%w: gameId must be greater than zero", ErrInvalidInput)
+	}
+	return ValidateCreatePlayerInput(CreatePlayerInput{DisplayName: input.DisplayName, Slug: input.Slug})
+}
+
 func ValidateCreateRosterMembershipInput(input CreateRosterMembershipInput) error {
 	if input.PlayerID <= 0 {
 		return fmt.Errorf("%w: playerId must be greater than zero", ErrInvalidInput)

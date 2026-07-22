@@ -48,6 +48,35 @@ type Player struct {
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
+// User is a person authenticated to Kinetic. A user may own one player identity
+// for each game they participate in.
+type User struct {
+	ID          int64     `json:"id"`
+	Subject     string    `json:"subject"`
+	DisplayName string    `json:"displayName"`
+	IsActive    bool      `json:"isActive"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type Game struct {
+	ID        int64     `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	IsActive  bool      `json:"isActive"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// UserPlayer is the game-specific player identity owned by a user.
+type UserPlayer struct {
+	UserID    int64     `json:"userId"`
+	PlayerID  int64     `json:"playerId"`
+	GameID    int64     `json:"gameId"`
+	CreatedAt time.Time `json:"createdAt"`
+	Player    Player    `json:"player"`
+	Game      Game      `json:"game"`
+}
+
 type RosterMembership struct {
 	ID        int64     `json:"id"`
 	PlayerID  int64     `json:"playerId"`
@@ -372,6 +401,23 @@ type CreateTeamInput struct {
 }
 
 type CreatePlayerInput struct {
+	DisplayName string `json:"displayName"`
+	Slug        string `json:"slug"`
+}
+
+type CreateGameInput struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
+}
+
+type UpsertUserInput struct {
+	Subject     string `json:"subject"`
+	DisplayName string `json:"displayName"`
+}
+
+type CreateUserPlayerInput struct {
+	UserID      int64  `json:"userId"`
+	GameID      int64  `json:"gameId"`
 	DisplayName string `json:"displayName"`
 	Slug        string `json:"slug"`
 }

@@ -27,6 +27,7 @@ type Dependencies struct {
 	Evaluator          authz.Evaluator
 	LeagueStore        hierarchy.LeagueStore
 	PlayerStore        hierarchy.PlayerStore
+	IdentityStore      hierarchy.IdentityStore
 	RosterStore        hierarchy.RosterStore
 	RoleStore          hierarchy.RoleStore
 	QueueStore         hierarchy.QueueStore

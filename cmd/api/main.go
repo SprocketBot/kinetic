@@ -73,6 +73,7 @@ func main() {
 		deps.HierarchyStore = stores.HierarchyStore
 		deps.LeagueStore = stores.LeagueStore
 		deps.PlayerStore = stores.PlayerStore
+		deps.IdentityStore = stores.IdentityStore
 		deps.RosterStore = stores.RosterStore
 		deps.RoleStore = stores.RoleStore
 		deps.QueueStore = stores.QueueStore

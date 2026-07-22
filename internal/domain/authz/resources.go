@@ -9,6 +9,7 @@ const (
 	ResourceClub                 Resource = "club"
 	ResourceTeam                 Resource = "team"
 	ResourcePlayer               Resource = "player"
+	ResourceGame                 Resource = "game"
 	ResourceRosterMembership     Resource = "roster_membership"
 	ResourceRoleAssignment       Resource = "role_assignment"
 	ResourceQueue                Resource = "queue"

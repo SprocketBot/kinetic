@@ -86,6 +86,9 @@ func (d Dependencies) normalized() Dependencies {
 	if d.PlayerStore == nil {
 		d.PlayerStore = d.HierarchyStore
 	}
+	if d.IdentityStore == nil {
+		d.IdentityStore = d.HierarchyStore
+	}
 	if d.RosterStore == nil {
 		d.RosterStore = d.HierarchyStore
 	}
@@ -125,6 +128,7 @@ func (d Dependencies) normalized() Dependencies {
 func (r routeRegistrar) register(mux *http.ServeMux) {
 	r.registerAuthRoutes(mux)
 	r.registerHierarchyRoutes(mux)
+	r.registerIdentityRoutes(mux)
 	r.registerQueueAndScrimRoutes(mux)
 	r.registerResultsAndReplayRoutes(mux)
 	r.registerExceptionRoutes(mux)

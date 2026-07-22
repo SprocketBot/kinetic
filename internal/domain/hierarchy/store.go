@@ -19,6 +19,14 @@ type PlayerStore interface {
 	SetPlayerActive(ctx context.Context, input SetPlayerActiveInput) (Player, error)
 }
 
+type IdentityStore interface {
+	UpsertUser(ctx context.Context, input UpsertUserInput) (User, error)
+	CreateGame(ctx context.Context, input CreateGameInput) (Game, error)
+	ListGames(ctx context.Context) ([]Game, error)
+	CreateUserPlayer(ctx context.Context, input CreateUserPlayerInput) (UserPlayer, error)
+	ListUserPlayers(ctx context.Context, userID int64) ([]UserPlayer, error)
+}
+
 type RosterStore interface {
 	CreateRosterMembership(ctx context.Context, input CreateRosterMembershipInput) (RosterMembership, error)
 	ListRosterMemberships(ctx context.Context) ([]RosterMembership, error)
@@ -130,6 +138,7 @@ type SchedulingStore interface {
 type Store interface {
 	LeagueStore
 	PlayerStore
+	IdentityStore
 	RosterStore
 	RoleStore
 	QueueStore
