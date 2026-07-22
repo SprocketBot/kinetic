@@ -1407,6 +1407,10 @@ components:
           format: int64
         subject:
           type: string
+        playerId:
+          type: integer
+          format: int64
+          nullable: true
         provider:
           type: string
           description: "OAuth provider identifier (e.g. 'discord')."
@@ -2428,6 +2432,13 @@ paths:
       tags:
         - platform-accounts
       parameters:
+        - name: playerId
+          in: query
+          required: false
+          description: "A game-specific player owned by the authenticated user."
+          schema:
+            type: integer
+            format: int64
         - name: subject
           in: query
           required: false
@@ -2464,6 +2475,10 @@ paths:
                 subject:
                   type: string
                   description: "Defaults to the session principal's subject when omitted."
+                playerId:
+                  type: integer
+                  format: int64
+                  description: "Game-specific player that owns this account. Requires an authenticated owner."
                 provider:
                   type: string
                 providerAccountId:

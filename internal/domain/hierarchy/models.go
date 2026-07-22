@@ -136,6 +136,7 @@ type QueueBan struct {
 type PlatformAccountLink struct {
 	ID                  int64      `json:"id"`
 	Subject             string     `json:"subject"`
+	PlayerID            *int64     `json:"playerId,omitempty"`
 	Provider            string     `json:"provider"`
 	ProviderAccountID   string     `json:"providerAccountId"`
 	ProviderAccountName string     `json:"providerAccountName"`
@@ -474,6 +475,7 @@ type UnbanPlayerFromQueueInput struct {
 
 type LinkPlatformAccountInput struct {
 	Subject             string `json:"subject"`
+	PlayerID            *int64 `json:"playerId,omitempty"`
 	Provider            string `json:"provider"`
 	ProviderAccountID   string `json:"providerAccountId"`
 	ProviderAccountName string `json:"providerAccountName"`
@@ -481,6 +483,7 @@ type LinkPlatformAccountInput struct {
 
 type UnlinkPlatformAccountInput struct {
 	Subject           string `json:"subject"`
+	PlayerID          *int64 `json:"playerId,omitempty"`
 	Provider          string `json:"provider"`
 	ProviderAccountID string `json:"providerAccountId"`
 }

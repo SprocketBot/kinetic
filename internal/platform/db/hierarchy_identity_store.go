@@ -135,3 +135,12 @@ ORDER BY g.id ASC;`
 	}
 	return players, rows.Err()
 }
+
+func (s *HierarchyStore) UserOwnsPlayer(ctx context.Context, userID, playerID int64) (bool, error) {
+	if userID <= 0 || playerID <= 0 {
+		return false, fmt.Errorf("%w: userId and playerId must be greater than zero", hierarchy.ErrInvalidInput)
+	}
+	var exists bool
+	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_players WHERE user_id = $1 AND player_id = $2)`, userID, playerID).Scan(&exists)
+	return exists, err
+}

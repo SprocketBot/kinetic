@@ -25,6 +25,7 @@ type IdentityStore interface {
 	ListGames(ctx context.Context) ([]Game, error)
 	CreateUserPlayer(ctx context.Context, input CreateUserPlayerInput) (UserPlayer, error)
 	ListUserPlayers(ctx context.Context, userID int64) ([]UserPlayer, error)
+	UserOwnsPlayer(ctx context.Context, userID, playerID int64) (bool, error)
 }
 
 type RosterStore interface {
@@ -59,6 +60,7 @@ type PlatformAccountStore interface {
 	LinkPlatformAccount(ctx context.Context, input LinkPlatformAccountInput) (PlatformAccountLink, error)
 	UnlinkPlatformAccount(ctx context.Context, input UnlinkPlatformAccountInput) (PlatformAccountLink, error)
 	ListPlatformAccountLinks(ctx context.Context, subject string) ([]PlatformAccountLink, error)
+	ListPlatformAccountLinksByPlayerID(ctx context.Context, playerID int64) ([]PlatformAccountLink, error)
 }
 
 type EligibilityStore interface {

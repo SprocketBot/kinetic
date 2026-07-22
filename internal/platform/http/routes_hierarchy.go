@@ -4,6 +4,7 @@ import (
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -300,6 +301,39 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 
 		switch r.Method {
 		case http.MethodGet:
+			if playerIDRaw := strings.TrimSpace(r.URL.Query().Get("playerId")); playerIDRaw != "" {
+				playerID, err := strconv.ParseInt(playerIDRaw, 10, 64)
+				if err != nil || playerID <= 0 {
+					http.Error(w, "playerId must be a positive integer", http.StatusBadRequest)
+					return
+				}
+				principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore)
+				if !ok {
+					http.Error(w, "authentication required", http.StatusUnauthorized)
+					return
+				}
+				user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+				if err != nil {
+					http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+					return
+				}
+				owns, err := deps.IdentityStore.UserOwnsPlayer(r.Context(), user.ID, playerID)
+				if err != nil {
+					http.Error(w, "failed to verify player ownership", http.StatusInternalServerError)
+					return
+				}
+				if !owns {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				links, err := deps.PlatformStore.ListPlatformAccountLinksByPlayerID(r.Context(), playerID)
+				if err != nil {
+					http.Error(w, "failed to list platform account links", http.StatusInternalServerError)
+					return
+				}
+				writeJSON(w, http.StatusOK, links)
+				return
+			}
 			subject := strings.TrimSpace(r.URL.Query().Get("subject"))
 			if subject == "" {
 				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
@@ -338,6 +372,28 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 				if sessionPrincipal, ok := readSessionPrincipal(r, sessionCookieName, sessionSecret); ok {
 					input.Subject = sessionPrincipal.Subject
 				}
+			}
+			if input.PlayerID != nil {
+				principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore)
+				if !ok {
+					http.Error(w, "authentication required", http.StatusUnauthorized)
+					return
+				}
+				user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+				if err != nil {
+					http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+					return
+				}
+				owns, err := deps.IdentityStore.UserOwnsPlayer(r.Context(), user.ID, *input.PlayerID)
+				if err != nil {
+					http.Error(w, "failed to verify player ownership", http.StatusInternalServerError)
+					return
+				}
+				if !owns {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+				input.Subject = principal.Subject
 			}
 			link, err := deps.PlatformStore.LinkPlatformAccount(r.Context(), input)
 			if err != nil {

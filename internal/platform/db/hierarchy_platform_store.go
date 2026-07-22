@@ -16,13 +16,14 @@ func (s *HierarchyStore) LinkPlatformAccount(ctx context.Context, input hierarch
 	}
 
 	const stmt = `
-INSERT INTO platform_account_links(subject, provider, provider_account_id, provider_account_name)
-VALUES ($1, $2, $3, $4)
-RETURNING id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
+INSERT INTO platform_account_links(subject, player_id, provider, provider_account_id, provider_account_name)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, subject, player_id, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
 	var link hierarchy.PlatformAccountLink
-	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID, input.ProviderAccountName).Scan(
+	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.PlayerID, input.Provider, input.ProviderAccountID, input.ProviderAccountName).Scan(
 		&link.ID,
 		&link.Subject,
+		&link.PlayerID,
 		&link.Provider,
 		&link.ProviderAccountID,
 		&link.ProviderAccountName,
@@ -48,11 +49,12 @@ WHERE subject = $1
   AND provider = $2
   AND provider_account_id = $3
   AND is_active = TRUE
-RETURNING id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
+RETURNING id, subject, player_id, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at;`
 	var link hierarchy.PlatformAccountLink
 	err := s.db.QueryRowContext(ctx, stmt, input.Subject, input.Provider, input.ProviderAccountID).Scan(
 		&link.ID,
 		&link.Subject,
+		&link.PlayerID,
 		&link.Provider,
 		&link.ProviderAccountID,
 		&link.ProviderAccountName,
@@ -71,7 +73,7 @@ RETURNING id, subject, provider, provider_account_id, provider_account_name, is_
 
 func (s *HierarchyStore) ListPlatformAccountLinks(ctx context.Context, subject string) ([]hierarchy.PlatformAccountLink, error) {
 	const stmt = `
-SELECT id, subject, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at
+SELECT id, subject, player_id, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at
 FROM platform_account_links
 WHERE subject = $1
 ORDER BY id DESC;`
@@ -87,6 +89,7 @@ ORDER BY id DESC;`
 		if err := rows.Scan(
 			&link.ID,
 			&link.Subject,
+			&link.PlayerID,
 			&link.Provider,
 			&link.ProviderAccountID,
 			&link.ProviderAccountName,
@@ -94,6 +97,31 @@ ORDER BY id DESC;`
 			&link.LinkedAt,
 			&link.UnlinkedAt,
 		); err != nil {
+			return nil, err
+		}
+		links = append(links, link)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return links, nil
+}
+
+func (s *HierarchyStore) ListPlatformAccountLinksByPlayerID(ctx context.Context, playerID int64) ([]hierarchy.PlatformAccountLink, error) {
+	const stmt = `
+SELECT id, subject, player_id, provider, provider_account_id, provider_account_name, is_active, linked_at, unlinked_at
+FROM platform_account_links
+WHERE player_id = $1
+ORDER BY id DESC;`
+	rows, err := s.db.QueryContext(ctx, stmt, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	links := make([]hierarchy.PlatformAccountLink, 0)
+	for rows.Next() {
+		var link hierarchy.PlatformAccountLink
+		if err := rows.Scan(&link.ID, &link.Subject, &link.PlayerID, &link.Provider, &link.ProviderAccountID, &link.ProviderAccountName, &link.IsActive, &link.LinkedAt, &link.UnlinkedAt); err != nil {
 			return nil, err
 		}
 		links = append(links, link)

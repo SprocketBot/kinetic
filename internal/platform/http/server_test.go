@@ -39,6 +39,8 @@ type fakeHierarchyStore struct {
 	userPlayerToReturn       hierarchy.UserPlayer
 	userPlayersToList        []hierarchy.UserPlayer
 	createUserPlayerInput    hierarchy.CreateUserPlayerInput
+	linkPlatformInput        hierarchy.LinkPlatformAccountInput
+	ownsPlayer               bool
 	membershipToReturn       hierarchy.RosterMembership
 	roleAssignmentToReturn   hierarchy.RoleAssignment
 	queueToReturn            hierarchy.Queue
@@ -166,6 +168,9 @@ func (f *fakeHierarchyStore) CreateUserPlayer(_ context.Context, input hierarchy
 func (f *fakeHierarchyStore) ListUserPlayers(_ context.Context, _ int64) ([]hierarchy.UserPlayer, error) {
 	return f.userPlayersToList, nil
 }
+func (f *fakeHierarchyStore) UserOwnsPlayer(_ context.Context, _, _ int64) (bool, error) {
+	return f.ownsPlayer, nil
+}
 func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
 	return f.membershipToReturn, f.createMemberErr
 }
@@ -199,7 +204,8 @@ func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQu
 func (f *fakeHierarchyStore) ListQueues(_ context.Context) ([]hierarchy.Queue, error) {
 	return f.queuesToList, nil
 }
-func (f *fakeHierarchyStore) LinkPlatformAccount(_ context.Context, _ hierarchy.LinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+func (f *fakeHierarchyStore) LinkPlatformAccount(_ context.Context, input hierarchy.LinkPlatformAccountInput) (hierarchy.PlatformAccountLink, error) {
+	f.linkPlatformInput = input
 	if len(f.platformLinksToList) > 0 {
 		return f.platformLinksToList[0], f.linkPlatformErr
 	}
@@ -212,6 +218,9 @@ func (f *fakeHierarchyStore) UnlinkPlatformAccount(_ context.Context, _ hierarch
 	return hierarchy.PlatformAccountLink{}, f.unlinkPlatformErr
 }
 func (f *fakeHierarchyStore) ListPlatformAccountLinks(_ context.Context, _ string) ([]hierarchy.PlatformAccountLink, error) {
+	return f.platformLinksToList, nil
+}
+func (f *fakeHierarchyStore) ListPlatformAccountLinksByPlayerID(_ context.Context, _ int64) ([]hierarchy.PlatformAccountLink, error) {
 	return f.platformLinksToList, nil
 }
 func (f *fakeHierarchyStore) GetEligibilityStatus(_ context.Context, _ string) (hierarchy.EligibilityStatus, error) {
@@ -852,6 +861,43 @@ func TestLinkPlatformAccountSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+}
+
+func TestLinkPlatformAccountBindsOnlyOwnedPlayer(t *testing.T) {
+	playerID := int64(42)
+	store := &fakeHierarchyStore{
+		userToReturn: hierarchy.User{ID: 7, Subject: "jake", DisplayName: "Jake"},
+		ownsPlayer:   true,
+		platformLinksToList: []hierarchy.PlatformAccountLink{{
+			ID: 1, Subject: "jake", PlayerID: &playerID, Provider: "steam", ProviderAccountID: "steam-42", IsActive: true, LinkedAt: time.Now().UTC(),
+		}},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/platform-accounts/link", strings.NewReader(`{"subject":"other-user","playerId":42,"provider":"steam","providerAccountId":"steam-42","providerAccountName":"Jake"}`))
+	req.Header.Set("Authorization", "Bearer local:jake:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+	if store.linkPlatformInput.Subject != "jake" || store.linkPlatformInput.PlayerID == nil || *store.linkPlatformInput.PlayerID != playerID {
+		t.Fatalf("expected session-owned player link, got %#v", store.linkPlatformInput)
+	}
+}
+
+func TestLinkPlatformAccountRejectsUnownedPlayer(t *testing.T) {
+	playerID := int64(42)
+	store := &fakeHierarchyStore{userToReturn: hierarchy.User{ID: 7, Subject: "jake", DisplayName: "Jake"}}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/platform-accounts/link", strings.NewReader(`{"playerId":42,"provider":"steam","providerAccountId":"steam-42","providerAccountName":"Jake"}`))
+	req.Header.Set("Authorization", "Bearer local:jake:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d for player %d, got %d body=%s", http.StatusForbidden, playerID, rr.Code, rr.Body.String())
 	}
 }
 
