@@ -290,6 +290,9 @@ type ReplayParseRun struct {
 	ParserConfigDigest string          `json:"parserConfigDigest"`
 	Status             string          `json:"status"`
 	OutputJSON         json.RawMessage `json:"outputJson"`
+	FailureReason      *string         `json:"failureReason,omitempty"`
+	StartedAt          *time.Time      `json:"startedAt,omitempty"`
+	FinishedAt         *time.Time      `json:"finishedAt,omitempty"`
 	CreatedAt          time.Time       `json:"createdAt"`
 }
 

@@ -1818,6 +1818,12 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 	if firstIngest.Duplicate {
 		t.Fatal("expected first ingest to be non-duplicate")
 	}
+	if firstIngest.Evidence.State != "received" {
+		t.Fatalf("expected received evidence, got %q", firstIngest.Evidence.State)
+	}
+	if firstIngest.ParseRun.Status != "queued" {
+		t.Fatalf("expected queued parse run, got %q", firstIngest.ParseRun.Status)
+	}
 
 	secondIngest, err := store.IngestReplayEvidence(ctx, hierarchy.IngestReplayEvidenceInput{
 		ContextType:        "scrim",

@@ -1,7 +1,6 @@
 package http
 
 import (
-	"context"
 	"fmt"
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
@@ -192,14 +191,6 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 				handleHierarchyError(w, err)
 				return
 			}
-			// Trigger async stub replay parse in the background.
-			go func() {
-				bgCtx := context.Background()
-				if triggerErr := deps.ReplayStore.TriggerReplayParse(bgCtx, result.Evidence.ID, input.ContextID, input.ContextType); triggerErr != nil {
-					// Log only — the HTTP response has already been sent.
-					_ = triggerErr
-				}
-			}()
 			status := http.StatusCreated
 			if result.Duplicate {
 				status = http.StatusOK

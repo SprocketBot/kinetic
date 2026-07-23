@@ -82,6 +82,7 @@ type fakeHierarchyStore struct {
 	replayEvidenceToList     []hierarchy.ReplayEvidence
 	replayParseRunsToList    []hierarchy.ReplayParseRun
 	replayLinksToList        []hierarchy.ResultSubmissionReplayLink
+	triggerReplayParseCalled bool
 	exceptionToReturn        hierarchy.ExceptionTicket
 	exceptionResultToReturn  hierarchy.ExceptionAutomationResult
 	exceptionActionsToList   []hierarchy.ExceptionAction
@@ -444,6 +445,7 @@ func (f *fakeHierarchyStore) GetActiveScrimByPlayerID(_ context.Context, _ int64
 	return nil, nil
 }
 func (f *fakeHierarchyStore) TriggerReplayParse(_ context.Context, _, _ int64, _ string) error {
+	f.triggerReplayParseCalled = true
 	return nil
 }
 
@@ -907,6 +909,9 @@ func TestLinkPlatformAccountSuccess(t *testing.T) {
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+	if store.triggerReplayParseCalled {
+		t.Fatal("expected replay evidence ingestion to queue parsing without executing the legacy stub")
 	}
 }
 
@@ -1498,7 +1503,7 @@ func TestIngestReplayEvidenceSuccess(t *testing.T) {
 				ParserName:         "kinetic-rl-parser",
 				ParserVersion:      "v0.1.0",
 				ParserConfigDigest: "cfg-001",
-				Status:             "parsed",
+				Status:             "queued",
 				OutputJSON:         []byte(`{"goals":4}`),
 				CreatedAt:          now,
 			},

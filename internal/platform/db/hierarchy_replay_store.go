@@ -28,11 +28,6 @@ func (s *HierarchyStore) IngestReplayEvidence(ctx context.Context, input hierarc
 	contentHash := sha256.Sum256([]byte(input.ReplayBody))
 	replaySHA256 := hex.EncodeToString(contentHash[:])
 	contentSizeBytes := int64(len(input.ReplayBody))
-	output := input.ParseOutputJSON
-	if len(output) == 0 {
-		output = []byte(`{}`)
-	}
-
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return hierarchy.ReplayIngestionResult{}, err
@@ -74,9 +69,10 @@ INSERT INTO replay_evidence(
 	replay_sha256,
 	content_size_bytes,
 	storage_ref,
-	state
+	state,
+	replay_body
 )
-VALUES ($1, $2, $3, $4, $5, $6, 'parsed')
+VALUES ($1, $2, $3, $4, $5, $6, 'received', $7)
 RETURNING id, context_type, context_id, submitted_by_team_id, replay_sha256, content_size_bytes, storage_ref, state, created_at;`
 		if err := tx.QueryRowContext(
 			ctx,
@@ -87,6 +83,7 @@ RETURNING id, context_type, context_id, submitted_by_team_id, replay_sha256, con
 			replaySHA256,
 			contentSizeBytes,
 			fmt.Sprintf("inline-sha256:%s", replaySHA256),
+			input.ReplayBody,
 		).Scan(
 			&result.Evidence.ID,
 			&result.Evidence.ContextType,
@@ -113,7 +110,7 @@ INSERT INTO replay_parse_runs(
 	status,
 	output_json
 )
-VALUES ($1, $2, $3, $4, 'parsed', $5)
+VALUES ($1, $2, $3, $4, 'queued', '{}')
 RETURNING id, replay_evidence_id, parser_name, parser_version, parser_config_digest, status, output_json, created_at;`
 	if err := tx.QueryRowContext(
 		ctx,
@@ -122,7 +119,6 @@ RETURNING id, replay_evidence_id, parser_name, parser_version, parser_config_dig
 		input.ParserName,
 		input.ParserVersion,
 		input.ParserConfigDigest,
-		output,
 	).Scan(
 		&result.ParseRun.ID,
 		&result.ParseRun.ReplayEvidenceID,
@@ -173,7 +169,7 @@ ON CONFLICT (result_submission_id, replay_evidence_id) DO NOTHING;`
 		}
 		result.LinkedSubmissionID = input.ResultSubmissionID
 
-		autofillJSON, conflictJSON, provenanceJSON, err := buildReplayReviewMetadata(output, submissionPayload, submissionProvenance)
+		autofillJSON, conflictJSON, provenanceJSON, err := buildReplayReviewMetadata(nil, submissionPayload, submissionProvenance)
 		if err != nil {
 			return hierarchy.ReplayIngestionResult{}, err
 		}
@@ -277,7 +273,7 @@ ORDER BY id ASC;`
 
 func (s *HierarchyStore) ListReplayParseRuns(ctx context.Context) ([]hierarchy.ReplayParseRun, error) {
 	const stmt = `
-SELECT id, replay_evidence_id, parser_name, parser_version, parser_config_digest, status, output_json, created_at
+SELECT id, replay_evidence_id, parser_name, parser_version, parser_config_digest, status, output_json, failure_reason, started_at, finished_at, created_at
 FROM replay_parse_runs
 ORDER BY id ASC;`
 	rows, err := s.db.QueryContext(ctx, stmt)
@@ -297,6 +293,9 @@ ORDER BY id ASC;`
 			&run.ParserConfigDigest,
 			&run.Status,
 			&run.OutputJSON,
+			&run.FailureReason,
+			&run.StartedAt,
+			&run.FinishedAt,
 			&run.CreatedAt,
 		); err != nil {
 			return nil, err
