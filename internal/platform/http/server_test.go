@@ -198,6 +198,9 @@ func (f *fakeHierarchyStore) RevokeRole(_ context.Context, _ hierarchy.RevokeRol
 func (f *fakeHierarchyStore) ListRoleAssignments(_ context.Context) ([]hierarchy.RoleAssignment, error) {
 	return f.roleAssignmentsToList, nil
 }
+func (f *fakeHierarchyStore) ResolveScopedRoles(_ context.Context, _ hierarchy.ResolveScopedRolesInput) ([]string, error) {
+	return nil, nil
+}
 func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
 	return f.queueToReturn, f.createQueueErr
 }

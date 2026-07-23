@@ -430,6 +430,17 @@ type CreateRosterMembershipInput struct {
 	TeamID   int64 `json:"teamId"`
 }
 
+// ResolveScopedRolesInput identifies a fully resolved hierarchy path. All
+// populated scope IDs are candidates for a matching active role assignment;
+// GameID ensures a user's player identity cannot authorize another game.
+type ResolveScopedRolesInput struct {
+	UserID      int64
+	GameID      int64
+	FranchiseID *int64
+	ClubID      *int64
+	TeamID      *int64
+}
+
 type AssignRoleInput struct {
 	ActorPlayerID  int64  `json:"actorPlayerId"`
 	TargetPlayerID int64  `json:"targetPlayerId"`

@@ -39,6 +39,7 @@ type RoleStore interface {
 	AssignRole(ctx context.Context, input AssignRoleInput) (RoleAssignment, error)
 	RevokeRole(ctx context.Context, input RevokeRoleInput) (RoleAssignment, error)
 	ListRoleAssignments(ctx context.Context) ([]RoleAssignment, error)
+	ResolveScopedRoles(ctx context.Context, input ResolveScopedRolesInput) ([]string, error)
 }
 
 type QueueStore interface {
