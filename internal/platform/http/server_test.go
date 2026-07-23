@@ -40,6 +40,9 @@ type fakeHierarchyStore struct {
 	userPlayersToList        []hierarchy.UserPlayer
 	createUserPlayerInput    hierarchy.CreateUserPlayerInput
 	linkPlatformInput        hierarchy.LinkPlatformAccountInput
+	assignRoleInput          hierarchy.AssignRoleInput
+	revokeRoleInput          hierarchy.RevokeRoleInput
+	actorPlayerID            int64
 	ownsPlayer               bool
 	membershipToReturn       hierarchy.RosterMembership
 	roleAssignmentToReturn   hierarchy.RoleAssignment
@@ -60,6 +63,7 @@ type fakeHierarchyStore struct {
 	playersToList            []hierarchy.Player
 	membershipsToList        []hierarchy.RosterMembership
 	roleAssignmentsToList    []hierarchy.RoleAssignment
+	scopedRoles              []string
 	queuesToList             []hierarchy.Queue
 	platformLinksToList      []hierarchy.PlatformAccountLink
 	queueEntriesToList       []hierarchy.QueueEntry
@@ -172,6 +176,9 @@ func (f *fakeHierarchyStore) UserOwnsPlayer(_ context.Context, _, _ int64) (bool
 	return f.ownsPlayer, nil
 }
 func (f *fakeHierarchyStore) GetUserPlayerIDForGame(_ context.Context, _, _ int64) (int64, error) {
+	if f.actorPlayerID != 0 {
+		return f.actorPlayerID, nil
+	}
 	return 1, nil
 }
 func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
@@ -180,7 +187,8 @@ func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarc
 func (f *fakeHierarchyStore) ListRosterMemberships(_ context.Context) ([]hierarchy.RosterMembership, error) {
 	return f.membershipsToList, nil
 }
-func (f *fakeHierarchyStore) AssignRole(_ context.Context, _ hierarchy.AssignRoleInput) (hierarchy.RoleAssignment, error) {
+func (f *fakeHierarchyStore) AssignRole(_ context.Context, input hierarchy.AssignRoleInput) (hierarchy.RoleAssignment, error) {
+	f.assignRoleInput = input
 	if f.roleAssignmentToReturn.ID != 0 {
 		return f.roleAssignmentToReturn, f.assignRoleErr
 	}
@@ -189,7 +197,8 @@ func (f *fakeHierarchyStore) AssignRole(_ context.Context, _ hierarchy.AssignRol
 	}
 	return hierarchy.RoleAssignment{}, f.assignRoleErr
 }
-func (f *fakeHierarchyStore) RevokeRole(_ context.Context, _ hierarchy.RevokeRoleInput) (hierarchy.RoleAssignment, error) {
+func (f *fakeHierarchyStore) RevokeRole(_ context.Context, input hierarchy.RevokeRoleInput) (hierarchy.RoleAssignment, error) {
+	f.revokeRoleInput = input
 	if f.roleAssignmentToReturn.ID != 0 {
 		return f.roleAssignmentToReturn, f.revokeRoleErr
 	}
@@ -202,7 +211,7 @@ func (f *fakeHierarchyStore) ListRoleAssignments(_ context.Context) ([]hierarchy
 	return f.roleAssignmentsToList, nil
 }
 func (f *fakeHierarchyStore) ResolveScopedRoles(_ context.Context, _ hierarchy.ResolveScopedRolesInput) ([]string, error) {
-	return nil, nil
+	return f.scopedRoles, nil
 }
 func (f *fakeHierarchyStore) ResolveRoleScope(_ context.Context, _ string, franchiseID, clubID, teamID *int64) (hierarchy.HierarchyScope, error) {
 	return hierarchy.HierarchyScope{GameID: 1, FranchiseID: franchiseID, ClubID: clubID, TeamID: teamID}, nil
@@ -1648,6 +1657,8 @@ func TestScrimPromotionRequiresAuthentication(t *testing.T) {
 func TestFranchiseManagerCanAssignRole(t *testing.T) {
 	now := time.Now().UTC()
 	store := &fakeHierarchyStore{
+		scopedRoles:   []string{"fm"},
+		actorPlayerID: 77,
 		roleAssignmentToReturn: hierarchy.RoleAssignment{
 			ID:                      1,
 			PlayerID:                22,
@@ -1662,13 +1673,40 @@ func TestFranchiseManagerCanAssignRole(t *testing.T) {
 		HierarchyStore: store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(`{"actorPlayerId":11,"targetPlayerId":22,"role":"captain","reason":"team staffing"}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments", strings.NewReader(`{"actorPlayerId":999,"targetPlayerId":22,"role":"captain","reason":"team staffing"}`))
 	req.Header.Set("Authorization", "Bearer local:alice:fm")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusCreated, rr.Code, rr.Body.String())
+	}
+	if store.assignRoleInput.ActorPlayerID != 77 {
+		t.Fatalf("expected authenticated actor player 77, got %d", store.assignRoleInput.ActorPlayerID)
+	}
+}
+
+func TestFranchiseManagerCanRevokeRole(t *testing.T) {
+	now := time.Now().UTC()
+	store := &fakeHierarchyStore{
+		scopedRoles:   []string{"fm"},
+		actorPlayerID: 77,
+		roleAssignmentToReturn: hierarchy.RoleAssignment{
+			ID: 1, PlayerID: 22, Role: "gm", IsActive: false,
+			AssignedAt: now.Add(-time.Hour), RevokedAt: &now,
+		},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/role-assignments/revoke", strings.NewReader(`{"actorPlayerId":999,"assignmentId":1,"reason":"role realignment"}`))
+	req.Header.Set("Authorization", "Bearer local:alice:fm")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if store.revokeRoleInput.ActorPlayerID != 77 {
+		t.Fatalf("expected authenticated actor player 77, got %d", store.revokeRoleInput.ActorPlayerID)
 	}
 }
 

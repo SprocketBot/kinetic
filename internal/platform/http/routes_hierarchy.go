@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
 	"net/http"
 	"strconv"
 	"strings"
@@ -216,14 +217,21 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 			}
 			writeJSON(w, http.StatusOK, assignments)
 		case http.MethodPost:
-			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceRoleAssignment, authz.ActionCreate) {
-				return
-			}
 			var input hierarchy.AssignRoleInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
+			scope, err := deps.RoleStore.ResolveRoleScope(r.Context(), input.Role, input.FranchiseID, input.ClubID, input.TeamID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			actorPlayerID, ok := authorizeScopedRoleMutation(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionCreate)
+			if !ok {
+				return
+			}
+			input.ActorPlayerID = actorPlayerID
 			assignment, err := deps.RoleStore.AssignRole(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
@@ -243,14 +251,21 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 
 		switch r.Method {
 		case http.MethodPost:
-			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceRoleAssignment, authz.ActionRevoke) {
-				return
-			}
 			var input hierarchy.RevokeRoleInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
+			scope, err := deps.RoleStore.ResolveAssignmentScope(r.Context(), input.AssignmentID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			actorPlayerID, ok := authorizeScopedRoleMutation(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionRevoke)
+			if !ok {
+				return
+			}
+			input.ActorPlayerID = actorPlayerID
 			assignment, err := deps.RoleStore.RevokeRole(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
@@ -486,4 +501,42 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+}
+
+func authorizeScopedRoleMutation(w http.ResponseWriter, r *http.Request, deps Dependencies, tokenValidator auth.TokenValidator, evaluator authz.Evaluator, cookieName, secret string, scope hierarchy.HierarchyScope, action authz.Action) (int64, bool) {
+	principal, ok := readRequestPrincipal(r, cookieName, secret, tokenValidator, deps.APITokenStore)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return 0, false
+	}
+	user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+	if err != nil {
+		http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+		return 0, false
+	}
+	actorPlayerID, err := deps.IdentityStore.GetUserPlayerIDForGame(r.Context(), user.ID, scope.GameID)
+	if err != nil {
+		handleHierarchyError(w, err)
+		return 0, false
+	}
+	scopedRoles, err := deps.RoleStore.ResolveScopedRoles(r.Context(), hierarchy.ResolveScopedRolesInput{UserID: user.ID, GameID: scope.GameID, FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID})
+	if err != nil {
+		http.Error(w, "failed to resolve scoped roles", http.StatusInternalServerError)
+		return 0, false
+	}
+	if !evaluator.AllowedInContext(globalAuthorityRoles(principal.Roles), scopedRoles, authz.ResourceRoleAssignment, action, authz.AuthzContext{FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID}) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return 0, false
+	}
+	return actorPlayerID, true
+}
+
+func globalAuthorityRoles(roles []string) []string {
+	result := make([]string, 0, len(roles))
+	for _, role := range roles {
+		if role == "admin" || role == "operator" {
+			result = append(result, role)
+		}
+	}
+	return result
 }
