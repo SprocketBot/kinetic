@@ -441,6 +441,13 @@ type ResolveScopedRolesInput struct {
 	TeamID      *int64
 }
 
+type HierarchyScope struct {
+	GameID      int64
+	FranchiseID *int64
+	ClubID      *int64
+	TeamID      *int64
+}
+
 type AssignRoleInput struct {
 	ActorPlayerID  int64  `json:"actorPlayerId"`
 	TargetPlayerID int64  `json:"targetPlayerId"`

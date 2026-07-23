@@ -144,3 +144,12 @@ func (s *HierarchyStore) UserOwnsPlayer(ctx context.Context, userID, playerID in
 	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM user_players WHERE user_id = $1 AND player_id = $2)`, userID, playerID).Scan(&exists)
 	return exists, err
 }
+
+func (s *HierarchyStore) GetUserPlayerIDForGame(ctx context.Context, userID, gameID int64) (int64, error) {
+	var playerID int64
+	err := s.db.QueryRowContext(ctx, `SELECT player_id FROM user_players WHERE user_id = $1 AND game_id = $2`, userID, gameID).Scan(&playerID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, fmt.Errorf("%w: user has no player for game", hierarchy.ErrDependency)
+	}
+	return playerID, err
+}

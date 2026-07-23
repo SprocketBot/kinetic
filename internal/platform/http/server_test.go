@@ -171,6 +171,9 @@ func (f *fakeHierarchyStore) ListUserPlayers(_ context.Context, _ int64) ([]hier
 func (f *fakeHierarchyStore) UserOwnsPlayer(_ context.Context, _, _ int64) (bool, error) {
 	return f.ownsPlayer, nil
 }
+func (f *fakeHierarchyStore) GetUserPlayerIDForGame(_ context.Context, _, _ int64) (int64, error) {
+	return 1, nil
+}
 func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
 	return f.membershipToReturn, f.createMemberErr
 }
@@ -200,6 +203,12 @@ func (f *fakeHierarchyStore) ListRoleAssignments(_ context.Context) ([]hierarchy
 }
 func (f *fakeHierarchyStore) ResolveScopedRoles(_ context.Context, _ hierarchy.ResolveScopedRolesInput) ([]string, error) {
 	return nil, nil
+}
+func (f *fakeHierarchyStore) ResolveRoleScope(_ context.Context, _ string, franchiseID, clubID, teamID *int64) (hierarchy.HierarchyScope, error) {
+	return hierarchy.HierarchyScope{GameID: 1, FranchiseID: franchiseID, ClubID: clubID, TeamID: teamID}, nil
+}
+func (f *fakeHierarchyStore) ResolveAssignmentScope(_ context.Context, _ int64) (hierarchy.HierarchyScope, error) {
+	return hierarchy.HierarchyScope{GameID: 1}, nil
 }
 func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
 	return f.queueToReturn, f.createQueueErr

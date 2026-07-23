@@ -26,6 +26,7 @@ type IdentityStore interface {
 	CreateUserPlayer(ctx context.Context, input CreateUserPlayerInput) (UserPlayer, error)
 	ListUserPlayers(ctx context.Context, userID int64) ([]UserPlayer, error)
 	UserOwnsPlayer(ctx context.Context, userID, playerID int64) (bool, error)
+	GetUserPlayerIDForGame(ctx context.Context, userID, gameID int64) (int64, error)
 }
 
 type RosterStore interface {
@@ -40,6 +41,8 @@ type RoleStore interface {
 	RevokeRole(ctx context.Context, input RevokeRoleInput) (RoleAssignment, error)
 	ListRoleAssignments(ctx context.Context) ([]RoleAssignment, error)
 	ResolveScopedRoles(ctx context.Context, input ResolveScopedRolesInput) ([]string, error)
+	ResolveRoleScope(ctx context.Context, role string, franchiseID, clubID, teamID *int64) (HierarchyScope, error)
+	ResolveAssignmentScope(ctx context.Context, assignmentID int64) (HierarchyScope, error)
 }
 
 type QueueStore interface {
