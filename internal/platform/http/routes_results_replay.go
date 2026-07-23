@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
 	"net/http"
 )
 
@@ -100,13 +101,17 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
-			if principal, ok := readRequestPrincipal(r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore); ok {
-				input.RatifiedBySubject = principal.Subject
-				input.RatifiedByDisplayName = principal.DisplayName
-			} else {
-				input.RatifiedBySubject = fmt.Sprintf("team:%d:ratification", input.TeamID)
-				input.RatifiedByDisplayName = fmt.Sprintf("Team %d ratifier", input.TeamID)
+			scope, err := deps.RoleStore.ResolveTeamScope(r.Context(), input.TeamID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
 			}
+			principal, ok := authorizeScopedResultAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionRatify)
+			if !ok {
+				return
+			}
+			input.RatifiedBySubject = principal.Subject
+			input.RatifiedByDisplayName = principal.DisplayName
 			submission, err := deps.ResultStore.RatifyResultSubmission(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
@@ -129,6 +134,14 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 			var input hierarchy.RejectResultSubmissionInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
+				return
+			}
+			scope, err := deps.RoleStore.ResolveTeamScope(r.Context(), input.TeamID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			if _, ok := authorizeScopedResultAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionReject); !ok {
 				return
 			}
 			submission, err := deps.ResultStore.RejectResultSubmission(r.Context(), input)
@@ -268,4 +281,21 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
+}
+
+func authorizeScopedResultAction(w http.ResponseWriter, r *http.Request, deps Dependencies, tokenValidator auth.TokenValidator, evaluator authz.Evaluator, cookieName, secret string, scope hierarchy.HierarchyScope, action authz.Action) (auth.SessionPrincipal, bool) {
+	principal, ok := readRequestPrincipal(r, cookieName, secret, tokenValidator, deps.APITokenStore)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return auth.SessionPrincipal{}, false
+	}
+	user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+	if err != nil {
+		http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+		return auth.SessionPrincipal{}, false
+	}
+	if !allowedInScope(w, r, deps, evaluator, principal, user.ID, scope, authz.ResourceResultSubmission, action) {
+		return auth.SessionPrincipal{}, false
+	}
+	return principal, true
 }

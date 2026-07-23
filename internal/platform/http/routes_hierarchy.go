@@ -191,6 +191,14 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
+			scope, err := deps.RoleStore.ResolveTeamScope(r.Context(), input.TeamID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			if !authorizeScopedAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ResourceRosterMembership, authz.ActionCreate) {
+				return
+			}
 			membership, err := deps.RosterStore.CreateRosterMembership(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
@@ -519,16 +527,37 @@ func authorizeScopedRoleMutation(w http.ResponseWriter, r *http.Request, deps De
 		handleHierarchyError(w, err)
 		return 0, false
 	}
-	scopedRoles, err := deps.RoleStore.ResolveScopedRoles(r.Context(), hierarchy.ResolveScopedRolesInput{UserID: user.ID, GameID: scope.GameID, FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID})
-	if err != nil {
-		http.Error(w, "failed to resolve scoped roles", http.StatusInternalServerError)
-		return 0, false
-	}
-	if !evaluator.AllowedInContext(globalAuthorityRoles(principal.Roles), scopedRoles, authz.ResourceRoleAssignment, action, authz.AuthzContext{FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID}) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+	if !allowedInScope(w, r, deps, evaluator, principal, user.ID, scope, authz.ResourceRoleAssignment, action) {
 		return 0, false
 	}
 	return actorPlayerID, true
+}
+
+func authorizeScopedAction(w http.ResponseWriter, r *http.Request, deps Dependencies, tokenValidator auth.TokenValidator, evaluator authz.Evaluator, cookieName, secret string, scope hierarchy.HierarchyScope, resource authz.Resource, action authz.Action) bool {
+	principal, ok := readRequestPrincipal(r, cookieName, secret, tokenValidator, deps.APITokenStore)
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
+		return false
+	}
+	user, err := deps.IdentityStore.UpsertUser(r.Context(), hierarchy.UpsertUserInput{Subject: principal.Subject, DisplayName: principal.DisplayName})
+	if err != nil {
+		http.Error(w, "failed to resolve user", http.StatusInternalServerError)
+		return false
+	}
+	return allowedInScope(w, r, deps, evaluator, principal, user.ID, scope, resource, action)
+}
+
+func allowedInScope(w http.ResponseWriter, r *http.Request, deps Dependencies, evaluator authz.Evaluator, principal auth.SessionPrincipal, userID int64, scope hierarchy.HierarchyScope, resource authz.Resource, action authz.Action) bool {
+	scopedRoles, err := deps.RoleStore.ResolveScopedRoles(r.Context(), hierarchy.ResolveScopedRolesInput{UserID: userID, GameID: scope.GameID, FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID})
+	if err != nil {
+		http.Error(w, "failed to resolve scoped roles", http.StatusInternalServerError)
+		return false
+	}
+	if !evaluator.AllowedInContext(globalAuthorityRoles(principal.Roles), scopedRoles, resource, action, authz.AuthzContext{FranchiseID: scope.FranchiseID, ClubID: scope.ClubID, TeamID: scope.TeamID}) {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 func globalAuthorityRoles(roles []string) []string {

@@ -42,6 +42,9 @@ type fakeHierarchyStore struct {
 	linkPlatformInput        hierarchy.LinkPlatformAccountInput
 	assignRoleInput          hierarchy.AssignRoleInput
 	revokeRoleInput          hierarchy.RevokeRoleInput
+	createMembershipInput    hierarchy.CreateRosterMembershipInput
+	ratifySubmissionInput    hierarchy.RatifyResultSubmissionInput
+	rejectSubmissionInput    hierarchy.RejectResultSubmissionInput
 	actorPlayerID            int64
 	ownsPlayer               bool
 	membershipToReturn       hierarchy.RosterMembership
@@ -181,7 +184,8 @@ func (f *fakeHierarchyStore) GetUserPlayerIDForGame(_ context.Context, _, _ int6
 	}
 	return 1, nil
 }
-func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, _ hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
+func (f *fakeHierarchyStore) CreateRosterMembership(_ context.Context, input hierarchy.CreateRosterMembershipInput) (hierarchy.RosterMembership, error) {
+	f.createMembershipInput = input
 	return f.membershipToReturn, f.createMemberErr
 }
 func (f *fakeHierarchyStore) ListRosterMemberships(_ context.Context) ([]hierarchy.RosterMembership, error) {
@@ -218,6 +222,9 @@ func (f *fakeHierarchyStore) ResolveRoleScope(_ context.Context, _ string, franc
 }
 func (f *fakeHierarchyStore) ResolveAssignmentScope(_ context.Context, _ int64) (hierarchy.HierarchyScope, error) {
 	return hierarchy.HierarchyScope{GameID: 1}, nil
+}
+func (f *fakeHierarchyStore) ResolveTeamScope(_ context.Context, teamID int64) (hierarchy.HierarchyScope, error) {
+	return hierarchy.HierarchyScope{GameID: 1, TeamID: &teamID}, nil
 }
 func (f *fakeHierarchyStore) CreateQueue(_ context.Context, _ hierarchy.CreateQueueInput) (hierarchy.Queue, error) {
 	return f.queueToReturn, f.createQueueErr
@@ -323,10 +330,12 @@ func (f *fakeHierarchyStore) OverrideResultSubmission(_ context.Context, _ hiera
 func (f *fakeHierarchyStore) ListResultOverrides(_ context.Context) ([]hierarchy.ResultOverride, error) {
 	return f.resultOverridesToList, nil
 }
-func (f *fakeHierarchyStore) RatifyResultSubmission(_ context.Context, _ hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+func (f *fakeHierarchyStore) RatifyResultSubmission(_ context.Context, input hierarchy.RatifyResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	f.ratifySubmissionInput = input
 	return f.submissionToReturn, f.ratifySubmissionErr
 }
-func (f *fakeHierarchyStore) RejectResultSubmission(_ context.Context, _ hierarchy.RejectResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+func (f *fakeHierarchyStore) RejectResultSubmission(_ context.Context, input hierarchy.RejectResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	f.rejectSubmissionInput = input
 	return f.submissionToReturn, f.rejectSubmissionErr
 }
 func (f *fakeHierarchyStore) IngestReplayEvidence(_ context.Context, _ hierarchy.IngestReplayEvidenceInput) (hierarchy.ReplayIngestionResult, error) {
@@ -720,6 +729,7 @@ func TestCreatePlayerSuccess(t *testing.T) {
 func TestCreateRosterMembershipSuccess(t *testing.T) {
 	now := time.Now().UTC()
 	store := &fakeHierarchyStore{
+		scopedRoles: []string{"gm"},
 		membershipToReturn: hierarchy.RosterMembership{
 			ID:        1,
 			PlayerID:  10,
@@ -733,11 +743,24 @@ func TestCreateRosterMembershipSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/roster-memberships", strings.NewReader(`{"playerId":10,"teamId":20}`))
+	req.Header.Set("Authorization", "Bearer local:alice:gm")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, rr.Code)
+	}
+}
+
+func TestRosterMembershipRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/roster-memberships", strings.NewReader(`{"playerId":10,"teamId":20}`))
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusUnauthorized, rr.Code, rr.Body.String())
 	}
 }
 
@@ -1386,6 +1409,7 @@ func TestListResultOverridesSuccess(t *testing.T) {
 func TestRatifyResultSubmissionSuccess(t *testing.T) {
 	now := time.Now().UTC()
 	store := &fakeHierarchyStore{
+		scopedRoles: []string{"captain"},
 		submissionToReturn: hierarchy.ResultSubmission{
 			ID:             1,
 			ContextType:    "scrim",
@@ -1401,11 +1425,48 @@ func TestRatifyResultSubmissionSuccess(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/result-submission-ratifications", strings.NewReader(`{"submissionId":1,"teamId":20}`))
+	req.Header.Set("Authorization", "Bearer local:alice:captain")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if store.ratifySubmissionInput.RatifiedBySubject != "alice" {
+		t.Fatalf("expected authenticated subject alice, got %q", store.ratifySubmissionInput.RatifiedBySubject)
+	}
+}
+
+func TestCaptainCanRejectResultSubmission(t *testing.T) {
+	store := &fakeHierarchyStore{
+		scopedRoles:        []string{"captain"},
+		submissionToReturn: hierarchy.ResultSubmission{ID: 1, State: "rejected"},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-submission-rejections", strings.NewReader(`{"submissionId":1,"teamId":20,"reason":"score disputed"}`))
+	req.Header.Set("Authorization", "Bearer local:alice:captain")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+}
+
+func TestResultAttestationRequiresAuthentication(t *testing.T) {
+	store := &fakeHierarchyStore{}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	requests := map[string]string{
+		"/v1/result-submission-ratifications": `{"submissionId":1,"teamId":20}`,
+		"/v1/result-submission-rejections":    `{"submissionId":1,"teamId":20,"reason":"score disputed"}`,
+	}
+	for endpoint, body := range requests {
+		req := httptest.NewRequest(http.MethodPost, endpoint, strings.NewReader(body))
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, req)
+		if rr.Code != http.StatusUnauthorized {
+			t.Fatalf("%s: expected status %d, got %d body=%s", endpoint, http.StatusUnauthorized, rr.Code, rr.Body.String())
+		}
 	}
 }
 

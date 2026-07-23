@@ -44,6 +44,10 @@ func (s *HierarchyStore) ResolveAssignmentScope(ctx context.Context, assignmentI
 	return s.ResolveRoleScope(ctx, role, franchiseID, clubID, teamID)
 }
 
+func (s *HierarchyStore) ResolveTeamScope(ctx context.Context, teamID int64) (hierarchy.HierarchyScope, error) {
+	return s.scopeForTeam(ctx, teamID)
+}
+
 func (s *HierarchyStore) scopeForFranchise(ctx context.Context, franchiseID int64) (hierarchy.HierarchyScope, error) {
 	var gameID int64
 	err := s.db.QueryRowContext(ctx, `SELECT l.game_id FROM franchises f JOIN leagues l ON l.id = f.league_id WHERE f.id = $1`, franchiseID).Scan(&gameID)

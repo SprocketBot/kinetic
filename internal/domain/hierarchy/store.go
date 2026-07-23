@@ -43,6 +43,7 @@ type RoleStore interface {
 	ResolveScopedRoles(ctx context.Context, input ResolveScopedRolesInput) ([]string, error)
 	ResolveRoleScope(ctx context.Context, role string, franchiseID, clubID, teamID *int64) (HierarchyScope, error)
 	ResolveAssignmentScope(ctx context.Context, assignmentID int64) (HierarchyScope, error)
+	ResolveTeamScope(ctx context.Context, teamID int64) (HierarchyScope, error)
 }
 
 type QueueStore interface {
