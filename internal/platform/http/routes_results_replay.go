@@ -69,14 +69,26 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 			}
 			writeJSON(w, http.StatusOK, overrides)
 		case http.MethodPost:
-			if !checkPermission(w, r, sessionCookieName, sessionSecret, tokenValidator, deps.APITokenStore, evaluator, authz.ResourceResultOverride, authz.ActionCreate) {
-				return
-			}
 			var input hierarchy.OverrideResultSubmissionInput
 			if err := decodeJSON(r, &input); err != nil {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
+			existing, err := deps.ResultStore.GetResultSubmission(r.Context(), input.SubmissionID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			scope, err := deps.RoleStore.ResolveTeamScope(r.Context(), existing.HomeTeamID)
+			if err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
+			principal, ok := authorizeScopedPrincipalAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ResourceResultOverride, authz.ActionCreate)
+			if !ok {
+				return
+			}
+			input.Actor = principal.Subject
 			submission, err := deps.ResultStore.OverrideResultSubmission(r.Context(), input)
 			if err != nil {
 				handleHierarchyError(w, err)
@@ -106,7 +118,7 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 				handleHierarchyError(w, err)
 				return
 			}
-			principal, ok := authorizeScopedResultAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionRatify)
+			principal, ok := authorizeScopedPrincipalAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ResourceResultSubmission, authz.ActionRatify)
 			if !ok {
 				return
 			}
@@ -141,7 +153,7 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 				handleHierarchyError(w, err)
 				return
 			}
-			if _, ok := authorizeScopedResultAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ActionReject); !ok {
+			if _, ok := authorizeScopedPrincipalAction(w, r, deps, tokenValidator, evaluator, sessionCookieName, sessionSecret, scope, authz.ResourceResultSubmission, authz.ActionReject); !ok {
 				return
 			}
 			submission, err := deps.ResultStore.RejectResultSubmission(r.Context(), input)
@@ -283,7 +295,7 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 	})
 }
 
-func authorizeScopedResultAction(w http.ResponseWriter, r *http.Request, deps Dependencies, tokenValidator auth.TokenValidator, evaluator authz.Evaluator, cookieName, secret string, scope hierarchy.HierarchyScope, action authz.Action) (auth.SessionPrincipal, bool) {
+func authorizeScopedPrincipalAction(w http.ResponseWriter, r *http.Request, deps Dependencies, tokenValidator auth.TokenValidator, evaluator authz.Evaluator, cookieName, secret string, scope hierarchy.HierarchyScope, resource authz.Resource, action authz.Action) (auth.SessionPrincipal, bool) {
 	principal, ok := readRequestPrincipal(r, cookieName, secret, tokenValidator, deps.APITokenStore)
 	if !ok {
 		http.Error(w, "authentication required", http.StatusUnauthorized)
@@ -294,7 +306,7 @@ func authorizeScopedResultAction(w http.ResponseWriter, r *http.Request, deps De
 		http.Error(w, "failed to resolve user", http.StatusInternalServerError)
 		return auth.SessionPrincipal{}, false
 	}
-	if !allowedInScope(w, r, deps, evaluator, principal, user.ID, scope, authz.ResourceResultSubmission, action) {
+	if !allowedInScope(w, r, deps, evaluator, principal, user.ID, scope, resource, action) {
 		return auth.SessionPrincipal{}, false
 	}
 	return principal, true

@@ -42,6 +42,7 @@ type fakeHierarchyStore struct {
 	linkPlatformInput        hierarchy.LinkPlatformAccountInput
 	assignRoleInput          hierarchy.AssignRoleInput
 	revokeRoleInput          hierarchy.RevokeRoleInput
+	overrideSubmissionInput  hierarchy.OverrideResultSubmissionInput
 	createMembershipInput    hierarchy.CreateRosterMembershipInput
 	ratifySubmissionInput    hierarchy.RatifyResultSubmissionInput
 	rejectSubmissionInput    hierarchy.RejectResultSubmissionInput
@@ -324,7 +325,8 @@ func (f *fakeHierarchyStore) CreateResultSubmission(_ context.Context, _ hierarc
 func (f *fakeHierarchyStore) ListResultSubmissions(_ context.Context) ([]hierarchy.ResultSubmission, error) {
 	return f.submissionsToList, nil
 }
-func (f *fakeHierarchyStore) OverrideResultSubmission(_ context.Context, _ hierarchy.OverrideResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+func (f *fakeHierarchyStore) OverrideResultSubmission(_ context.Context, input hierarchy.OverrideResultSubmissionInput) (hierarchy.ResultSubmission, error) {
+	f.overrideSubmissionInput = input
 	return f.submissionToReturn, f.overrideSubmissionErr
 }
 func (f *fakeHierarchyStore) ListResultOverrides(_ context.Context) ([]hierarchy.ResultOverride, error) {
@@ -409,7 +411,7 @@ func (f *fakeHierarchyStore) GetScrim(_ context.Context, _ int64) (hierarchy.Scr
 	return hierarchy.Scrim{}, nil
 }
 func (f *fakeHierarchyStore) GetResultSubmission(_ context.Context, _ int64) (hierarchy.ResultSubmission, error) {
-	return hierarchy.ResultSubmission{}, nil
+	return f.submissionToReturn, nil
 }
 func (f *fakeHierarchyStore) ListResultSubmissionsFiltered(_ context.Context, _ hierarchy.ListResultSubmissionsInput) ([]hierarchy.ResultSubmission, error) {
 	return nil, nil
@@ -1346,6 +1348,7 @@ func TestCreateResultSubmissionSuccess(t *testing.T) {
 func TestOverrideResultSubmissionSuccess(t *testing.T) {
 	now := time.Now().UTC()
 	store := &fakeHierarchyStore{
+		scopedRoles: []string{"fm"},
 		submissionToReturn: hierarchy.ResultSubmission{
 			ID:                1,
 			ContextType:       "scrim",
@@ -1364,13 +1367,16 @@ func TestOverrideResultSubmissionSuccess(t *testing.T) {
 		HierarchyStore: store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"league-admin","reason":"manual correction","winningTeamId":30,"losingTeamId":20}`))
-	req.Header.Set("Authorization", "Bearer local:alice:admin")
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"spoofed","reason":"manual correction","winningTeamId":30,"losingTeamId":20}`))
+	req.Header.Set("Authorization", "Bearer local:alice:fm")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected status %d, got %d body=%s", http.StatusOK, rr.Code, rr.Body.String())
+	}
+	if store.overrideSubmissionInput.Actor != "alice" {
+		t.Fatalf("expected authenticated actor alice, got %q", store.overrideSubmissionInput.Actor)
 	}
 }
 
@@ -1692,6 +1698,21 @@ func TestResultOverrideForbiddenForPlayerRole(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"test","reason":"test","winningTeamId":1,"losingTeamId":2}`))
 	req.Header.Set("Authorization", "Bearer local:bob:player")
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusForbidden, rr.Code, rr.Body.String())
+	}
+}
+
+func TestResultOverrideRequiresScopedRole(t *testing.T) {
+	store := &fakeHierarchyStore{
+		submissionToReturn: hierarchy.ResultSubmission{ID: 1, HomeTeamID: 20, AwayTeamID: 30},
+	}
+	srv := New(config.Config{Port: "8080", LogLevel: "info"}, slog.Default(), Dependencies{HierarchyStore: store})
+	req := httptest.NewRequest(http.MethodPost, "/v1/result-overrides", strings.NewReader(`{"submissionId":1,"actor":"spoofed","reason":"test","winningTeamId":30,"losingTeamId":20}`))
+	req.Header.Set("Authorization", "Bearer local:alice:fm")
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
