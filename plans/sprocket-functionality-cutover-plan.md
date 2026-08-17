@@ -1,6 +1,25 @@
 # Sprocket Functionality Cutover Plan
 
-Date: 2026-07-22
+Date: 2026-08-17 (originally 2026-07-22)
+
+## Cancelled Sprocket Work Redirected to Kinetic
+
+Several major Sprocket initiatives that were in progress or planned are
+cancelled on Sprocket. Their goals are absorbed by Kinetic, which already
+achieves them or has them in scope.
+
+| Cancelled Sprocket work | Kinetic status |
+|---|---|
+| Collapse microservices to monolithic backend | Kinetic IS the monolith — single Go binary |
+| RabbitMQ removal (replace with PG-backed queues) | Kinetic has no RabbitMQ — uses PostgreSQL directly |
+| Redis removal | Kinetic has no Redis — uses PostgreSQL for queue state |
+| Go rewrite (v3 / `sprocket-next`) | Kinetic IS the Go rewrite. `sprocket-next` was a prototype; Kinetic supersedes it with full ADR discipline, K8s deploy, and 14 weeks of delivery. |
+| Remove "organizations" from data model (v2) | Kinetic has `Game → League → Franchise → Club → Team → Player` — no orgs concept |
+| Fine-grained AuthZ + API tokens | Kinetic RBAC exists; gap closure Themes 1.1–1.4 complete the resource taxonomy, scope enforcement, and token system |
+| MLEDB migration | Kinetic has no MLEDB dependency — clean schema from the start |
+
+No further Sprocket-internal simplification work will be done. All energy goes
+into Kinetic.
 
 ## Scope
 
