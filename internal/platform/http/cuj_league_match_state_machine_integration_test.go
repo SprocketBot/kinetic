@@ -81,7 +81,7 @@ func TestCUJLeagueMatchStateMachine(t *testing.T) {
 		t.Fatalf("expected match result to ratify after both teams, got %#v", ratified["state"])
 	}
 
-	app.post(t, "/v1/result-overrides", map[string]any{
+	app.postAnonymous(t, "/v1/result-overrides", map[string]any{
 		"submissionId":  submissionID,
 		"actor":         "league-admin",
 		"reason":        "official review requires correction",

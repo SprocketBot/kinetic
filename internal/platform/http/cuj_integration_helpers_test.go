@@ -9,18 +9,20 @@ import (
 	"log/slog"
 	stdhttp "net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
+	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 	"github.com/kineticbot/kinetic-v3/internal/platform/config"
 	"github.com/kineticbot/kinetic-v3/internal/platform/db"
 )
 
 type cujApp struct {
-	server *Server
-	conn   *sql.DB
-	suffix int64
+	server          *Server
+	conn            *sql.DB
+	suffix          int64
+	adminSubject    string
+	requestSequence int64
 }
 
 type cujLeagueFixture struct {
@@ -39,10 +41,7 @@ type cujLeagueFixture struct {
 func newCUJApp(t *testing.T) *cujApp {
 	t.Helper()
 
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping CUJ integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := db.Open(testDatabaseURL)
 	if err != nil {
@@ -70,10 +69,12 @@ func newCUJApp(t *testing.T) *cujApp {
 		ReplayStatsStore: db.NewReplayStatsStore(conn),
 	})
 
+	suffix := time.Now().UnixNano()
 	return &cujApp{
-		server: server,
-		conn:   conn,
-		suffix: time.Now().UnixNano(),
+		server:       server,
+		conn:         conn,
+		suffix:       suffix,
+		adminSubject: fmt.Sprintf("cuj-admin-%d", suffix),
 	}
 }
 
@@ -136,6 +137,29 @@ func (a *cujApp) buildLeagueFixture(t *testing.T, label string) cujLeagueFixture
 	}, stdhttp.StatusCreated)
 	awayPlayerID := cujID(t, awayPlayer, "id")
 
+	var gameID int64
+	if err := a.conn.QueryRow(`SELECT game_id FROM leagues WHERE id = $1`, leagueID).Scan(&gameID); err != nil {
+		t.Fatalf("failed to resolve CUJ game: %v", err)
+	}
+	var adminUserID int64
+	if err := a.conn.QueryRow(`
+		INSERT INTO users(subject, display_name)
+		VALUES ($1, 'CUJ Admin')
+		ON CONFLICT (subject) DO UPDATE SET display_name = EXCLUDED.display_name
+		RETURNING id`, a.adminSubject).Scan(&adminUserID); err != nil {
+		t.Fatalf("failed to create CUJ admin user: %v", err)
+	}
+	if _, err := a.conn.Exec(`INSERT INTO user_players(user_id, player_id, game_id) VALUES ($1, $2, $3)`, adminUserID, homePlayerID, gameID); err != nil {
+		t.Fatalf("failed to link CUJ admin player: %v", err)
+	}
+	store := db.NewHierarchyStore(a.conn)
+	if _, err := store.AssignRole(context.Background(), hierarchy.AssignRoleInput{
+		ActorPlayerID: homePlayerID, TargetPlayerID: homePlayerID, Role: "fm",
+		FranchiseID: &franchiseID, Reason: "CUJ fixture bootstrap",
+	}); err != nil {
+		t.Fatalf("failed to bootstrap CUJ franchise manager: %v", err)
+	}
+
 	a.post(t, "/v1/roster-memberships", map[string]any{
 		"playerId": homePlayerID,
 		"teamId":   homeTeamID,
@@ -174,15 +198,26 @@ func (a *cujApp) buildLeagueFixture(t *testing.T, label string) cujLeagueFixture
 
 func (a *cujApp) post(t *testing.T, path string, payload map[string]any, expectedStatus int) map[string]any {
 	t.Helper()
-	return a.postWithRole(t, path, payload, "", expectedStatus)
+	a.requestSequence++
+	return a.postWithSubjectAndRole(t, path, payload, fmt.Sprintf("cuj-admin-%d", a.requestSequence), "admin", expectedStatus)
 }
 
 func (a *cujApp) postAsAdmin(t *testing.T, path string, payload map[string]any, expectedStatus int) map[string]any {
 	t.Helper()
-	return a.postWithRole(t, path, payload, "admin", expectedStatus)
+	return a.postWithSubjectAndRole(t, path, payload, a.adminSubject, "admin", expectedStatus)
 }
 
 func (a *cujApp) postWithRole(t *testing.T, path string, payload map[string]any, role string, expectedStatus int) map[string]any {
+	t.Helper()
+	return a.postWithSubjectAndRole(t, path, payload, "cuj-"+role, role, expectedStatus)
+}
+
+func (a *cujApp) postAnonymous(t *testing.T, path string, payload map[string]any, expectedStatus int) map[string]any {
+	t.Helper()
+	return a.postWithSubjectAndRole(t, path, payload, "", "", expectedStatus)
+}
+
+func (a *cujApp) postWithSubjectAndRole(t *testing.T, path string, payload map[string]any, subject, role string, expectedStatus int) map[string]any {
 	t.Helper()
 
 	body, err := json.Marshal(payload)
@@ -192,7 +227,7 @@ func (a *cujApp) postWithRole(t *testing.T, path string, payload map[string]any,
 	req := httptest.NewRequest(stdhttp.MethodPost, path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	if role != "" {
-		req.Header.Set("Authorization", "Bearer local:cuj-"+role+":"+role)
+		req.Header.Set("Authorization", "Bearer local:"+subject+":"+role)
 	}
 
 	return a.serveJSON(t, req, path, expectedStatus)

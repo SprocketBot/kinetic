@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,10 +18,7 @@ import (
 )
 
 func TestHierarchyAPICreateAndConstraints(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := db.Open(testDatabaseURL)
 	if err != nil {
@@ -122,6 +119,17 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"slug":        fmt.Sprintf("player-%d", suffix),
 	}, http.StatusCreated)
 	playerID := int64(playerResp["id"].(float64))
+	var gameID int64
+	if err := conn.QueryRow(`SELECT game_id FROM leagues WHERE id = $1`, leagueID).Scan(&gameID); err != nil {
+		t.Fatalf("failed to resolve hierarchy game: %v", err)
+	}
+	var integrationUserID int64
+	if err := conn.QueryRow(`INSERT INTO users(subject, display_name) VALUES ('hierarchy-integration', 'Hierarchy Integration') RETURNING id`).Scan(&integrationUserID); err != nil {
+		t.Fatalf("failed to create hierarchy integration user: %v", err)
+	}
+	if _, err := conn.Exec(`INSERT INTO user_players(user_id, player_id, game_id) VALUES ($1, $2, $3)`, integrationUserID, playerID, gameID); err != nil {
+		t.Fatalf("failed to link hierarchy integration player: %v", err)
+	}
 
 	playerTwoResp := createEntity(t, server, "/v1/players", map[string]any{
 		"displayName": fmt.Sprintf("Player Two %d", suffix),
@@ -358,7 +366,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  teamID,
 		"replayBody":         "week12-replay-body",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 		"resultSubmissionId": submissionID,
@@ -375,7 +383,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  teamID,
 		"replayBody":         "week12-replay-body",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 		"resultSubmissionId": submissionID,
@@ -503,7 +511,6 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 	assertListNotEmpty(t, server, "/v1/replay-evidence")
 	assertListNotEmpty(t, server, "/v1/replay-parse-runs")
 	assertListNotEmpty(t, server, "/v1/result-submission-replay-links")
-	assertListNotEmpty(t, server, "/v1/operator-inbox")
 	assertListNotEmpty(t, server, "/v1/exception-actions")
 	assertListNotEmpty(t, server, "/v1/seasons")
 	assertListNotEmpty(t, server, "/v1/schedule-groups")
@@ -512,10 +519,7 @@ func TestHierarchyAPICreateAndConstraints(t *testing.T) {
 }
 
 func TestHierarchyAPIValidationFailure(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := db.Open(testDatabaseURL)
 	if err != nil {
@@ -651,7 +655,7 @@ func TestHierarchyAPIValidationFailure(t *testing.T) {
 		"contextId":          int64(1),
 		"submittedByTeamId":  int64(1),
 		"replayBody":         "",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-week12",
 	}, http.StatusBadRequest)
@@ -693,6 +697,11 @@ func createEntity(t *testing.T, server *Server, path string, payload map[string]
 
 	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+	subject := fmt.Sprintf("hierarchy-integration-%d", time.Now().UnixNano())
+	if strings.HasPrefix(path, "/v1/role-assignments") {
+		subject = "hierarchy-integration"
+	}
+	req.Header.Set("Authorization", "Bearer local:"+subject+":admin")
 	rr := httptest.NewRecorder()
 	server.Handler().ServeHTTP(rr, req)
 

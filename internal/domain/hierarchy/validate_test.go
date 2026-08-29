@@ -16,6 +16,19 @@ func TestValidateCreateLeagueInput(t *testing.T) {
 		t.Fatalf("expected valid input, got error: %v", err)
 	}
 
+	err = ValidateIngestReplayEvidenceInput(IngestReplayEvidenceInput{
+		ContextType:        "scrim",
+		ContextID:          1,
+		SubmittedByTeamID:  10,
+		ReplayBodyBase64:   "ZmFrZS1yZXBsYXktYnl0ZXM=",
+		ParserName:         "rl-replay",
+		ParserVersion:      "v0.1.0",
+		ParserConfigDigest: "default",
+	})
+	if err != nil {
+		t.Fatalf("expected base64 replay input to be valid, got error: %v", err)
+	}
+
 	err = ValidateCreateLeagueInput(CreateLeagueInput{
 		Name: "MLE",
 		Slug: "Not-Kebab",
@@ -729,7 +742,7 @@ func TestValidateIngestReplayEvidenceInput(t *testing.T) {
 		ContextID:          1,
 		SubmittedByTeamID:  10,
 		ReplayBody:         "fake-replay-bytes",
-		ParserName:         "kinetic-rl-parser",
+		ParserName:         "rl-replay",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-001",
 		ResultSubmissionID: &submissionID,
@@ -743,7 +756,7 @@ func TestValidateIngestReplayEvidenceInput(t *testing.T) {
 		ContextID:          1,
 		SubmittedByTeamID:  10,
 		ReplayBody:         "",
-		ParserName:         "kinetic-rl-parser",
+		ParserName:         "rl-replay",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-001",
 	})

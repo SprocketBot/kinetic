@@ -164,7 +164,7 @@ async function mockPlayerEndpoints(page: import("@playwright/test").Page) {
         parseRun: {
           id: 99,
           replayEvidenceId: 10,
-          parserName: "kinetic-rl-parser",
+          parserName: "rl-replay",
           parserVersion: "v1",
           parserConfigDigest: "default",
           status: "parsed",
@@ -441,6 +441,12 @@ test("runs player queue and submission actions", async ({ page }) => {
   await page.getByRole("button", { name: "Ratify result" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 
+  await page.getByRole("button", { name: "Replay" }).click();
+  await page.getByLabel("Rocket League replay").setInputFiles({
+    name: "match.replay",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("replay-bytes"),
+  });
   await page.getByRole("button", { name: "Upload replay evidence" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 });

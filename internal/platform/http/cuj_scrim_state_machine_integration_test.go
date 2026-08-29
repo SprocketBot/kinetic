@@ -34,7 +34,7 @@ func TestCUJScrimStateMachine(t *testing.T) {
 		t.Fatalf("expected popped scrim to include lobby info, got %#v", popped)
 	}
 
-	app.post(t, "/v1/scrim-promotions", map[string]any{
+	app.postAnonymous(t, "/v1/scrim-promotions", map[string]any{
 		"queueId": fixture.QueueID,
 	}, stdhttp.StatusUnauthorized)
 
@@ -72,7 +72,7 @@ func TestCUJScrimStateMachine(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  fixture.HomeTeamID,
 		"replayBody":         "scrim-state-replay-body",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v1",
 		"parserConfigDigest": "default",
 		"resultSubmissionId": submissionID,
@@ -92,7 +92,7 @@ func TestCUJScrimStateMachine(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  fixture.HomeTeamID,
 		"replayBody":         "scrim-state-replay-body",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v1",
 		"parserConfigDigest": "default",
 		"resultSubmissionId": submissionID,

@@ -1500,7 +1500,7 @@ func TestIngestReplayEvidenceSuccess(t *testing.T) {
 			ParseRun: hierarchy.ReplayParseRun{
 				ID:                 1,
 				ReplayEvidenceID:   1,
-				ParserName:         "kinetic-rl-parser",
+				ParserName:         "rl-replay",
 				ParserVersion:      "v0.1.0",
 				ParserConfigDigest: "cfg-001",
 				Status:             "queued",
@@ -1515,7 +1515,7 @@ func TestIngestReplayEvidenceSuccess(t *testing.T) {
 		HierarchyStore: store,
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/replay-evidence", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"replayBody":"fake-bytes","parserName":"kinetic-rl-parser","parserVersion":"v0.1.0","parserConfigDigest":"cfg-001","resultSubmissionId":1,"parseOutputJson":{"goals":4}}`))
+	req := httptest.NewRequest(http.MethodPost, "/v1/replay-evidence", strings.NewReader(`{"contextType":"scrim","contextId":10,"submittedByTeamId":20,"replayBody":"fake-bytes","parserName":"rl-replay","parserVersion":"v0.1.0","parserConfigDigest":"cfg-001","resultSubmissionId":1,"parseOutputJson":{"goals":4}}`))
 	rr := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rr, req)
 
@@ -1531,7 +1531,7 @@ func TestListReplayParseRunsSuccess(t *testing.T) {
 			{
 				ID:                 1,
 				ReplayEvidenceID:   1,
-				ParserName:         "kinetic-rl-parser",
+				ParserName:         "rl-replay",
 				ParserVersion:      "v0.1.0",
 				ParserConfigDigest: "cfg-001",
 				Status:             "parsed",

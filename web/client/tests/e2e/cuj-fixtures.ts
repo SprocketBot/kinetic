@@ -251,7 +251,7 @@ export async function installCUJApi(page: Page) {
       parseRun: {
         id: nextId++,
         replayEvidenceId: nextId++,
-        parserName: "kinetic-rl-parser",
+        parserName: "rl-replay",
         parserVersion: "v1",
         parserConfigDigest: "default",
         status: "parsed",

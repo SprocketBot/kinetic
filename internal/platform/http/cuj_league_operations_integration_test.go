@@ -93,8 +93,8 @@ func TestCUJLeagueOperations(t *testing.T) {
 		t.Fatalf("expected resolved ticket, got %#v", resolved)
 	}
 
-	if inbox := app.getList(t, "/v1/operator-inbox", stdhttp.StatusOK); len(inbox) == 0 {
-		t.Fatal("expected operator inbox to expose league operations tickets")
+	if inbox := app.getList(t, "/v1/operator-inbox", stdhttp.StatusOK); len(inbox) != 0 {
+		t.Fatalf("expected resolved tickets to leave the operator inbox, got %d", len(inbox))
 	}
 	if actions := app.getList(t, "/v1/exception-actions", stdhttp.StatusOK); len(actions) < 2 {
 		t.Fatalf("expected triage and resolve audit actions, got %d", len(actions))

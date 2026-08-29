@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 NAMESPACE="${K8S_NAMESPACE:-kinetic-v3}"
 PF_PORT="${PF_PORT:-18080}"
 API_BASE="http://localhost:${PF_PORT}"
@@ -119,325 +119,325 @@ if [[ -z "${SERVICE_PORT}" ]]; then
 fi
 
 echo "Starting port-forward on ${PF_PORT}"
-kubectl -n "$NAMESPACE" port-forward svc/kinetic-v3-api "${PF_PORT}:${SERVICE_PORT}" >/tmp/kinetic_v3_week12_k8s_pf.log 2>&1 &
+kubectl -n "$NAMESPACE" port-forward svc/kinetic-v3-api "${PF_PORT}:${SERVICE_PORT}" >/tmp/kinetic_v3_kinetic_k8s_smoke_pf.log 2>&1 &
 PF_PID=$!
 
 for i in $(seq 1 40); do
-  code="$(curl -s -o /tmp/week12_k8s_healthz.json -w '%{http_code}' "${API_BASE}/healthz" || true)"
+  code="$(curl -s -o /tmp/kinetic_k8s_smoke_healthz.json -w '%{http_code}' "${API_BASE}/healthz" || true)"
   if [[ "$code" == "200" ]]; then
     break
   fi
   sleep 1
   if [[ "$i" -eq 40 ]]; then
     echo "k8s API did not become reachable via port-forward in time" >&2
-    cat /tmp/kinetic_v3_week12_k8s_pf.log >&2 || true
+    cat /tmp/kinetic_v3_kinetic_k8s_smoke_pf.log >&2 || true
     exit 1
   fi
 done
 
 suffix="$(date +%s)"
-league_slug="week12-k8s-league-${suffix}"
-franchise_slug="week12-k8s-franchise-${suffix}"
-club_a_slug="week12-k8s-club-a-${suffix}"
-club_b_slug="week12-k8s-club-b-${suffix}"
-team_a_slug="week12-k8s-team-a-${suffix}"
-team_b_slug="week12-k8s-team-b-${suffix}"
-queue_slug="week12-k8s-queue-${suffix}"
+league_slug="kinetic-k8s-smoke-league-${suffix}"
+franchise_slug="kinetic-k8s-smoke-franchise-${suffix}"
+club_a_slug="kinetic-k8s-smoke-club-a-${suffix}"
+club_b_slug="kinetic-k8s-smoke-club-b-${suffix}"
+team_a_slug="kinetic-k8s-smoke-team-a-${suffix}"
+team_b_slug="kinetic-k8s-smoke-team-b-${suffix}"
+queue_slug="kinetic-k8s-smoke-queue-${suffix}"
 
-league_code=$(curl -s -o /tmp/week12_k8s_create_league.json -w '%{http_code}' \
+league_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_league.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/leagues" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"Week12 K8s League ${suffix}\",\"slug\":\"${league_slug}\"}" || true)
+  -d "{\"name\":\"Kinetic K8s League ${suffix}\",\"slug\":\"${league_slug}\"}" || true)
 assert_code 201 "$league_code" "create league"
-league_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_league.json)
+league_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_league.json)
 
-franchise_code=$(curl -s -o /tmp/week12_k8s_create_franchise.json -w '%{http_code}' \
+franchise_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_franchise.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/franchises" \
   -H 'content-type: application/json' \
-  -d "{\"leagueId\":${league_id},\"name\":\"Week12 K8s Franchise ${suffix}\",\"slug\":\"${franchise_slug}\"}" || true)
+  -d "{\"leagueId\":${league_id},\"name\":\"Kinetic K8s Franchise ${suffix}\",\"slug\":\"${franchise_slug}\"}" || true)
 assert_code 201 "$franchise_code" "create franchise"
-franchise_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_franchise.json)
+franchise_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_franchise.json)
 
-club_a_code=$(curl -s -o /tmp/week12_k8s_create_club_a.json -w '%{http_code}' \
+club_a_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_club_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/clubs" \
   -H 'content-type: application/json' \
-  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week12 K8s Club A ${suffix}\",\"slug\":\"${club_a_slug}\"}" || true)
+  -d "{\"franchiseId\":${franchise_id},\"name\":\"Kinetic K8s Club A ${suffix}\",\"slug\":\"${club_a_slug}\"}" || true)
 assert_code 201 "$club_a_code" "create club A"
-club_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_club_a.json)
+club_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_club_a.json)
 
-club_b_code=$(curl -s -o /tmp/week12_k8s_create_club_b.json -w '%{http_code}' \
+club_b_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_club_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/clubs" \
   -H 'content-type: application/json' \
-  -d "{\"franchiseId\":${franchise_id},\"name\":\"Week12 K8s Club B ${suffix}\",\"slug\":\"${club_b_slug}\"}" || true)
+  -d "{\"franchiseId\":${franchise_id},\"name\":\"Kinetic K8s Club B ${suffix}\",\"slug\":\"${club_b_slug}\"}" || true)
 assert_code 201 "$club_b_code" "create club B"
-club_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_club_b.json)
+club_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_club_b.json)
 
-team_a_code=$(curl -s -o /tmp/week12_k8s_create_team_a.json -w '%{http_code}' \
+team_a_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_team_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/teams" \
   -H 'content-type: application/json' \
-  -d "{\"clubId\":${club_a_id},\"name\":\"Week12 K8s Team A ${suffix}\",\"slug\":\"${team_a_slug}\"}" || true)
+  -d "{\"clubId\":${club_a_id},\"name\":\"Kinetic K8s Team A ${suffix}\",\"slug\":\"${team_a_slug}\"}" || true)
 assert_code 201 "$team_a_code" "create team A"
-team_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_team_a.json)
+team_a_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_team_a.json)
 
-team_b_code=$(curl -s -o /tmp/week12_k8s_create_team_b.json -w '%{http_code}' \
+team_b_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_team_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/teams" \
   -H 'content-type: application/json' \
-  -d "{\"clubId\":${club_b_id},\"name\":\"Week12 K8s Team B ${suffix}\",\"slug\":\"${team_b_slug}\"}" || true)
+  -d "{\"clubId\":${club_b_id},\"name\":\"Kinetic K8s Team B ${suffix}\",\"slug\":\"${team_b_slug}\"}" || true)
 assert_code 201 "$team_b_code" "create team B"
-team_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_team_b.json)
+team_b_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_team_b.json)
 
-season_code=$(curl -s -o /tmp/week12_k8s_create_season.json -w '%{http_code}' \
+season_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_season.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/seasons" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"Week12 K8s Season ${suffix}\",\"slug\":\"week12-k8s-season-${suffix}\"}" || true)
+  -d "{\"name\":\"Kinetic K8s Season ${suffix}\",\"slug\":\"kinetic-k8s-smoke-season-${suffix}\"}" || true)
 assert_code 201 "$season_code" "create season"
-season_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_season.json)
+season_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_season.json)
 
-schedule_group_code=$(curl -s -o /tmp/week12_k8s_create_schedule_group.json -w '%{http_code}' \
+schedule_group_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_schedule_group.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/schedule-groups" \
   -H 'content-type: application/json' \
   -d "{\"seasonId\":${season_id},\"name\":\"Week 1\",\"sequence\":1}" || true)
 assert_code 201 "$schedule_group_code" "create schedule group"
-schedule_group_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_schedule_group.json)
+schedule_group_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_schedule_group.json)
 
-fixture_code=$(curl -s -o /tmp/week12_k8s_create_fixture.json -w '%{http_code}' \
+fixture_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_fixture.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/fixtures" \
   -H 'content-type: application/json' \
   -d "{\"scheduleGroupId\":${schedule_group_id},\"homeClubId\":${club_a_id},\"awayClubId\":${club_b_id}}" || true)
 assert_code 201 "$fixture_code" "create fixture"
-fixture_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_fixture.json)
+fixture_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_fixture.json)
 
-match_code=$(curl -s -o /tmp/week12_k8s_create_match.json -w '%{http_code}' \
+match_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_match.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/matches" \
   -H 'content-type: application/json' \
   -d "{\"fixtureId\":${fixture_id},\"homeTeamId\":${team_a_id},\"awayTeamId\":${team_b_id},\"state\":\"planned\"}" || true)
 assert_code 201 "$match_code" "create match"
-match_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_match.json)
+match_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_match.json)
 
-queue_code=$(curl -s -o /tmp/week12_k8s_create_queue.json -w '%{http_code}' \
+queue_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_queue.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queues" \
   -H 'content-type: application/json' \
-  -d "{\"name\":\"Week12 K8s Queue ${suffix}\",\"slug\":\"${queue_slug}\"}" || true)
+  -d "{\"name\":\"Kinetic K8s Queue ${suffix}\",\"slug\":\"${queue_slug}\"}" || true)
 assert_code 201 "$queue_code" "create queue"
-queue_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_queue.json)
+queue_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_queue.json)
 
-enqueue_a_code=$(curl -s -o /tmp/week12_k8s_enqueue_a.json -w '%{http_code}' \
+enqueue_a_code=$(curl -s -o /tmp/kinetic_k8s_smoke_enqueue_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queue-entries" \
   -H 'content-type: application/json' \
   -d "{\"queueId\":${queue_id},\"teamId\":${team_a_id}}" || true)
 assert_code 201 "$enqueue_a_code" "enqueue team A"
 
-enqueue_b_code=$(curl -s -o /tmp/week12_k8s_enqueue_b.json -w '%{http_code}' \
+enqueue_b_code=$(curl -s -o /tmp/kinetic_k8s_smoke_enqueue_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/queue-entries" \
   -H 'content-type: application/json' \
   -d "{\"queueId\":${queue_id},\"teamId\":${team_b_id}}" || true)
 assert_code 201 "$enqueue_b_code" "enqueue team B"
 
-process_code=$(curl -s -o /tmp/week12_k8s_process_ok.json -w '%{http_code}' \
+process_code=$(curl -s -o /tmp/kinetic_k8s_smoke_process_ok.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/scrim-promotions/process" \
   -H 'content-type: application/json' \
   -d "{\"queueId\":${queue_id}}" || true)
 assert_code 200 "$process_code" "process queue promotions"
 
-list_scrims_code=$(curl -s -o /tmp/week12_k8s_list_scrims.json -w '%{http_code}' "${API_BASE}/v1/scrims" || true)
+list_scrims_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_scrims.json -w '%{http_code}' "${API_BASE}/v1/scrims" || true)
 assert_code 200 "$list_scrims_code" "list scrims"
-scrim_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_list_scrims.json | tail -n1)
+scrim_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_list_scrims.json | tail -n1)
 
-in_progress_code=$(curl -s -o /tmp/week12_k8s_scrim_in_progress.json -w '%{http_code}' \
+in_progress_code=$(curl -s -o /tmp/kinetic_k8s_smoke_scrim_in_progress.json -w '%{http_code}' \
   -X PATCH "${API_BASE}/v1/scrims" \
   -H 'content-type: application/json' \
   -d "{\"scrimId\":${scrim_id},\"state\":\"in_progress\"}" || true)
 assert_code 200 "$in_progress_code" "transition scrim to in_progress"
 
-closed_code=$(curl -s -o /tmp/week12_k8s_scrim_closed.json -w '%{http_code}' \
+closed_code=$(curl -s -o /tmp/kinetic_k8s_smoke_scrim_closed.json -w '%{http_code}' \
   -X PATCH "${API_BASE}/v1/scrims" \
   -H 'content-type: application/json' \
   -d "{\"scrimId\":${scrim_id},\"state\":\"closed\"}" || true)
 assert_code 200 "$closed_code" "transition scrim to closed"
 
-invalid_transition_code=$(curl -s -o /tmp/week12_k8s_scrim_invalid_transition.json -w '%{http_code}' \
+invalid_transition_code=$(curl -s -o /tmp/kinetic_k8s_smoke_scrim_invalid_transition.json -w '%{http_code}' \
   -X PATCH "${API_BASE}/v1/scrims" \
   -H 'content-type: application/json' \
   -d "{\"scrimId\":${scrim_id},\"state\":\"in_progress\"}" || true)
 assert_code 409 "$invalid_transition_code" "reject closed -> in_progress"
 
-create_submission_code=$(curl -s -o /tmp/week12_k8s_create_submission_1.json -w '%{http_code}' \
+create_submission_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_submission_1.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submissions" \
   -H 'content-type: application/json' \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"winningTeamId\":${team_a_id},\"losingTeamId\":${team_b_id},\"payloadJson\":{\"score\":\"3-1\",\"source\":\"week12-k8s-smoke\"}}" || true)
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"winningTeamId\":${team_a_id},\"losingTeamId\":${team_b_id},\"payloadJson\":{\"score\":\"3-1\",\"source\":\"kinetic-k8s-smoke-smoke\"}}" || true)
 assert_code 201 "$create_submission_code" "create submission 1"
-submission_1_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_submission_1.json)
+submission_1_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_submission_1.json)
 
-ratify_1_code=$(curl -s -o /tmp/week12_k8s_ratify_submission_1_team_a.json -w '%{http_code}' \
+ratify_1_code=$(curl -s -o /tmp/kinetic_k8s_smoke_ratify_submission_1_team_a.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submission-ratifications" \
   -H 'content-type: application/json' \
   -d "{\"submissionId\":${submission_1_id},\"teamId\":${team_a_id}}" || true)
 assert_code 200 "$ratify_1_code" "ratify submission 1 by team A"
 
-ratify_2_code=$(curl -s -o /tmp/week12_k8s_ratify_submission_1_team_b.json -w '%{http_code}' \
+ratify_2_code=$(curl -s -o /tmp/kinetic_k8s_smoke_ratify_submission_1_team_b.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submission-ratifications" \
   -H 'content-type: application/json' \
   -d "{\"submissionId\":${submission_1_id},\"teamId\":${team_b_id}}" || true)
 assert_code 200 "$ratify_2_code" "ratify submission 1 by team B"
-if ! grep -q '"state":"ratified"' /tmp/week12_k8s_ratify_submission_1_team_b.json; then
+if ! grep -q '"state":"ratified"' /tmp/kinetic_k8s_smoke_ratify_submission_1_team_b.json; then
   echo "submission 1 did not transition to ratified" >&2
-  cat /tmp/week12_k8s_ratify_submission_1_team_b.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_ratify_submission_1_team_b.json >&2 || true
   exit 1
 fi
 
-create_submission_2_code=$(curl -s -o /tmp/week12_k8s_create_submission_2.json -w '%{http_code}' \
+create_submission_2_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_submission_2.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submissions" \
   -H 'content-type: application/json' \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_b_id},\"winningTeamId\":${team_b_id},\"losingTeamId\":${team_a_id},\"payloadJson\":{\"score\":\"2-1\",\"source\":\"week12-k8s-smoke\"}}" || true)
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_b_id},\"winningTeamId\":${team_b_id},\"losingTeamId\":${team_a_id},\"payloadJson\":{\"score\":\"2-1\",\"source\":\"kinetic-k8s-smoke-smoke\"}}" || true)
 assert_code 201 "$create_submission_2_code" "create submission 2"
-submission_2_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_create_submission_2.json)
+submission_2_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_create_submission_2.json)
 
-duplicate_pending_code=$(curl -s -o /tmp/week12_k8s_create_submission_duplicate_pending.json -w '%{http_code}' \
+duplicate_pending_code=$(curl -s -o /tmp/kinetic_k8s_smoke_create_submission_duplicate_pending.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submissions" \
   -H 'content-type: application/json' \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"winningTeamId\":${team_a_id},\"losingTeamId\":${team_b_id},\"payloadJson\":{\"score\":\"1-0\",\"source\":\"week12-k8s-smoke\"}}" || true)
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"winningTeamId\":${team_a_id},\"losingTeamId\":${team_b_id},\"payloadJson\":{\"score\":\"1-0\",\"source\":\"kinetic-k8s-smoke-smoke\"}}" || true)
 assert_code 409 "$duplicate_pending_code" "reject duplicate pending submission"
 
-reject_submission_2_code=$(curl -s -o /tmp/week12_k8s_reject_submission_2.json -w '%{http_code}' \
+reject_submission_2_code=$(curl -s -o /tmp/kinetic_k8s_smoke_reject_submission_2.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/result-submission-rejections" \
   -H 'content-type: application/json' \
   -d "{\"submissionId\":${submission_2_id},\"teamId\":${team_a_id},\"reason\":\"replay mismatch\"}" || true)
 assert_code 200 "$reject_submission_2_code" "reject submission 2"
-if ! grep -q '"state":"rejected"' /tmp/week12_k8s_reject_submission_2.json; then
+if ! grep -q '"state":"rejected"' /tmp/kinetic_k8s_smoke_reject_submission_2.json; then
   echo "submission 2 did not transition to rejected" >&2
-  cat /tmp/week12_k8s_reject_submission_2.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_reject_submission_2.json >&2 || true
   exit 1
 fi
 
-list_submissions_code=$(curl -s -o /tmp/week12_k8s_list_result_submissions.json -w '%{http_code}' "${API_BASE}/v1/result-submissions" || true)
+list_submissions_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_result_submissions.json -w '%{http_code}' "${API_BASE}/v1/result-submissions" || true)
 assert_code 200 "$list_submissions_code" "list result submissions"
-if ! grep -q '"contextType":"scrim"' /tmp/week12_k8s_list_result_submissions.json; then
+if ! grep -q '"contextType":"scrim"' /tmp/kinetic_k8s_smoke_list_result_submissions.json; then
   echo "result submissions payload missing expected contextType" >&2
-  cat /tmp/week12_k8s_list_result_submissions.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_result_submissions.json >&2 || true
   exit 1
 fi
 
-ingest_replay_1_code=$(curl -s -o /tmp/week12_k8s_ingest_replay_1.json -w '%{http_code}' \
+ingest_replay_1_code=$(curl -s -o /tmp/kinetic_k8s_smoke_ingest_replay_1.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/replay-evidence" \
   -H 'content-type: application/json' \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"week12-k8s-smoke-replay-body\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"v0.1.0\",\"parserConfigDigest\":\"cfg-week12-k8s-smoke\",\"resultSubmissionId\":${submission_1_id},\"parseOutputJson\":{\"goals\":4}}" || true)
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"kinetic-k8s-smoke-smoke-replay-body\",\"parserName\":\"rl-replay\",\"parserVersion\":\"v0.1.0\",\"parserConfigDigest\":\"cfg-kinetic-k8s-smoke-smoke\",\"resultSubmissionId\":${submission_1_id},\"parseOutputJson\":{\"goals\":4}}" || true)
 assert_code 201 "$ingest_replay_1_code" "ingest replay evidence first attempt"
-if ! grep -q '"duplicate":false' /tmp/week12_k8s_ingest_replay_1.json; then
+if ! grep -q '"duplicate":false' /tmp/kinetic_k8s_smoke_ingest_replay_1.json; then
   echo "expected duplicate=false for first replay ingest" >&2
-  cat /tmp/week12_k8s_ingest_replay_1.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_ingest_replay_1.json >&2 || true
   exit 1
 fi
 
-ingest_replay_2_code=$(curl -s -o /tmp/week12_k8s_ingest_replay_2.json -w '%{http_code}' \
+ingest_replay_2_code=$(curl -s -o /tmp/kinetic_k8s_smoke_ingest_replay_2.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/replay-evidence" \
   -H 'content-type: application/json' \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"week12-k8s-smoke-replay-body\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"v0.1.0\",\"parserConfigDigest\":\"cfg-week12-k8s-smoke\",\"resultSubmissionId\":${submission_1_id},\"parseOutputJson\":{\"goals\":4}}" || true)
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"kinetic-k8s-smoke-smoke-replay-body\",\"parserName\":\"rl-replay\",\"parserVersion\":\"v0.1.0\",\"parserConfigDigest\":\"cfg-kinetic-k8s-smoke-smoke\",\"resultSubmissionId\":${submission_1_id},\"parseOutputJson\":{\"goals\":4}}" || true)
 assert_code 200 "$ingest_replay_2_code" "ingest replay evidence duplicate attempt"
-if ! grep -q '"duplicate":true' /tmp/week12_k8s_ingest_replay_2.json; then
+if ! grep -q '"duplicate":true' /tmp/kinetic_k8s_smoke_ingest_replay_2.json; then
   echo "expected duplicate=true for second replay ingest" >&2
-  cat /tmp/week12_k8s_ingest_replay_2.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_ingest_replay_2.json >&2 || true
   exit 1
 fi
 
-list_replay_evidence_code=$(curl -s -o /tmp/week12_k8s_list_replay_evidence.json -w '%{http_code}' "${API_BASE}/v1/replay-evidence" || true)
+list_replay_evidence_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_replay_evidence.json -w '%{http_code}' "${API_BASE}/v1/replay-evidence" || true)
 assert_code 200 "$list_replay_evidence_code" "list replay evidence"
-if ! grep -q '"replaySha256"' /tmp/week12_k8s_list_replay_evidence.json; then
+if ! grep -q '"replaySha256"' /tmp/kinetic_k8s_smoke_list_replay_evidence.json; then
   echo "replay evidence payload missing replaySha256" >&2
-  cat /tmp/week12_k8s_list_replay_evidence.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_replay_evidence.json >&2 || true
   exit 1
 fi
 
-list_parse_runs_code=$(curl -s -o /tmp/week12_k8s_list_replay_parse_runs.json -w '%{http_code}' "${API_BASE}/v1/replay-parse-runs" || true)
+list_parse_runs_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_replay_parse_runs.json -w '%{http_code}' "${API_BASE}/v1/replay-parse-runs" || true)
 assert_code 200 "$list_parse_runs_code" "list replay parse runs"
-if ! grep -q '"parserVersion"' /tmp/week12_k8s_list_replay_parse_runs.json; then
+if ! grep -q '"parserVersion"' /tmp/kinetic_k8s_smoke_list_replay_parse_runs.json; then
   echo "replay parse runs payload missing parserVersion" >&2
-  cat /tmp/week12_k8s_list_replay_parse_runs.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_replay_parse_runs.json >&2 || true
   exit 1
 fi
 
-list_replay_links_code=$(curl -s -o /tmp/week12_k8s_list_result_submission_replay_links.json -w '%{http_code}' "${API_BASE}/v1/result-submission-replay-links" || true)
+list_replay_links_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_result_submission_replay_links.json -w '%{http_code}' "${API_BASE}/v1/result-submission-replay-links" || true)
 assert_code 200 "$list_replay_links_code" "list result submission replay links"
-if ! grep -q '"resultSubmissionId"' /tmp/week12_k8s_list_result_submission_replay_links.json; then
+if ! grep -q '"resultSubmissionId"' /tmp/kinetic_k8s_smoke_list_result_submission_replay_links.json; then
   echo "result submission replay links payload missing resultSubmissionId" >&2
-  cat /tmp/week12_k8s_list_result_submission_replay_links.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_result_submission_replay_links.json >&2 || true
   exit 1
 fi
 
-report_exception_code=$(curl -s -o /tmp/week12_k8s_report_exception.json -w '%{http_code}' \
+report_exception_code=$(curl -s -o /tmp/kinetic_k8s_smoke_report_exception.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/exceptions/report" \
   -H 'content-type: application/json' \
-  -d "{\"category\":\"scheduling_conflict\",\"contextType\":\"match\",\"contextId\":${match_id},\"reasonCode\":\"time_unavailable\",\"severity\":3,\"suggestedAction\":\"propose_reschedule\",\"detailsJson\":{\"source\":\"week12-k8s-smoke\"}}" || true)
+  -d "{\"category\":\"scheduling_conflict\",\"contextType\":\"match\",\"contextId\":${match_id},\"reasonCode\":\"time_unavailable\",\"severity\":3,\"suggestedAction\":\"propose_reschedule\",\"detailsJson\":{\"source\":\"kinetic-k8s-smoke-smoke\"}}" || true)
 assert_code 201 "$report_exception_code" "report exception"
-exception_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/week12_k8s_report_exception.json)
+exception_id=$(sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p' /tmp/kinetic_k8s_smoke_report_exception.json)
 
-triage_exception_code=$(curl -s -o /tmp/week12_k8s_triage_exception.json -w '%{http_code}' \
+triage_exception_code=$(curl -s -o /tmp/kinetic_k8s_smoke_triage_exception.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/operator-inbox/triage" \
   -H 'content-type: application/json' \
   -d "{\"ticketId\":${exception_id},\"actor\":\"ops-user\",\"reasonCode\":\"captain_conflict\",\"severity\":2,\"suggestedAction\":\"offer_slots\",\"minutesSpent\":5}" || true)
 assert_code 200 "$triage_exception_code" "triage exception"
 
-resolve_exception_code=$(curl -s -o /tmp/week12_k8s_resolve_exception.json -w '%{http_code}' \
+resolve_exception_code=$(curl -s -o /tmp/kinetic_k8s_smoke_resolve_exception.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/operator-inbox/resolve" \
   -H 'content-type: application/json' \
   -d "{\"ticketId\":${exception_id},\"actor\":\"ops-user\",\"resolutionCode\":\"rescheduled\",\"notes\":\"captains agreed\",\"automated\":false,\"minutesSpent\":10}" || true)
 assert_code 200 "$resolve_exception_code" "resolve exception"
 
-automation_schedule_code=$(curl -s -o /tmp/week12_k8s_exception_automation_schedule.json -w '%{http_code}' \
+automation_schedule_code=$(curl -s -o /tmp/kinetic_k8s_smoke_exception_automation_schedule.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/exception-automations/scheduling" \
   -H 'content-type: application/json' \
   -d "{\"matchId\":${match_id},\"conflictCode\":\"captain_conflict\",\"homeConfirmed\":false,\"awayConfirmed\":false,\"actor\":\"ops-bot\"}" || true)
 assert_code 200 "$automation_schedule_code" "evaluate scheduling exception"
 
-automation_noshow_code=$(curl -s -o /tmp/week12_k8s_exception_automation_no_show.json -w '%{http_code}' \
+automation_noshow_code=$(curl -s -o /tmp/kinetic_k8s_smoke_exception_automation_no_show.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/exception-automations/no-show" \
   -H 'content-type: application/json' \
   -d "{\"matchId\":${match_id},\"homeCheckedIn\":true,\"awayCheckedIn\":false,\"graceMinutes\":20,\"actor\":\"ops-bot\"}" || true)
 assert_code 200 "$automation_noshow_code" "evaluate no-show exception"
 
-automation_replay_code=$(curl -s -o /tmp/week12_k8s_exception_automation_replay.json -w '%{http_code}' \
+automation_replay_code=$(curl -s -o /tmp/kinetic_k8s_smoke_exception_automation_replay.json -w '%{http_code}' \
   -X POST "${API_BASE}/v1/exception-automations/replay-dispute" \
   -H 'content-type: application/json' \
   -d "{\"resultSubmissionId\":${submission_1_id},\"parseStatus\":\"parsed\",\"identityStatus\":\"resolved\",\"disputeRaised\":false,\"actor\":\"ops-bot\"}" || true)
 assert_code 200 "$automation_replay_code" "evaluate replay dispute exception"
 
-list_inbox_code=$(curl -s -o /tmp/week12_k8s_list_operator_inbox.json -w '%{http_code}' "${API_BASE}/v1/operator-inbox" || true)
+list_inbox_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_operator_inbox.json -w '%{http_code}' "${API_BASE}/v1/operator-inbox" || true)
 assert_code 200 "$list_inbox_code" "list operator inbox"
-if ! grep -q '"category"' /tmp/week12_k8s_list_operator_inbox.json; then
+if ! grep -q '"category"' /tmp/kinetic_k8s_smoke_list_operator_inbox.json; then
   echo "operator inbox payload missing category" >&2
-  cat /tmp/week12_k8s_list_operator_inbox.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_operator_inbox.json >&2 || true
   exit 1
 fi
 
-list_exception_actions_code=$(curl -s -o /tmp/week12_k8s_list_exception_actions.json -w '%{http_code}' "${API_BASE}/v1/exception-actions" || true)
+list_exception_actions_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_exception_actions.json -w '%{http_code}' "${API_BASE}/v1/exception-actions" || true)
 assert_code 200 "$list_exception_actions_code" "list exception actions"
-if ! grep -q '"actionType"' /tmp/week12_k8s_list_exception_actions.json; then
+if ! grep -q '"actionType"' /tmp/kinetic_k8s_smoke_list_exception_actions.json; then
   echo "exception actions payload missing actionType" >&2
-  cat /tmp/week12_k8s_list_exception_actions.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_exception_actions.json >&2 || true
   exit 1
 fi
 
-exception_metrics_code=$(curl -s -o /tmp/week12_k8s_exception_metrics.json -w '%{http_code}' "${API_BASE}/v1/exception-metrics" || true)
+exception_metrics_code=$(curl -s -o /tmp/kinetic_k8s_smoke_exception_metrics.json -w '%{http_code}' "${API_BASE}/v1/exception-metrics" || true)
 assert_code 200 "$exception_metrics_code" "get exception metrics"
-if ! grep -q '"adminHoursPerWeek"' /tmp/week12_k8s_exception_metrics.json; then
+if ! grep -q '"adminHoursPerWeek"' /tmp/kinetic_k8s_smoke_exception_metrics.json; then
   echo "exception metrics payload missing adminHoursPerWeek" >&2
-  cat /tmp/week12_k8s_exception_metrics.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_exception_metrics.json >&2 || true
   exit 1
 fi
 
-decisions_code=$(curl -s -o /tmp/week12_k8s_list_decisions.json -w '%{http_code}' "${API_BASE}/v1/matchmaking-decisions" || true)
+decisions_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_decisions.json -w '%{http_code}' "${API_BASE}/v1/matchmaking-decisions" || true)
 assert_code 200 "$decisions_code" "list matchmaking decisions"
-if ! grep -q '"orderingStrategy"' /tmp/week12_k8s_list_decisions.json; then
+if ! grep -q '"orderingStrategy"' /tmp/kinetic_k8s_smoke_list_decisions.json; then
   echo "orderingStrategy field not found in matchmaking decisions payload" >&2
-  cat /tmp/week12_k8s_list_decisions.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_decisions.json >&2 || true
   exit 1
 fi
 
-list_runs_code=$(curl -s -o /tmp/week12_k8s_list_processing_runs.json -w '%{http_code}' "${API_BASE}/v1/promotion-processing-runs" || true)
+list_runs_code=$(curl -s -o /tmp/kinetic_k8s_smoke_list_processing_runs.json -w '%{http_code}' "${API_BASE}/v1/promotion-processing-runs" || true)
 assert_code 200 "$list_runs_code" "list promotion processing runs"
-if ! grep -q '"processedQueues"' /tmp/week12_k8s_list_processing_runs.json; then
+if ! grep -q '"processedQueues"' /tmp/kinetic_k8s_smoke_list_processing_runs.json; then
   echo "processedQueues field not found in promotion processing runs payload" >&2
-  cat /tmp/week12_k8s_list_processing_runs.json >&2 || true
+  cat /tmp/kinetic_k8s_smoke_list_processing_runs.json >&2 || true
   exit 1
 fi
 
-echo "Week 12 k8s smoke passed."
+echo "Kubernetes API workflow smoke test passed."

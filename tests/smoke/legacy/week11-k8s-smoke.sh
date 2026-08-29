@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 NAMESPACE="${K8S_NAMESPACE:-kinetic-v3}"
 PF_PORT="${PF_PORT:-18080}"
 API_BASE="http://localhost:${PF_PORT}"

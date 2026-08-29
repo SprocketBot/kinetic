@@ -15,6 +15,12 @@ test("CUJ 2: player can move through scrim queue, replay upload, and ratificatio
   await page.getByRole("button", { name: "Submit result" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 
+  await page.getByRole("button", { name: "Replay" }).click();
+  await page.getByLabel("Rocket League replay").setInputFiles({
+    name: "match.replay",
+    mimeType: "application/octet-stream",
+    buffer: Buffer.from("replay-bytes"),
+  });
   await page.getByRole("button", { name: "Upload replay evidence" }).click();
   await expect(page.getByTestId("player-submission-success")).toBeVisible();
 

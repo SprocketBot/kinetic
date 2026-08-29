@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -12,10 +11,7 @@ import (
 )
 
 func TestHierarchyStoreCreateAndList(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -322,10 +318,7 @@ func TestHierarchyStoreCreateAndList(t *testing.T) {
 }
 
 func TestHierarchyStoreDependencyViolation(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -407,10 +400,7 @@ func TestHierarchyStoreDependencyViolation(t *testing.T) {
 }
 
 func TestHierarchyStoreRosterMembershipConflict(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -506,10 +496,7 @@ func TestHierarchyStoreRosterMembershipConflict(t *testing.T) {
 }
 
 func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -650,10 +637,7 @@ func TestHierarchyStoreQueueEntryConflictAndLeave(t *testing.T) {
 }
 
 func TestHierarchyStoreQueueBanFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -758,10 +742,7 @@ func TestHierarchyStoreQueueBanFlow(t *testing.T) {
 }
 
 func TestHierarchyStorePlatformAccountLinkFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -819,10 +800,7 @@ func TestHierarchyStorePlatformAccountLinkFlow(t *testing.T) {
 }
 
 func TestHierarchyStoreGetEligibilityStatus(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -870,10 +848,7 @@ func TestHierarchyStoreGetEligibilityStatus(t *testing.T) {
 }
 
 func TestHierarchyStoreRoleAssignmentFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1009,10 +984,7 @@ func TestHierarchyStoreRoleAssignmentFlow(t *testing.T) {
 }
 
 func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1121,10 +1093,7 @@ func TestHierarchyStoreMatchReadyValidation(t *testing.T) {
 }
 
 func TestHierarchyStorePromoteQueueToScrimRatingFirstOrdering(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1302,10 +1271,7 @@ func TestHierarchyStorePromoteQueueToScrimRatingFirstOrdering(t *testing.T) {
 }
 
 func TestHierarchyStoreScrimStateTransitions(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1402,10 +1368,7 @@ func TestHierarchyStoreScrimStateTransitions(t *testing.T) {
 }
 
 func TestHierarchyStoreProcessQueuePromotionsIdempotent(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1493,10 +1456,7 @@ func TestHierarchyStoreProcessQueuePromotionsIdempotent(t *testing.T) {
 }
 
 func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1611,10 +1571,7 @@ func TestHierarchyStoreResultSubmissionRatificationFlow(t *testing.T) {
 }
 
 func TestHierarchyStoreResultOverrideAuditFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1724,10 +1681,7 @@ func TestHierarchyStoreResultOverrideAuditFlow(t *testing.T) {
 }
 
 func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -1747,7 +1701,7 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		t.Fatalf("failed to run migrations: %v", err)
 	}
 
-	store := NewHierarchyStore(conn)
+	store := NewHierarchyStoreWithReplayParser(conn, replayParserStub{result: parsedReplayFixture()})
 	suffix := time.Now().UnixNano()
 
 	league, err := store.CreateLeague(ctx, hierarchy.CreateLeagueInput{Name: fmt.Sprintf("League W12 %d", suffix), Slug: fmt.Sprintf("league-w12-%d", suffix)})
@@ -1806,7 +1760,7 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 		ContextID:          scrim.ID,
 		SubmittedByTeamID:  teamA.ID,
 		ReplayBody:         "week12-replay-body",
-		ParserName:         "kinetic-rl-parser",
+		ParserName:         "rl-replay",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-week12",
 		ParseOutputJSON:    []byte(`{"goals":4}`),
@@ -1824,13 +1778,16 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 	if firstIngest.ParseRun.Status != "queued" {
 		t.Fatalf("expected queued parse run, got %q", firstIngest.ParseRun.Status)
 	}
+	if err := store.TriggerReplayParse(ctx, firstIngest.Evidence.ID, scrim.ID, "scrim"); err != nil {
+		t.Fatalf("failed to parse replay evidence: %v", err)
+	}
 
 	secondIngest, err := store.IngestReplayEvidence(ctx, hierarchy.IngestReplayEvidenceInput{
 		ContextType:        "scrim",
 		ContextID:          scrim.ID,
 		SubmittedByTeamID:  teamA.ID,
 		ReplayBody:         "week12-replay-body",
-		ParserName:         "kinetic-rl-parser",
+		ParserName:         "rl-replay",
 		ParserVersion:      "v0.1.0",
 		ParserConfigDigest: "cfg-week12",
 		ParseOutputJSON:    []byte(`{"goals":4}`),
@@ -1861,6 +1818,34 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 	if len(parseRuns) < 2 {
 		t.Fatalf("expected at least two parse runs, got %d", len(parseRuns))
 	}
+	var parsedRun *hierarchy.ReplayParseRun
+	for i := range parseRuns {
+		if parseRuns[i].ID == firstIngest.ParseRun.ID {
+			parsedRun = &parseRuns[i]
+			break
+		}
+	}
+	if parsedRun == nil || parsedRun.Status != "needs_review" {
+		t.Fatalf("expected unresolved parser output to need review, got %#v", parsedRun)
+	}
+	var playerStatCount, teamStatCount int
+	if err := conn.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM player_stat_lines psl
+JOIN rounds r ON r.id = psl.round_id
+WHERE r.replay_evidence_id = $1;`, firstIngest.Evidence.ID).Scan(&playerStatCount); err != nil {
+		t.Fatalf("count parsed player stats: %v", err)
+	}
+	if err := conn.QueryRowContext(ctx, `
+SELECT COUNT(*)
+FROM team_stat_lines tsl
+JOIN rounds r ON r.id = tsl.round_id
+WHERE r.replay_evidence_id = $1;`, firstIngest.Evidence.ID).Scan(&teamStatCount); err != nil {
+		t.Fatalf("count parsed team stats: %v", err)
+	}
+	if playerStatCount != 1 || teamStatCount != 2 {
+		t.Fatalf("expected one player and two team stat lines, got players=%d teams=%d", playerStatCount, teamStatCount)
+	}
 
 	links, err := store.ListResultSubmissionReplayLinks(ctx)
 	if err != nil {
@@ -1872,10 +1857,7 @@ func TestHierarchyStoreReplayIngestionDeduplicatesAndLinksSubmission(t *testing.
 }
 
 func TestHierarchyStoreExceptionAutomationFlow(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -2034,10 +2016,7 @@ func TestHierarchyStoreExceptionAutomationFlow(t *testing.T) {
 }
 
 func TestHierarchyStoreAdjustPlayerRatingAuditAndGuardrail(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {

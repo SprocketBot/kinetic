@@ -120,12 +120,12 @@ func TestCUJPlayerReplaySubmissionRatificationAndRejection(t *testing.T) {
 		t.Fatalf("expected replay evidence linked to submission %d, got %d", submissionID, got)
 	}
 
-	postAsSubject(t, app, homeSubject, "/v1/result-submission-ratifications", map[string]any{
+	postAsSubjectWithRole(t, app, homeSubject, "admin", "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
 		"teamId":       fixture.AwayTeamID,
 	}, stdhttp.StatusConflict)
 
-	ratified := postAsSubject(t, app, awaySubject, "/v1/result-submission-ratifications", map[string]any{
+	ratified := postAsSubjectWithRole(t, app, awaySubject, "admin", "/v1/result-submission-ratifications", map[string]any{
 		"submissionId": submissionID,
 		"teamId":       fixture.AwayTeamID,
 	}, stdhttp.StatusOK)
@@ -179,7 +179,7 @@ func replayPayload(scrimID, teamID, submissionID int64, label string) map[string
 		"contextId":          scrimID,
 		"submittedByTeamId":  teamID,
 		"replayBody":         "replay-body-" + label,
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v0.1.0",
 		"parserConfigDigest": "cfg-" + label,
 		"resultSubmissionId": submissionID,
@@ -192,6 +192,13 @@ func replayPayload(scrimID, teamID, submissionID int64, label string) map[string
 func postAsSubject(t *testing.T, app *cujApp, subject, path string, payload map[string]any, expectedStatus int) map[string]any {
 	t.Helper()
 	req := requestWithSubject(t, stdhttp.MethodPost, subject, path, payload)
+	return app.serveJSON(t, req, path, expectedStatus)
+}
+
+func postAsSubjectWithRole(t *testing.T, app *cujApp, subject, role, path string, payload map[string]any, expectedStatus int) map[string]any {
+	t.Helper()
+	req := requestWithSubject(t, stdhttp.MethodPost, subject, path, payload)
+	req.Header.Set("Authorization", "Bearer local:"+subject+":"+role)
 	return app.serveJSON(t, req, path, expectedStatus)
 }
 

@@ -7,6 +7,9 @@ cd "$ROOT_DIR/web/client"
 echo "[web-quality] npm ci"
 npm ci
 
+echo "[web-quality] dependency audit"
+npm audit
+
 echo "[web-quality] lint"
 npm run lint
 

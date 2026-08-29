@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("DEPLOYMENT_ENV", "")
@@ -28,6 +31,8 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("AUTH_LOCAL_LOGIN_ENABLED", "false")
 	t.Setenv("CORS_ALLOWED_ORIGINS", "https://kinetic.mlesports.gg")
+	t.Setenv("REPLAY_PARSER_PATH", "/opt/kinetic/rl-replay")
+	t.Setenv("REPLAY_PARSER_TIMEOUT", "45s")
 
 	cfg := Load()
 
@@ -54,6 +59,14 @@ func TestLoadOverrides(t *testing.T) {
 	if cfg.CORSAllowedOrigins != "https://kinetic.mlesports.gg" {
 		t.Fatalf("expected CORS override, got %s", cfg.CORSAllowedOrigins)
 	}
+
+	if cfg.ReplayParserPath != "/opt/kinetic/rl-replay" {
+		t.Fatalf("expected replay parser path override, got %s", cfg.ReplayParserPath)
+	}
+
+	if cfg.ReplayParserTimeout != 45*time.Second {
+		t.Fatalf("expected 45s replay parser timeout, got %s", cfg.ReplayParserTimeout)
+	}
 }
 
 func TestVariablesDocumentsConfigSurface(t *testing.T) {
@@ -75,6 +88,8 @@ func TestVariablesDocumentsConfigSurface(t *testing.T) {
 		"DISCORD_CLIENT_ID":        false,
 		"DISCORD_CLIENT_SECRET":    false,
 		"DISCORD_REDIRECT_URL":     false,
+		"REPLAY_PARSER_PATH":       false,
+		"REPLAY_PARSER_TIMEOUT":    false,
 	}
 
 	for _, variable := range vars {

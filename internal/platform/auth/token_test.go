@@ -34,6 +34,22 @@ func TestLocalTokenValidatorValidToken(t *testing.T) {
 	}
 }
 
+func TestLocalTokenValidatorPreservesColonInSubject(t *testing.T) {
+	t.Parallel()
+
+	validator := NewLocalTokenValidator("local")
+	principal, err := validator.Validate("Bearer local:discord:player-42:player")
+	if err != nil {
+		t.Fatalf("Validate returned %v", err)
+	}
+	if principal.Subject != "discord:player-42" {
+		t.Fatalf("subject = %q", principal.Subject)
+	}
+	if len(principal.Roles) != 1 || principal.Roles[0] != "player" {
+		t.Fatalf("roles = %#v", principal.Roles)
+	}
+}
+
 func TestLocalTokenValidatorRejectsMalformedHeader(t *testing.T) {
 	t.Parallel()
 

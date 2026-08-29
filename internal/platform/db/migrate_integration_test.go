@@ -11,10 +11,7 @@ import (
 )
 
 func TestMigratorUpIsRepeatable(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	dbConn, err := Open(testDatabaseURL)
 	if err != nil {
@@ -31,7 +28,9 @@ func TestMigratorUpIsRepeatable(t *testing.T) {
 
 	tableName := fmt.Sprintf("integration_migration_check_%d", time.Now().UnixNano())
 	dir := t.TempDir()
-	writeIntegrationMigration(t, dir, "000001_create_table.up.sql", fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (id BIGINT PRIMARY KEY);`, tableName))
+	version := time.Now().UnixNano()
+	fileName := fmt.Sprintf("%d_create_table.up.sql", version)
+	writeIntegrationMigration(t, dir, fileName, fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (id BIGINT PRIMARY KEY);`, tableName))
 
 	migrator := NewMigrator(dbConn, dir)
 

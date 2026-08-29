@@ -77,6 +77,10 @@ describe("PlayerHomePage", () => {
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Replay" }));
+    await userEvent.upload(
+      screen.getByLabelText("Rocket League replay"),
+      new File(["replay-bytes"], "match.replay", { type: "application/octet-stream" }),
+    );
     await userEvent.click(screen.getByRole("button", { name: "Upload replay evidence" }));
     expect(await screen.findByTestId("player-submission-success")).toBeInTheDocument();
 

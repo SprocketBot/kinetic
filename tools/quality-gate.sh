@@ -16,7 +16,7 @@ echo "[quality] go vet"
 go vet ./...
 
 echo "[quality] go test"
-go test ./...
+./tools/go-test.sh
 
 echo "[quality] go build"
 tmpdir="$(mktemp -d)"

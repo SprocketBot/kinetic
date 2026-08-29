@@ -36,7 +36,7 @@ func TestCUJPerGameStatisticsAndHistory(t *testing.T) {
 		"contextId":          scrimID,
 		"submittedByTeamId":  fixture.HomeTeamID,
 		"replayBody":         "stats-history-replay-body",
-		"parserName":         "kinetic-rl-parser",
+		"parserName":         "rl-replay",
 		"parserVersion":      "v1",
 		"parserConfigDigest": "default",
 		"resultSubmissionId": submissionID,

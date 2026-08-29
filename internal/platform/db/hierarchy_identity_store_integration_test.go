@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -12,10 +11,7 @@ import (
 )
 
 func TestHierarchyStoreUserGamePlayers(t *testing.T) {
-	testDatabaseURL := os.Getenv("TEST_DATABASE_URL")
-	if testDatabaseURL == "" {
-		t.Skip("TEST_DATABASE_URL not set; skipping integration test")
-	}
+	testDatabaseURL := isolatedTestDatabaseURL(t)
 
 	conn, err := Open(testDatabaseURL)
 	if err != nil {
