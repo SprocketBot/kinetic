@@ -58,9 +58,9 @@ RETURNING
 		stmt,
 		input.TargetPlayerID,
 		input.Role,
-		scope.franchiseID,
-		scope.clubID,
-		scope.teamID,
+		input.FranchiseID,
+		input.ClubID,
+		input.TeamID,
 		input.ActorPlayerID,
 		input.Reason,
 	).Scan(

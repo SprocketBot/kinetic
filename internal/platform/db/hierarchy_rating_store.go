@@ -185,9 +185,10 @@ ORDER BY id DESC;`
 	adjustments := make([]hierarchy.RatingAdjustment, 0)
 	for rows.Next() {
 		var adjustment hierarchy.RatingAdjustment
+		var actorPlayerID sql.NullInt64
 		if err := rows.Scan(
 			&adjustment.ID,
-			&adjustment.ActorPlayerID,
+			&actorPlayerID,
 			&adjustment.TargetPlayerID,
 			&adjustment.ContextKey,
 			&adjustment.PreviousRating,
@@ -200,6 +201,9 @@ ORDER BY id DESC;`
 			&adjustment.CreatedAt,
 		); err != nil {
 			return nil, err
+		}
+		if actorPlayerID.Valid {
+			adjustment.ActorPlayerID = actorPlayerID.Int64
 		}
 		adjustments = append(adjustments, adjustment)
 	}

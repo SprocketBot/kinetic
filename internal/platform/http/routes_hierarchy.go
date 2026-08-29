@@ -264,6 +264,10 @@ func (r routeRegistrar) registerHierarchyRoutes(mux *http.ServeMux) {
 				http.Error(w, "invalid request body", http.StatusBadRequest)
 				return
 			}
+			if err := hierarchy.ValidateRevokeRoleInput(input); err != nil {
+				handleHierarchyError(w, err)
+				return
+			}
 			scope, err := deps.RoleStore.ResolveAssignmentScope(r.Context(), input.AssignmentID)
 			if err != nil {
 				handleHierarchyError(w, err)

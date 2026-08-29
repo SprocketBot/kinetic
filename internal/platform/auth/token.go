@@ -29,23 +29,27 @@ func (v LocalTokenValidator) Validate(authorizationHeader string) (Principal, er
 	}
 
 	rawToken := strings.TrimSpace(strings.TrimPrefix(authorizationHeader, "Bearer "))
-	parts := strings.Split(rawToken, ":")
-	if len(parts) < 2 {
+	prefix := v.tokenPrefix + ":"
+	if !strings.HasPrefix(rawToken, prefix) {
 		return AnonymousPrincipal(), ErrInvalidAuthHeader
 	}
 
-	if parts[0] != v.tokenPrefix {
-		return AnonymousPrincipal(), ErrInvalidAuthHeader
+	remainder := strings.TrimPrefix(rawToken, prefix)
+	subjectPart := remainder
+	rolesPart := ""
+	if separator := strings.LastIndex(remainder, ":"); separator >= 0 {
+		subjectPart = remainder[:separator]
+		rolesPart = remainder[separator+1:]
 	}
 
-	subject := strings.TrimSpace(parts[1])
+	subject := strings.TrimSpace(subjectPart)
 	if subject == "" {
 		return AnonymousPrincipal(), ErrInvalidAuthHeader
 	}
 
 	roles := []string{}
-	if len(parts) >= 3 && strings.TrimSpace(parts[2]) != "" {
-		for _, role := range strings.Split(parts[2], ",") {
+	if strings.TrimSpace(rolesPart) != "" {
+		for _, role := range strings.Split(rolesPart, ",") {
 			trimmed := strings.TrimSpace(role)
 			if trimmed != "" {
 				roles = append(roles, trimmed)
