@@ -110,6 +110,11 @@ League, just scoped to game ID 2 (or whatever Trackmania gets).
 
 **Step 3: Connect the replay parser**
 
+Rocket League uses the statically linked `rl-replay` CLI from
+`github.com/SprocketBot/rust-parser`. Kinetic shells out to the configured
+binary and consumes its JSON summary. Other games should implement the same
+command-adapter boundary with a game-specific output mapper.
+
 Trackmania has an existing parser. It needs to be adapted to Kinetic's replay
 pipeline:
 
@@ -202,7 +207,7 @@ These are listed as Phase 0 decisions in the cutover plan:
 
 - Kinetic ADR-012: Replay parsing and platform account association model
   (`docs/adr/012-*`)
-- Sprocket cutover plan (`plans/sprocket-functionality-cutover-plan.md`)
+- Product cutover plan (`docs/plans/product-cutover-plan.md`)
 - Kinetic identity store integration test (`internal/platform/db/
   hierarchy_identity_store_integration_test.go` — shows CreateGame + CreateUserPlayer)
 - Trackmania dataset queries (in the `datasets` repo: `queries/public/trackmania/`)

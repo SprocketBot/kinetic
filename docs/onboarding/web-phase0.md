@@ -1,6 +1,7 @@
-# Web Client Onboarding (Phase 0)
+# Web Client Setup
 
 Date: 2026-02-15
+Status: Current setup guide
 
 ## Purpose
 
@@ -10,12 +11,12 @@ Run and verify the Kinetic v3 web client foundation (`web/client`) locally.
 
 - Node.js 22.x
 - npm 10+
-- backend API available at `http://localhost:8080` for API mode (optional in Phase 0)
+- backend API available at `http://localhost:8080` for API mode
 
 ## Install
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3/web/client
+cd web/client
 npm ci
 ```
 
@@ -29,11 +30,11 @@ Default Vite URL: `http://localhost:5173`
 
 ## Auth Modes
 
-Phase 0 ships with a session adapter and mock mode.
+The client ships with a session adapter and mock mode.
 
 ### Mock mode (default)
 
-Set in `web/client/.env` (or shell env):
+Set in a local `.env` file (or shell environment):
 
 ```bash
 VITE_AUTH_MODE=mock
@@ -46,14 +47,14 @@ Behavior:
 - route guards work without backend auth endpoints
 - login page exposes a mock login button for local navigation
 
-### API mode (future-ready)
+### API mode
 
 ```bash
 VITE_AUTH_MODE=api
 VITE_API_BASE_URL=http://localhost:8080
 ```
 
-Expected endpoints (planned in `API-WEB-01`):
+Backend endpoints:
 
 - `GET /v1/session`
 - `GET /v1/auth/login`
@@ -75,7 +76,6 @@ npm run build
 Or from repo root:
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3
 ./tools/web-quality-gate.sh
 ```
 

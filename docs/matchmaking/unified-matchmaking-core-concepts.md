@@ -1,7 +1,7 @@
 # Unified Matchmaking Core Concepts
 
 Date: 2026-02-14  
-Status: Draft  
+Status: Active design reference
 Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/>
 
 ## Purpose

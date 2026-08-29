@@ -4,7 +4,7 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-008 (scheduled match vs scrim), ADR-010 (unified matchmaking and rating model), ADR-011 (unified matchmaking invariants)
-- Detailed References: `docs/matchmaking/unified-matchmaking-implementation-checklist.md`, `plans/v3-execution-board.md`
+- Detailed Reference: `docs/matchmaking/unified-matchmaking-invariants-and-guardrails.md`
 
 ## Context
 

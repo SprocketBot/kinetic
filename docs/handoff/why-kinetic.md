@@ -93,10 +93,12 @@ The core platform is built. Here's what exists:
 - Player activation workflow — approve/reject new players
 - Scheduled competition — seasons, schedule groups, fixtures, matches
 
-### Ready for Web Client Work
+### Web Client Surfaces
 
-All of the above has REST API endpoints. The web client (React/TypeScript) has
-a delivery plan with 5 phases:
+The React/TypeScript client has role-specific player, support, league-admin,
+and platform-operator surfaces. The original five-phase delivery plan is
+complete and archived; browser-level cutover proof and workflow hardening still
+follow the active product cutover plan.
 
 | Phase | What It Covers |
 |---|---|
@@ -109,17 +111,14 @@ a delivery plan with 5 phases:
 
 ### Still Needed Before Cutover
 
-From the cutover plan (P0 priority):
-
-1. **Authorization scope enforcement** — The RBAC policy system exists but
-   needs the full resource taxonomy (30+ resource types) wired to every endpoint
-2. **Real replay pipeline** — Currently accepts pre-parsed JSON. Needs async
-   worker that invokes the Rust/Python parser, resolves identities, and
-   extracts stat lines
-3. **OAuth providers** — Discord login is wired; Steam, Epic, Xbox, PSN callbacks
-   need implementation
-4. **OpenAPI spec** — The current spec needs to be regenerated from the expanded
-   API surface
+The active plan of record is `docs/plans/product-cutover-plan.md`. Kinetic now
+invokes the external, statically linked `rl-replay` parser and persists its real
+team/player summary with platform-account resolution. Replay work remains a
+cutover blocker because queued work still needs restart-safe recovery/retry and
+replay-driven finalization needs to be completed as one authoritative
+transaction. Provider-verified platform ownership, the remaining competition
+lifecycle, launch-scope decisions, and browser-level release evidence also
+remain.
 
 ## Infrastructure Requirements
 
@@ -134,5 +133,5 @@ Minimum viable setup:
 - Optionally: Kubernetes (overkill for a single league, but supported)
 ```
 
-The 14-week onboarding guides walk through every aspect of setup, development,
-and deployment. Start with `docs/onboarding/week1.md`.
+Start with `docs/README.md` for the current documentation map and
+`docs/runbooks/dev-setup-and-verification.md` for setup and deployment checks.

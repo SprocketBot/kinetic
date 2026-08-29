@@ -1,7 +1,7 @@
 # Unified Matchmaking Invariants And Guardrails
 
 Date: 2026-02-14  
-Status: Draft  
+Status: Active guardrails
 Depends On: `docs/matchmaking/unified-matchmaking-core-concepts.md`
 
 ## Purpose

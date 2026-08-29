@@ -1,10 +1,11 @@
 # Web Support and Platform Ops (F1)
 
 Date: 2026-02-15
+Status: Current feature guide
 
 ## Scope
 
-This runbook covers the Week F1 web surfaces:
+This runbook covers the support and platform-operations web surfaces:
 
 - League support inbox workspace (`/app/support`)
 - Platform operations metrics + links (`/app/platform`)
@@ -39,7 +40,7 @@ Backed endpoints:
 ## Verification
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3/web/client
+cd web/client
 npm run lint
 npm run typecheck
 npm run test

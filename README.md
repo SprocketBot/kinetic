@@ -17,30 +17,28 @@ Core platform slices are complete, including:
 - league hierarchy, roster, queue, scrim, and scheduled match foundations
 - deterministic queue promotion processing with observability
 - result submission + ratification life cycle
-- replay evidence ingestion MVP with parser provenance + de-duplication
+- replay evidence ingestion with parser provenance, de-duplication, and the
+  external `rl-replay` command adapter
 - local and minikube smoke automation for weekly slices
 - browser/API release evidence covering credentialed CORS, session identity,
   privilege isolation, and replay intake behavior
 
-Handoff hardening and CI quality-gate enforcement are in place. Current active
-strategy is Pareto Recovery focused on exception automation:
+Handoff hardening and CI quality-gate enforcement are in place. The original
+roadmap, Pareto recovery track, and web-client delivery track are complete.
+The remaining work is tracked in one place:
 
-- `plans/pareto-recovery-plan.md`
-
-Planning source of truth:
-
-- `plans/v3-execution-board.md`
+- `docs/plans/product-cutover-plan.md`
 
 ## Repository Layout
 
 - `cmd/`: entrypoints (binaries)
+- `api/`: machine-readable OpenAPI contract
 - `internal/`: app-private code (domain + platform)
-- `pkg/`: optional reusable packages intended for external use
 - `web/`: web client workspace (React/TypeScript)
 - `migrations/`: database migration files
 - `deploy/`: Kubernetes manifests/charts and deployment scripts
-- `docs/`: ADRs, runbooks, onboarding
-- `test/`: integration/functional test assets
+- `docs/`: product docs, ADRs, runbooks, current plans, and documentation archive
+- `tests/`: active smoke suites and retained legacy validation scripts
 - `tools/`: development tooling scripts
 
 HTTP handlers are split by route area under `internal/platform/http`.
@@ -81,16 +79,16 @@ Configuration variables are documented in `docs/runbooks/configuration.md`.
 ./tools/release-evidence.sh
 
 # full local behavior smoke (latest slice)
-./tools/week12-smoke.sh
+./tests/smoke/api-workflow.sh
 
 # full minikube behavior smoke (latest slice)
-./tools/week12-k8s-smoke.sh
+./tests/smoke/kubernetes-api-workflow.sh
 
 # handoff + hardening smoke
-./tools/week13-smoke.sh
+./tests/smoke/api-workflow.sh
 
 # final roadmap verification
-./tools/week14-smoke.sh
+./tests/smoke/api-workflow.sh
 ```
 
 `tools/release-evidence.sh` writes proof bundles under
@@ -117,25 +115,12 @@ Notes:
   Kubernetes in this repo.
 - Clean up Minikube dev resources with `kubectl delete -k deploy/k8s-local-dev`.
 
-Current onboarding guides:
+Current documentation starts at `docs/README.md`. Contributor guides:
 
-- `docs/onboarding/week1.md`
-- `docs/onboarding/week2.md`
-- `docs/onboarding/week3.md`
-- `docs/onboarding/week4.md`
-- `docs/onboarding/week5.md`
-- `docs/onboarding/week6.md`
-- `docs/onboarding/week7.md`
-- `docs/onboarding/week8.md`
-- `docs/onboarding/week9.md`
-- `docs/onboarding/week10.md`
-- `docs/onboarding/week11.md`
-- `docs/onboarding/week12.md`
-- `docs/onboarding/week13.md`
-- `docs/onboarding/week14.md`
-- `docs/onboarding/pareto-p1-p6.md`
 - `docs/onboarding/web-phase0.md`
 - `docs/onboarding/web-support-ops.md`
 - `docs/onboarding/web-player-core.md`
 - `docs/onboarding/web-scheduling-admin.md`
 - `docs/onboarding/web-roster-and-governance.md`
+- `docs/runbooks/dev-setup-and-verification.md`
+- `docs/runbooks/operations-and-rollback.md`

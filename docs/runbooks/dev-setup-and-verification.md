@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Go `1.24.6`
-- Docker for `./tools/week12-smoke.sh`
+- Docker for `./tests/smoke/api-workflow.sh`
 - kubectl
 - minikube
 - Node.js 22.x and npm 10+ for the web client
@@ -45,7 +45,7 @@ What this provides:
 ## Local full-stack validation
 
 ```bash
-./tools/week12-smoke.sh
+./tests/smoke/api-workflow.sh
 ```
 
 What this validates:
@@ -61,7 +61,7 @@ What this validates:
 ```bash
 kubectl config use-context minikube
 minikube status
-./tools/week12-k8s-smoke.sh
+./tests/smoke/kubernetes-api-workflow.sh
 ```
 
 What this validates:

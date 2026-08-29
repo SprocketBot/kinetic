@@ -1,6 +1,7 @@
 # Web Scheduling Admin (F3)
 
 Date: 2026-02-15
+Status: Current feature guide
 
 ## Scope
 
@@ -31,7 +32,7 @@ This runbook covers `/app/admin` scheduling workflows:
 ## Verification
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3/web/client
+cd web/client
 npm run lint
 npm run typecheck
 npm run test

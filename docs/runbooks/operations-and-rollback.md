@@ -17,7 +17,7 @@ curl -sSf http://localhost:8080/healthz
 ## Mandatory post-deploy verification
 
 ```bash
-./tools/week12-k8s-smoke.sh
+./tests/smoke/kubernetes-api-workflow.sh
 ```
 
 ## Rollback strategy
@@ -46,5 +46,5 @@ kubectl -n kinetic-v3 logs deploy/kinetic-v3-api --tail=300
 kubectl -n kinetic-v3 get events --sort-by=.lastTimestamp | tail -n 50
 ```
 
-4. Reproduce with local smoke (`week12-smoke.sh`) if possible.
+4. Reproduce with the local API workflow smoke test if possible.
 5. If user-impacting, rollback first and investigate second.

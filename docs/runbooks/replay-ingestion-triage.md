@@ -26,7 +26,7 @@ curl -s http://localhost:8080/v1/result-submission-replay-links
 ## Fast repro command
 
 ```bash
-./tools/week12-smoke.sh
+./tests/smoke/api-workflow.sh
 ```
 
 ## Recovery approach

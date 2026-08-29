@@ -13,6 +13,8 @@ Kinetic v3 reads process configuration from environment variables in `internal/p
 | `MIGRATIONS_DIR` | `migrations` | No | Directory containing `*.up.sql` migration files. Use `/app/migrations` in container images. |
 | `RUN_MIGRATIONS_ON_START` | `false` | No | When `true`, the API applies pending migrations during startup. |
 | `REQUIRE_DATABASE` | `false` | No | When `true`, startup fails unless database connectivity, authz loading, and store initialization succeed. |
+| `REPLAY_PARSER_PATH` | unset | No | Path to the `rl-replay` executable from `github.com/SprocketBot/rust-parser`. Parsing is disabled when unset. |
+| `REPLAY_PARSER_TIMEOUT` | `30s` | No | Maximum runtime for one parser process, using Go duration syntax. |
 
 ## Auth and web
 
@@ -36,6 +38,17 @@ When `DEPLOYMENT_ENV` is `staging`, `prod`, or `production`, API startup fails u
 - `AUTH_SESSION_SECRET` is non-empty and not the local default
 - `WEB_BASE_URL` is not a local development URL
 - `CORS_ALLOWED_ORIGINS` does not contain `*`
+
+## Replay parser
+
+Install the statically linked `rl-replay` binary from the parser repository's
+release archive, make it executable, and set `REPLAY_PARSER_PATH` to its
+absolute path (or `rl-replay` when it is on `PATH`). Kinetic writes each replay
+to a mode-`0600` temporary file, invokes `rl-replay <file>`, reads the JSON
+summary from stdout, and removes the temporary file.
+
+The API accepts binary-safe uploads in `replayBodyBase64`. The legacy
+`replayBody` field remains available for existing smoke clients.
 
 ## Local and Kubernetes defaults
 

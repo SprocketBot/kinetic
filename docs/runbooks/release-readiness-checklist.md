@@ -12,8 +12,8 @@ Use this checklist before cutting or promoting any release candidate.
 
 ```bash
 ./tools/ci-verify.sh
-./tools/week14-smoke.sh
-./tools/week14-k8s-smoke.sh
+./tests/smoke/api-workflow.sh
+./tests/smoke/kubernetes-api-workflow.sh
 ./tools/release-evidence.sh
 ```
 

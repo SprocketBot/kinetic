@@ -17,11 +17,11 @@ git checkout -b codex/<short-topic>
 2. Run baseline verification before edits.
 
 ```bash
-go test ./...
-./tools/week12-smoke.sh
+./tools/go-test.sh
+./tests/smoke/api-workflow.sh
 ```
 
-3. Make focused changes in a single week slice or bugfix scope.
+3. Make focused changes in a single product slice or bugfix scope.
 
 4. Re-run quality checks.
 
@@ -32,14 +32,14 @@ go test ./...
 5. If your change touches deployed behavior, run minikube smoke.
 
 ```bash
-./tools/week12-k8s-smoke.sh
+./tests/smoke/kubernetes-api-workflow.sh
 ```
 
 6. Update docs for behavior changes.
 
 - ADR (`docs/adr`) for design decisions
 - onboarding notes (`docs/onboarding`) for contributor execution
-- execution board (`plans/v3-execution-board.md`) for schedule/status
+- product cutover plan (`docs/plans/product-cutover-plan.md`) when remaining-work status changes
 
 7. Commit with explicit scope.
 
@@ -65,13 +65,13 @@ Minimum acceptance for merge:
 
 ```bash
 ./tools/quality-gate.sh
-./tools/week12-smoke.sh
+./tests/smoke/api-workflow.sh
 ```
 
 Recommended for production-affecting changes:
 
 ```bash
-./tools/week12-k8s-smoke.sh
+./tests/smoke/kubernetes-api-workflow.sh
 ```
 
 ## Commit discipline
@@ -87,5 +87,5 @@ Before promoting a release candidate:
 - quality gate green
 - local smoke green
 - minikube smoke green
-- execution board updated
+- product cutover plan updated when the change closes or reshapes remaining work
 - onboarding/runbook docs updated for any changed flow

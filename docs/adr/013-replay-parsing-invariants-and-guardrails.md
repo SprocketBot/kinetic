@@ -4,8 +4,9 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-012 (replay parsing and platform account association model)
-- Source Parser: <https://github.com/KineticBot/kinetic-rl-parser>
-- Detailed References: `docs/replay-parsing/unified-replay-parsing-invariants-and-guardrails.md`, `docs/replay-parsing/unified-replay-parsing-implementation-checklist.md`
+- Source Parser: <https://github.com/SprocketBot/rust-parser>
+- Detailed Reference: `docs/replay-parsing/unified-replay-parsing-invariants-and-guardrails.md`
+- Remaining Work: `docs/plans/product-cutover-plan.md`
 
 ## Context
 

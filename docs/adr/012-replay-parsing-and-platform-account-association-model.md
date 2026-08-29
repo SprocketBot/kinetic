@@ -4,7 +4,7 @@
 - Date: 2026-02-14
 - Owner: jacbaile
 - Related: ADR-002 (auth and RBAC baseline), ADR-008 (scheduled match vs scrim), ADR-009 (scheduled competition slice)
-- Source Parser: <https://github.com/KineticBot/kinetic-rl-parser>
+- Source Parser: <https://github.com/SprocketBot/rust-parser>
 - Detailed Reference: `docs/replay-parsing/unified-replay-parsing-core-concepts.md`
 
 ## Context
@@ -33,7 +33,8 @@ Adopt a replay-centric ingestion and identity-resolution model with explicit pla
 ### 3. Replay evidence as source of truth
 
 - Replay bytes are ingested as immutable evidence.
-- Parsing is delegated to `kinetic-rl-parser`.
+- Parsing is delegated to the `rl-replay` binary built by
+  `SprocketBot/rust-parser`.
 - Parsed outputs are normalized into canonical internal structures with parser provenance.
 
 ### 4. Participant resolution contract
@@ -72,7 +73,7 @@ Adopt a replay-centric ingestion and identity-resolution model with explicit pla
 
 ## Non-Goals (Current Decision Scope)
 
-- Replacing `kinetic-rl-parser` internals.
+- Replacing `SprocketBot/rust-parser` internals.
 - Defining full UI/UX flows for every replay-management screen.
 - Final retention policy and cost optimization strategy for replay storage.
 

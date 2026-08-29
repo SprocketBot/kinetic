@@ -1,6 +1,7 @@
 # Web Roster and Governance (F4/F5)
 
 Date: 2026-02-15
+Status: Current feature guide
 
 ## Scope
 
@@ -27,7 +28,7 @@ No open backend blockers remain for the current roster/governance web scope.
 ## Verification
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3/web/client
+cd web/client
 npm run lint
 npm run typecheck
 npm run test

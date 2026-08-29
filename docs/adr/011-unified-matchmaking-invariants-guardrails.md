@@ -5,7 +5,8 @@
 - Owner: jacbaile
 - Related: ADR-010 (unified matchmaking and rating model)
 - Source Proposal: <https://minor-league-esports.github.io/knowledgeBase/departments/development/features-and-designs/kinetic-v2-unified-matchmaking-proposal/>
-- Detailed References: `docs/matchmaking/unified-matchmaking-invariants-and-guardrails.md`, `docs/matchmaking/unified-matchmaking-implementation-checklist.md`
+- Detailed Reference: `docs/matchmaking/unified-matchmaking-invariants-and-guardrails.md`
+- Remaining Work: `docs/plans/product-cutover-plan.md`
 
 ## Context
 

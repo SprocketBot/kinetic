@@ -1,7 +1,7 @@
 # Unified Replay Parsing Invariants And Guardrails
 
 Date: 2026-02-14  
-Status: Draft  
+Status: Active guardrails
 Depends On: `docs/replay-parsing/unified-replay-parsing-core-concepts.md`
 
 ## Purpose

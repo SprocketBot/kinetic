@@ -1,6 +1,7 @@
 # Web Player Core (F2)
 
 Date: 2026-02-15
+Status: Current feature guide
 
 ## Scope
 
@@ -26,7 +27,7 @@ This runbook covers the player-facing core workflows in `/app/player`:
 ## Local Validation
 
 ```bash
-cd /Users/jacbaile/Kinetic-v3/web/client
+cd web/client
 npm run lint
 npm run typecheck
 npm run test
