@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/platform/replayparser"
 )
 
 type Stores struct {
@@ -25,7 +26,14 @@ type Stores struct {
 }
 
 func NewStores(conn *sql.DB) Stores {
-	hierarchyStore := NewHierarchyStore(conn)
+	return newStores(NewHierarchyStore(conn))
+}
+
+func NewStoresWithReplayParser(conn *sql.DB, parser replayparser.Parser) Stores {
+	return newStores(NewHierarchyStoreWithReplayParser(conn, parser))
+}
+
+func newStores(hierarchyStore *HierarchyStore) Stores {
 	return Stores{
 		HierarchyStore:   hierarchyStore,
 		LeagueStore:      hierarchyStore,

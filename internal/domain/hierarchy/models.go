@@ -613,13 +613,16 @@ type RejectResultSubmissionInput struct {
 }
 
 type IngestReplayEvidenceInput struct {
-	ContextType        string          `json:"contextType"`
-	ContextID          int64           `json:"contextId"`
-	SubmittedByTeamID  int64           `json:"submittedByTeamId"`
-	ReplayBody         string          `json:"replayBody"`
-	ParserName         string          `json:"parserName"`
-	ParserVersion      string          `json:"parserVersion"`
-	ParserConfigDigest string          `json:"parserConfigDigest"`
+	ContextType        string `json:"contextType"`
+	ContextID          int64  `json:"contextId"`
+	SubmittedByTeamID  int64  `json:"submittedByTeamId"`
+	ReplayBody         string `json:"replayBody,omitempty"`
+	ReplayBodyBase64   string `json:"replayBodyBase64,omitempty"`
+	ParserName         string `json:"parserName"`
+	ParserVersion      string `json:"parserVersion"`
+	ParserConfigDigest string `json:"parserConfigDigest"`
+	// ParseOutputJSON is retained for request compatibility. Kinetic ignores
+	// caller-supplied parser output and stores only output from rl-replay.
 	ParseOutputJSON    json.RawMessage `json:"parseOutputJson"`
 	ResultSubmissionID *int64          `json:"resultSubmissionId,omitempty"`
 }

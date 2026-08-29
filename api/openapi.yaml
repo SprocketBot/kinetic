@@ -3564,7 +3564,11 @@ paths:
                   format: int64
                 replayBody:
                   type: string
-                  description: "Base64-encoded or raw replay file content."
+                  description: "Legacy raw replay content. Prefer replayBodyBase64 for binary-safe uploads."
+                replayBodyBase64:
+                  type: string
+                  format: byte
+                  description: "Base64-encoded Rocket League .replay file content."
                 parserName:
                   type: string
                 parserVersion:
@@ -3572,7 +3576,8 @@ paths:
                 parserConfigDigest:
                   type: string
                 parseOutputJson:
-                  description: "Pre-parsed output JSON if available."
+                  deprecated: true
+                  description: "Legacy compatibility field. The server ignores this value and records output produced by rl-replay."
                 resultSubmissionId:
                   type: integer
                   format: int64
@@ -3581,10 +3586,14 @@ paths:
                 - contextType
                 - contextId
                 - submittedByTeamId
-                - replayBody
                 - parserName
                 - parserVersion
                 - parserConfigDigest
+              oneOf:
+                - required:
+                    - replayBody
+                - required:
+                    - replayBodyBase64
       responses:
         "201":
           description: "Replay ingested (new)."

@@ -600,8 +600,11 @@ func ValidateIngestReplayEvidenceInput(input IngestReplayEvidenceInput) error {
 	if input.SubmittedByTeamID <= 0 {
 		return fmt.Errorf("%w: submittedByTeamId must be greater than zero", ErrInvalidInput)
 	}
-	if strings.TrimSpace(input.ReplayBody) == "" {
-		return fmt.Errorf("%w: replayBody is required", ErrInvalidInput)
+	if input.ReplayBody == "" && strings.TrimSpace(input.ReplayBodyBase64) == "" {
+		return fmt.Errorf("%w: replayBody or replayBodyBase64 is required", ErrInvalidInput)
+	}
+	if input.ReplayBody != "" && strings.TrimSpace(input.ReplayBodyBase64) != "" {
+		return fmt.Errorf("%w: provide only one of replayBody or replayBodyBase64", ErrInvalidInput)
 	}
 	if strings.TrimSpace(input.ParserName) == "" {
 		return fmt.Errorf("%w: parserName is required", ErrInvalidInput)

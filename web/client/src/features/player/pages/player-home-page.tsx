@@ -475,7 +475,7 @@ function SubmissionActions({
   const [awayShots, setAwayShots] = useState(0);
   const [homeSaves, setHomeSaves] = useState(0);
   const [awaySaves, setAwaySaves] = useState(0);
-  const [replayBody, setReplayBody] = useState("placeholder-replay");
+  const [replayFile, setReplayFile] = useState<File | null>(null);
   const [lastReplayConflict, setLastReplayConflict] = useState<unknown | null>(null);
   const existingSubmission =
     inProcessSubmissions.find(
@@ -547,15 +547,17 @@ function SubmissionActions({
 
   async function submitReplay(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!replayFile) return;
+
+    const replayBodyBase64 = await fileToBase64(replayFile);
     const result = await onReplayUpload({
       contextType,
       contextId,
       submittedByTeamId: teamId,
-      replayBody,
-      parserName: "kinetic-rl-parser",
-      parserVersion: "v1",
+      replayBodyBase64,
+      parserName: "rl-replay",
+      parserVersion: "v0.1.0",
       parserConfigDigest: "default",
-      parseOutputJson: {},
       resultSubmissionId: submissionId,
     });
     const score = scoreFromPayload(result.autofillJson);
@@ -689,8 +691,13 @@ function SubmissionActions({
       {activeAction === "replay" && (
         <form onSubmit={submitReplay}>
           <label>
-            Replay body
-            <input value={replayBody} onChange={(event) => setReplayBody(event.target.value)} />
+            Rocket League replay
+            <input
+              accept=".replay,application/octet-stream"
+              onChange={(event) => setReplayFile(event.target.files?.[0] ?? null)}
+              required
+              type="file"
+            />
           </label>
           <div>
             <button type="submit">Upload replay evidence</button>
@@ -710,6 +717,23 @@ function SubmissionActions({
       )}
     </section>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read replay file"));
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Unable to encode replay file"));
+        return;
+      }
+      const separator = result.indexOf(",");
+      resolve(separator >= 0 ? result.slice(separator + 1) : result);
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function DataList({ title, items, loading }: { title: string; items: string[]; loading: boolean }) {

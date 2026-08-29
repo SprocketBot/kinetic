@@ -280,7 +280,7 @@ replay_body="release-evidence-replay-body-${suffix}"
 curl_capture "ingest-replay-first" 201 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"rl-replay\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
 if ! grep -q '"duplicate":false' "$(body_path ingest-replay-first)"; then
   echo "first replay ingest did not return duplicate=false" >&2
   cat "$(body_path ingest-replay-first)" >&2
@@ -290,7 +290,7 @@ fi
 curl_capture "ingest-replay-duplicate" 200 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"rl-replay\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"resultSubmissionId\":${submission_id},\"parseOutputJson\":{\"goals\":4}}"
 if ! grep -q '"duplicate":true' "$(body_path ingest-replay-duplicate)"; then
   echo "duplicate replay ingest did not return duplicate=true" >&2
   cat "$(body_path ingest-replay-duplicate)" >&2
@@ -300,7 +300,7 @@ fi
 curl_capture "ingest-replay-context-rejected" 409 \
   -X POST "${API_BASE_URL}/v1/replay-evidence" \
   -H "content-type: application/json" \
-  -d "{\"contextType\":\"scrim\",\"contextId\":${second_scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"kinetic-rl-parser\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"parseOutputJson\":{\"goals\":4}}"
+  -d "{\"contextType\":\"scrim\",\"contextId\":${second_scrim_id},\"submittedByTeamId\":${team_a_id},\"replayBody\":\"${replay_body}\",\"parserName\":\"rl-replay\",\"parserVersion\":\"release-evidence\",\"parserConfigDigest\":\"default\",\"parseOutputJson\":{\"goals\":4}}"
 
 curl_capture "list-replay-evidence" 200 "${API_BASE_URL}/v1/replay-evidence"
 require_json_field "list replay evidence" "replaySha256" "$(body_path list-replay-evidence)"

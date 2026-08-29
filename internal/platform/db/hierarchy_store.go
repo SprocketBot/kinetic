@@ -7,10 +7,12 @@ import (
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
+	"github.com/kineticbot/kinetic-v3/internal/platform/replayparser"
 )
 
 type HierarchyStore struct {
-	db *sql.DB
+	db           *sql.DB
+	replayParser replayparser.Parser
 }
 
 const (
@@ -34,6 +36,10 @@ type playerRatingSnapshot struct {
 
 func NewHierarchyStore(db *sql.DB) *HierarchyStore {
 	return &HierarchyStore{db: db}
+}
+
+func NewHierarchyStoreWithReplayParser(db *sql.DB, parser replayparser.Parser) *HierarchyStore {
+	return &HierarchyStore{db: db, replayParser: parser}
 }
 
 func mapSQLError(err error) error {

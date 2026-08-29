@@ -113,8 +113,8 @@ type ReplayStore interface {
 	ListReplayEvidence(ctx context.Context) ([]ReplayEvidence, error)
 	ListReplayParseRuns(ctx context.Context) ([]ReplayParseRun, error)
 	ListResultSubmissionReplayLinks(ctx context.Context) ([]ResultSubmissionReplayLink, error)
-	// TriggerReplayParse launches a background stub parse of the given replay evidence,
-	// creating round and player stat line records linked to the associated result submission.
+	// TriggerReplayParse invokes the configured replay parser for queued evidence
+	// and persists its round, team, and player statistics.
 	TriggerReplayParse(ctx context.Context, evidenceID, contextID int64, contextType string) error
 }
 

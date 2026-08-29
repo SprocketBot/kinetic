@@ -1,11 +1,14 @@
 package http
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/kineticbot/kinetic-v3/internal/domain/authz"
 	"github.com/kineticbot/kinetic-v3/internal/domain/hierarchy"
 	"github.com/kineticbot/kinetic-v3/internal/platform/auth"
-	"net/http"
 )
 
 func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
@@ -14,6 +17,9 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 	evaluator := r.evaluator
 	sessionCookieName := r.sessionCookieName
 	sessionSecret := r.sessionSecret
+	replayParserEnabled := r.replayParserEnabled
+	replayParserTimeout := r.replayParserTimeout
+	logger := r.logger
 
 	mux.HandleFunc("/v1/result-submissions", func(w http.ResponseWriter, r *http.Request) {
 		if deps.HierarchyStore == nil {
@@ -196,6 +202,19 @@ func (r routeRegistrar) registerResultsAndReplayRoutes(mux *http.ServeMux) {
 				status = http.StatusOK
 			}
 			writeJSON(w, status, result)
+			if replayParserEnabled {
+				go func() {
+					timeout := replayParserTimeout
+					if timeout <= 0 {
+						timeout = 30 * time.Second
+					}
+					ctx, cancel := context.WithTimeout(context.Background(), timeout)
+					defer cancel()
+					if err := deps.ReplayStore.TriggerReplayParse(ctx, result.Evidence.ID, result.Evidence.ContextID, result.Evidence.ContextType); err != nil {
+						logger.Error("replay parsing failed", "evidence_id", result.Evidence.ID, "error", err)
+					}
+				}()
+			}
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}

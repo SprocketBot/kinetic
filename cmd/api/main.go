@@ -16,6 +16,7 @@ import (
 	"github.com/kineticbot/kinetic-v3/internal/platform/config"
 	"github.com/kineticbot/kinetic-v3/internal/platform/db"
 	httpserver "github.com/kineticbot/kinetic-v3/internal/platform/http"
+	"github.com/kineticbot/kinetic-v3/internal/platform/replayparser"
 )
 
 func main() {
@@ -69,7 +70,7 @@ func main() {
 		}
 		logger.Info("loaded authz policies from database")
 		evaluator = dbEvaluator
-		stores := db.NewStores(conn)
+		stores := db.NewStoresWithReplayParser(conn, replayparser.NewCommand(cfg.ReplayParserPath))
 		deps.HierarchyStore = stores.HierarchyStore
 		deps.LeagueStore = stores.LeagueStore
 		deps.PlayerStore = stores.PlayerStore

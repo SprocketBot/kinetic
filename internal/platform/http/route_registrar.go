@@ -25,6 +25,8 @@ type routeRegistrar struct {
 	discordClientID     string
 	discordClientSecret string
 	discordRedirectURL  string
+	replayParserEnabled bool
+	replayParserTimeout time.Duration
 }
 
 func newRouteRegistrar(cfg config.Config, logger *slog.Logger, deps Dependencies) routeRegistrar {
@@ -73,6 +75,8 @@ func newRouteRegistrar(cfg config.Config, logger *slog.Logger, deps Dependencies
 		discordClientID:     strings.TrimSpace(cfg.DiscordClientID),
 		discordClientSecret: strings.TrimSpace(cfg.DiscordClientSecret),
 		discordRedirectURL:  strings.TrimSpace(cfg.DiscordRedirectURL),
+		replayParserEnabled: strings.TrimSpace(cfg.ReplayParserPath) != "",
+		replayParserTimeout: cfg.ReplayParserTimeout,
 	}
 }
 

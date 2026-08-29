@@ -477,17 +477,22 @@ export const rejectResultSubmissionInputSchema = z.object({
   reason: z.string().min(1),
 });
 
-export const ingestReplayEvidenceInputSchema = z.object({
-  contextType: z.enum(["scrim", "match"]),
-  contextId: z.number().positive(),
-  submittedByTeamId: z.number().positive(),
-  replayBody: z.string().min(1),
-  parserName: z.string().min(1),
-  parserVersion: z.string().min(1),
-  parserConfigDigest: z.string().min(1),
-  parseOutputJson: z.unknown().default({}),
-  resultSubmissionId: z.number().positive().optional(),
-});
+export const ingestReplayEvidenceInputSchema = z
+  .object({
+    contextType: z.enum(["scrim", "match"]),
+    contextId: z.number().positive(),
+    submittedByTeamId: z.number().positive(),
+    replayBody: z.string().min(1).optional(),
+    replayBodyBase64: z.string().min(1).optional(),
+    parserName: z.string().min(1),
+    parserVersion: z.string().min(1),
+    parserConfigDigest: z.string().min(1),
+    parseOutputJson: z.unknown().optional(),
+    resultSubmissionId: z.number().positive().optional(),
+  })
+  .refine((input) => Boolean(input.replayBody) !== Boolean(input.replayBodyBase64), {
+    message: "Provide exactly one replay body encoding",
+  });
 
 export type ExceptionTicket = z.infer<typeof exceptionTicketSchema>;
 export type TriageExceptionInput = z.infer<typeof triageExceptionInputSchema>;

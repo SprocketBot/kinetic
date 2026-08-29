@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	defaultAuthLocalLogin       = "true"
 	defaultWebBaseURL           = "http://localhost:5173"
 	defaultCORSAllowedOrigins   = ""
+	defaultReplayParserTimeout  = "30s"
 )
 
 type Config struct {
@@ -40,6 +42,8 @@ type Config struct {
 	DiscordClientID      string
 	DiscordClientSecret  string
 	DiscordRedirectURL   string
+	ReplayParserPath     string
+	ReplayParserTimeout  time.Duration
 }
 
 type Variable struct {
@@ -68,6 +72,8 @@ func Variables() []Variable {
 		{Name: "DISCORD_CLIENT_ID", Description: "Discord OAuth client ID. Discord login is disabled when unset."},
 		{Name: "DISCORD_CLIENT_SECRET", Secret: true, Description: "Discord OAuth client secret. Discord login is disabled when unset."},
 		{Name: "DISCORD_REDIRECT_URL", Description: "Optional explicit Discord OAuth callback URL."},
+		{Name: "REPLAY_PARSER_PATH", Description: "Path to the Sprocket rl-replay executable. Replay parsing is disabled when unset."},
+		{Name: "REPLAY_PARSER_TIMEOUT", Default: defaultReplayParserTimeout, Description: "Maximum runtime for one rl-replay process, parsed with Go duration syntax."},
 	}
 }
 
@@ -90,6 +96,8 @@ func Load() Config {
 		DiscordClientID:      os.Getenv("DISCORD_CLIENT_ID"),
 		DiscordClientSecret:  os.Getenv("DISCORD_CLIENT_SECRET"),
 		DiscordRedirectURL:   os.Getenv("DISCORD_REDIRECT_URL"),
+		ReplayParserPath:     strings.TrimSpace(os.Getenv("REPLAY_PARSER_PATH")),
+		ReplayParserTimeout:  parseDuration(getOrDefault("REPLAY_PARSER_TIMEOUT", defaultReplayParserTimeout), 30*time.Second),
 	}
 }
 
@@ -103,6 +111,14 @@ func getOrDefault(key, fallback string) string {
 
 func parseBool(value string) bool {
 	return strings.EqualFold(strings.TrimSpace(value), "true")
+}
+
+func parseDuration(value string, fallback time.Duration) time.Duration {
+	parsed, err := time.ParseDuration(strings.TrimSpace(value))
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
 }
 
 func ValidateRuntimeSafety(cfg Config) error {
