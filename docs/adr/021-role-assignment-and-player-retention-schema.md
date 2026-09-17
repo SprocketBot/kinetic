@@ -10,10 +10,12 @@
 The MLEBB bot (github.com/minor-league-esports/mlebb) provides essential Discord role management and player intent tracking for MLE operations. As part of migrating MLEBB functionality to Kinetic, we need schema extensions to support:
 
 1. **Leadership role assignments** — FM, PR at franchise level; GM, AGM at club level; Captain at team level
-2. **Franchise callsigns** — Short identifiers displayed in Discord nicknames (e.g., "TSM | Player")
+2. **Franchise callsigns** — Short identifiers for teams (e.g., "TSM")
 3. **Player retention tracking** — Season intent responses (Retain/FA/Former Player)
 
 These extensions must integrate cleanly with existing Kinetic primitives (League → Franchise → Club → Team → Player, RosterMembership, PlatformAccountLink).
+
+**Note:** The frontend interface for managing these entities (web admin vs Discord commands) is covered in a separate ADR.
 
 ## Decision
 
@@ -77,9 +79,9 @@ ALTER TABLE franchises ADD COLUMN callsign VARCHAR(10);
 ALTER TABLE franchises ADD CONSTRAINT unique_callsign UNIQUE (callsign);
 ```
 
-**Validation:** Uppercase alphanumeric, max 10 characters, displayed in Discord nicknames as `{callsign} | {player_name}`.
+**Validation:** Uppercase alphanumeric, max 10 characters.
 
-**Rationale:** Callsigns are franchise-level identifiers in MLE convention. Adding at franchise level maintains the hierarchy and enables the existing nickname sync pattern.
+**Rationale:** Callsigns are franchise-level identifiers in MLE convention. Adding at franchise level maintains the hierarchy.
 
 ### 3. Player Retention
 
@@ -167,7 +169,7 @@ Request:
 
 - Maintains hierarchy consistency: FM/PR → Franchise, GM/AGM → Club, Captain → Team
 - Follows established slice patterns (create/list APIs, DB-level constraints)
-- Enables full MLEBB Discord role/nickname sync migration to Kinetic
+- Enables full MLEBB functionality migration to Kinetic
 - Retention tracking replaces external Google Sheets dependency
 
 ### Negative / Tradeoffs
@@ -186,6 +188,7 @@ Request:
 ## Follow-ups
 
 - Add role-based authorization checks (ADR-022)
-- Implement Discord bot commands for role sync
 - Add filtered queries (activeOnly, by role type)
 - Consider migration script from MLEBB data
+- Design player retention form page (authenticated)
+- Note: Admin UI for role management already exists in web client
